@@ -82,6 +82,28 @@ Akses UI di `http://localhost:5173`.
 
 ---
 
+## 🗺️ Master Roadmap 7-Fase Enterprise
+
+Peta jalan pengembangan enterprise berskala penuh:
+- [00. Ringkasan & Arsitektur Master Roadmap](docs/roadmap/00_ROADMAP_OVERVIEW.md)
+- [01. Phase 1: Universal RBAC & Identity Federation](docs/roadmap/01_PHASE_1_IDENTITY_FEDERATION_AND_RBAC.md)
+- [02. Phase 2: Pluggable Multi-Database & High Availability](docs/roadmap/02_PHASE_2_HIGH_AVAILABILITY_AND_REPLICATION.md)
+- [03. Phase 3: SIMD DLP & Prompt Guardrails](docs/roadmap/03_PHASE_3_ADVANCED_DLP_AND_PROMPT_GUARDRAILS.md)
+- [04. Phase 4: FinOps, Token Budgeting & Telemetry](docs/roadmap/04_PHASE_4_FINOPS_TOKEN_BUDGETING_AND_METRICS.md)
+- [05. Phase 5: Enterprise Knowledge Vault & Hybrid RAG](docs/roadmap/05_PHASE_5_ENTERPRISE_RAG_AND_KNOWLEDGE_VAULT.md)
+- [06. Phase 6: Multi-Model Routing & Private Fallback](docs/roadmap/06_PHASE_6_MODEL_FAILOVER_AND_PRIVATE_VLLM.md)
+- [07. Phase 7: Centralized SIEM Auditing & Compliance](docs/roadmap/07_PHASE_7_SIEM_AUDIT_LOGGING_AND_COMPLIANCE.md)
+
+---
+
+## 🧭 Embedded Skills & Protokol Old-Coder
+
+Repository ini telah dilengkapi dengan skill agen mandiri terintegrasi:
+- [Old-Coder Protocol](.agents/skills/old-coder/SKILL.md): Standar pengembangan *evidence-first* dan gauntlet verifikasi ketat.
+- [Old-Coder API Protocol](.agents/skills/old-coder-api/SKILL.md): Desain kontrak REST, SSE streaming, kursor pagination, dan non-breaking API.
+
+---
+
 ## 🛡️ Tata Kelola & Verifikasi Old-Coder
 
 Lumis menerapkan protokol disiplin ketat:
