@@ -1,0 +1,48 @@
+services:
+  lumis:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: lumis:latest
+    container_name: lumis-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - DATABASE_URL=postgres://lumis_user:lumis_secure_pass@postgres:5432/lumis_enterprise
+      - TRUSTED_HEADER=x-forwarded-user
+      - RUST_LOG=lumis_server=info,tower_http=info
+      - LLM_API_BASE=${LLM_API_BASE:-https://api.openai.com/v1}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_BACKUP_API_BASE=${LLM_BACKUP_API_BASE:-}
+      - LLM_BACKUP_API_KEY=${LLM_BACKUP_API_KEY:-}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health/db"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: lumis-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: lumis_user
+      POSTGRES_PASSWORD: lumis_secure_pass
+      POSTGRES_DB: lumis_enterprise
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lumis_user -d lumis_enterprise"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pg-data:
+    driver: local

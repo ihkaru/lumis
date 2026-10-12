@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lumis-system
+  labels:
+    app.kubernetes.io/name: lumis
+    app.kubernetes.io/part-of: lumis-enterprise

@@ -1,0 +1,43 @@
+services:
+  lumis:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: lumis:latest
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - DATABASE_URL=sqlite:///data/lumis.sqlite?mode=rwc
+      - TRUSTED_HEADER=x-forwarded-user
+      - RUST_LOG=lumis_server=info,tower_http=info
+      - LLM_API_BASE=${LLM_API_BASE}
+      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_BACKUP_API_BASE=${LLM_BACKUP_API_BASE}
+      - LLM_BACKUP_API_KEY=${LLM_BACKUP_API_KEY}
+      - SENTRY_DSN=${SENTRY_DSN}
+    volumes:
+      - lumis-data:/data
+    labels:
+      - "coolify.managed=true"
+      # Traefik configuration for SSE streaming without proxy buffering or 504 timeouts
+      - "traefik.enable=true"
+      - "traefik.http.routers.lumis.rule=Host(`${COOLIFY_FQDN:-localhost}`)"
+      - "traefik.http.routers.lumis.entrypoints=websecure"
+      - "traefik.http.routers.lumis.tls=true"
+      - "traefik.http.routers.lumis.tls.certresolver=letsencrypt"
+      - "traefik.http.services.lumis.loadbalancer.server.port=3000"
+      - "traefik.http.middlewares.lumis-sse.headers.customresponseheaders.X-Accel-Buffering=no"
+      - "traefik.http.middlewares.lumis-sse.headers.customresponseheaders.Cache-Control=no-cache"
+      - "traefik.http.routers.lumis.middlewares=lumis-sse"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  lumis-data:
+    driver: local

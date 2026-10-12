@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: lumis-ingress
+  namespace: lumis-system
+  labels:
+    app.kubernetes.io/name: lumis
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    # Critical SSE Streaming Settings: Disable proxy buffer to prevent 504 timeouts
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header Connection '';
+      proxy_http_version 1.1;
+      chunked_transfer_encoding off;
+spec:
+  rules:
+    - host: lumis.internal.enterprise.domain
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: lumis-service
+                port:
+                  number: 3000

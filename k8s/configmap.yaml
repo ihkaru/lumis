@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lumis-config
+  namespace: lumis-system
+  labels:
+    app.kubernetes.io/name: lumis
+data:
+  PORT: "3000"
+  RUST_LOG: "lumis_server=info,tower_http=info"
+  TRUSTED_HEADER: "x-forwarded-user"
+  STATIC_DIR: "/app/ui/dist"
+  LLM_API_BASE: "https://api.openai.com/v1"

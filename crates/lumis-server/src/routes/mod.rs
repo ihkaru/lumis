@@ -13,7 +13,7 @@ use axum::Router;
 use crate::state::AppState;
 
 pub fn create_router(state: AppState) -> Router {
-    Router::new()
+    let router = Router::new()
         // Health & Diagnostics
         .route("/health", get(health::health_check))
         .route("/health/db", get(health::db_health))
@@ -59,6 +59,13 @@ pub fn create_router(state: AppState) -> Router {
 
         // Zero-Copy SSE Stream
         .route("/api/stream", get(stream::sse_handler))
-        .with_state(state)
+        .with_state(state);
+
+    let static_dir = std::env::var("STATIC_DIR").unwrap_or_else(|_| "ui/dist".to_string());
+    if std::path::Path::new(&static_dir).exists() {
+        router.fallback_service(tower_http::services::ServeDir::new(static_dir))
+    } else {
+        router
+    }
 }
 
