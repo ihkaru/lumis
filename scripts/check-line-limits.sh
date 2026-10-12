@@ -5,6 +5,9 @@
 # ==============================================================================
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
 MAX_LINES=350
 VIOLATIONS=0
 CHECKED=0
@@ -13,7 +16,7 @@ echo "==> Running Deterministic File Line Check (< $MAX_LINES lines per file)...
 
 while IFS= read -r file; do
   # Skip git, target, node_modules, dist, vendor, and lockfiles
-  if [[ "$file" =~ \.git/ || "$file" =~ target/ || "$file" =~ node_modules/ || "$file" =~ dist/ || "$file" =~ \.lock$ || "$file" =~ \.png$ || "$file" =~ \.svg$ || "$file" =~ \.sqlite ]]; then
+  if [[ "$file" =~ \.git/ || "$file" =~ target/ || "$file" =~ node_modules/ || "$file" =~ dist/ || "$file" =~ \.lock$ || "$file" =~ \.png$ || "$file" =~ \.svg$ || "$file" =~ \.sqlite || "$file" =~ \.code-graph/ ]]; then
     continue
   fi
 
@@ -25,7 +28,8 @@ while IFS= read -r file; do
       VIOLATIONS=$((VIOLATIONS + 1))
     fi
   fi
-done < <(find . -type f -not -path '*/.*' -not -path './target*' -not -path './node_modules*' | sort)
+done < <(find "$REPO_ROOT" -type f -not -path '*/.*' -not -path '*/target*' -not -path '*/node_modules*' -not -path '*/dist*' | sort)
+
 
 if [ "$VIOLATIONS" -gt 0 ]; then
   echo "==> FAILED: Found $VIOLATIONS file(s) exceeding $MAX_LINES lines."
