@@ -58,3 +58,11 @@ export interface RoleHierarchyInfo {
   clearance_tier: ModelClearanceTier;
 }
 
+export interface BrandingConfig {
+  app_title: string;
+  logo_url: string | null;
+  primary_color: string | null;
+  version: string;
+  upgrade_channel: string;
+}
+

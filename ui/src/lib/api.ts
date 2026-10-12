@@ -1,6 +1,12 @@
-import type { CursorPage, DriverHealth, Message, RoleHierarchyInfo, Session, User } from "./types";
+import type { BrandingConfig, CursorPage, DriverHealth, Message, RoleHierarchyInfo, Session, User } from "./types";
 
 export const api = {
+  async getBranding(): Promise<BrandingConfig> {
+    const res = await fetch("/api/config/branding");
+    if (!res.ok) throw new Error("Failed to fetch branding configuration");
+    return res.json();
+  },
+
   async getMe(): Promise<{ authenticated: boolean; user?: User; role: string; role_level: number; max_clearance_tier: string }> {
     const res = await fetch("/api/auth/me");
     if (!res.ok) throw new Error("Authentication failed");

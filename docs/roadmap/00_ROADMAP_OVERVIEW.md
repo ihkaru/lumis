@@ -24,7 +24,7 @@ Dokumen ini adalah peta jalan strategis multi-fase untuk mengembangkan **Lumis**
 
 ---
 
-## 📊 Matriks 13 Fase Pengembangan Lumis
+## 📊 Matriks 14 Fase Pengembangan Lumis
 
 ```mermaid
 flowchart TD
@@ -40,6 +40,7 @@ flowchart TD
     P10 --> P11["Phase 11: UI Hygiene, Google Sans & Static Analysis"]
     P11 --> P12["Phase 12: shadcn-svelte & High Refresh Rate Engine"]
     P12 --> P13["Phase 13: Interactive Artifacts & Split-Pane Canvas"]
+    P13 --> P14["Phase 14: Zero-Fork Architecture & Seamless Upgrades"]
 ```
 
 | Fase | Dokumen Roadmap | Standar Legacy Didukung | Standar Modern 2026 Didukung |
@@ -57,6 +58,7 @@ flowchart TD
 | **11** | [Phase 11: UI Hygiene & Design Governance](11_PHASE_11_UI_HYGIENE_AND_DESIGN_GOVERNANCE.md) | Generic fallback typography, static layout | Full Google Sans, Zero Emoticon (SVG), Mobile Drawer, AST Linter |
 | **12** | [Phase 12: shadcn-svelte & High Refresh Rate](12_PHASE_12_SHADCN_SVELTE_AND_HIGH_REFRESH_RATE_ENGINE.md) | Custom ad-hoc UI, CPU-bound 60Hz reflows | shadcn-svelte (bits-ui), Lucide icons, 120Hz/144Hz GPU Compositor |
 | **13** | [Phase 13: Interactive Artifacts & Canvas](13_PHASE_13_INTERACTIVE_ARTIFACTS_AND_CANVAS_ENGINE.md) | Static code snippet previews, destructive edits | Sandboxed Iframe Canvas, Zero CSS Bleed, DAG Message Forking |
+| **14** | [Phase 14: Zero-Fork Seamless Upgrades](14_PHASE_14_ZERO_FORK_ENTERPRISE_UPGRADE_AND_DISTRIBUTION.md) | Forked source modifications, destructive DDL | Zero-Fork Overlay, Runtime Branding Injection, Expand-Contract DDL |
 
 ---
 

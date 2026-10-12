@@ -2,6 +2,7 @@ pub mod approval;
 pub mod audit;
 pub mod auth;
 pub mod chat;
+pub mod config;
 pub mod health;
 pub mod knowledge;
 pub mod mcp;
@@ -19,6 +20,9 @@ pub fn create_router(state: AppState) -> Router {
         // Health & Diagnostics
         .route("/health", get(health::health_check))
         .route("/health/db", get(health::db_health))
+        .route("/api/system/doctor", get(config::get_system_doctor))
+        // Runtime Branding & Zero-Fork Configuration
+        .route("/api/config/branding", get(config::get_branding_config))
         // Prometheus Metrics & FinOps Telemetry
         .route("/metrics", get(metrics::get_metrics))
         .route("/api/finops/summary", get(metrics::get_finops_summary))

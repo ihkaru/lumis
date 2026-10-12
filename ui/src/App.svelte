@@ -16,6 +16,7 @@
   import Loader2 from "lucide-svelte/icons/loader-2";
 
   // Svelte 5 Runes
+  let brandTitle = $state("Lumis");
   let user = $state<User | null>(null);
   let sessions = $state<Session[]>([]);
   let activeSessionId = $state<string | null>(null);
@@ -31,6 +32,11 @@
 
   onMount(async () => {
     try {
+      const brand = await api.getBranding().catch(() => null);
+      if (brand?.app_title) {
+        brandTitle = brand.app_title;
+        document.title = `${brand.app_title} — Enterprise AI`;
+      }
       const auth = await api.getMe();
       if (auth.user) user = auth.user;
       await loadSessions();
@@ -131,7 +137,7 @@
           <Zap class="w-5 h-5" />
         </div>
         <span class="font-bold text-lg tracking-tight bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-          Lumis
+          {brandTitle}
         </span>
       </div>
       <div class="flex items-center gap-1.5">
