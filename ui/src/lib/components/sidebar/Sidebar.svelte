@@ -4,7 +4,6 @@
   import X from "lucide-svelte/icons/x";
   import Settings from "lucide-svelte/icons/settings";
   import UserIcon from "lucide-svelte/icons/user";
-  import Shield from "lucide-svelte/icons/shield";
   import Pin from "lucide-svelte/icons/pin";
   import SessionSearch from "./SessionSearch.svelte";
   import SessionItem from "./SessionItem.svelte";
@@ -59,7 +58,13 @@
   function handleTouchEnd(e: TouchEvent) {
     touchEndX = e.changedTouches[0].screenX;
     // Left swipe closes sidebar
-    if (touchStartX - touchEndX > 60 && isOpenMobile) {
+    if (touchStartX - touchEndX > 50 && isOpenMobile) {
+      onCloseMobile();
+    }
+  }
+
+  function handleKeydown(e: KeyboardEvent) {
+    if (e.key === "Escape" && isOpenMobile) {
       onCloseMobile();
     }
   }
@@ -75,15 +80,27 @@
   let regularSessions = $derived(filteredSessions.filter((s) => !s.is_pinned));
 </script>
 
+<svelte:window onkeydown={handleKeydown} />
+
+<!-- Mobile Backdrop Overlay with Tap-to-Dismiss -->
+{#if isOpenMobile}
+  <button
+    type="button"
+    class="fixed inset-0 z-40 bg-black/75 backdrop-blur-xs md:hidden border-0 p-0 w-full h-full cursor-default select-none transition-opacity duration-200"
+    onclick={onCloseMobile}
+    aria-label="Tutup Menu Navigasi"
+  ></button>
+{/if}
+
 <aside
-  class="fixed md:static inset-y-0 left-0 z-50 w-72 bg-card border-r border-border flex flex-col justify-between gpu-layer transform-gpu will-change-transform ease-spring-120fps transition-transform duration-200 shadow-xl md:shadow-none {isOpenMobile ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} select-none font-sans"
+  class="fixed md:static inset-y-0 left-0 z-50 w-72 sm:w-80 bg-card border-r border-border flex flex-col justify-between gpu-layer transform-gpu will-change-transform ease-spring-120fps transition-transform duration-200 shadow-2xl md:shadow-none {isOpenMobile ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} select-none font-sans"
   ontouchstart={handleTouchStart}
   ontouchend={handleTouchEnd}
   aria-label="Sidebar Navigasi"
 >
   <!-- Sidebar Header -->
   <div class="h-16 px-4 border-b border-border flex items-center justify-between shrink-0">
-    <div class="flex items-center gap-2.5 min-w-0">
+    <div class="flex items-center gap-2 min-w-0 pr-2">
       <div class="p-1.5 rounded-lg bg-cyan-950/60 border border-cyan-800/40 text-cyan-400 shrink-0">
         <Zap class="w-5 h-5" />
       </div>
@@ -91,27 +108,34 @@
         {brandTitle}
       </span>
     </div>
+
+    <!-- Header Actions (New Chat & Mobile Close Button) -->
     <div class="flex items-center gap-1.5 shrink-0">
       <Button
         variant="cyan"
-        size="touch"
-        onclick={onCreateSession}
-        class="gap-1.5 text-xs font-medium"
+        size="sm"
+        onclick={() => {
+          onCreateSession();
+          if (isOpenMobile) onCloseMobile();
+        }}
+        class="h-9 px-2.5 gap-1 text-xs font-medium cursor-pointer"
         title="Buat Percakapan Baru"
         aria-label="Buat Percakapan Baru"
       >
-        <Plus class="w-3.5 h-3.5" />
-        <span>Baru</span>
+        <Plus class="w-4 h-4" />
+        <span class="hidden sm:inline">Baru</span>
       </Button>
-      <Button
-        variant="ghost"
-        size="icon"
+
+      <!-- Prominent Mobile Close Button (>= 44px touch target) -->
+      <button
+        type="button"
         onclick={onCloseMobile}
-        class="md:hidden text-muted-foreground hover:text-foreground"
-        aria-label="Tutup Menu"
+        class="md:hidden min-h-[44px] min-w-[44px] h-11 w-11 flex items-center justify-center rounded-xl bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer border border-border/40 touch-manipulation"
+        aria-label="Tutup Menu Navigasi"
+        title="Tutup Menu Navigasi"
       >
         <X class="w-5 h-5" />
-      </Button>
+      </button>
     </div>
   </div>
 
@@ -131,7 +155,10 @@
           <SessionItem
             session={s}
             isActive={activeSessionId === s.id}
-            onSelect={() => onSelectSession(s.id)}
+            onSelect={() => {
+              onSelectSession(s.id);
+              if (isOpenMobile) onCloseMobile();
+            }}
             onTogglePin={onTogglePinSession}
             onOpenRename={(sess) => (sessionToRename = sess)}
             onOpenDelete={(sess) => (sessionToDelete = sess)}
@@ -157,7 +184,10 @@
           <SessionItem
             session={s}
             isActive={activeSessionId === s.id}
-            onSelect={() => onSelectSession(s.id)}
+            onSelect={() => {
+              onSelectSession(s.id);
+              if (isOpenMobile) onCloseMobile();
+            }}
             onTogglePin={onTogglePinSession}
             onOpenRename={(sess) => (sessionToRename = sess)}
             onOpenDelete={(sess) => (sessionToDelete = sess)}
@@ -179,8 +209,11 @@
     <Button
       variant="ghost"
       size="icon"
-      onclick={onOpenSettings}
-      class="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0 cursor-pointer"
+      onclick={() => {
+        onOpenSettings();
+        if (isOpenMobile) onCloseMobile();
+      }}
+      class="min-h-[44px] min-w-[44px] h-10 w-10 text-muted-foreground hover:text-foreground shrink-0 cursor-pointer touch-manipulation"
       title="Buka Pengaturan"
       aria-label="Buka Pengaturan"
     >

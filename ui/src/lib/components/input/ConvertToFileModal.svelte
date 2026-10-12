@@ -1,6 +1,6 @@
 <script lang="ts">
-  import X from "lucide-svelte/icons/x";
   import FileCode from "lucide-svelte/icons/file-code";
+  import { Dialog, DialogOverlay, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "$lib/components/ui/dialog";
   import { Button } from "$lib/components/ui/button";
 
   interface Props {
@@ -29,90 +29,71 @@
     onConverted?.(file);
     onClose?.();
   }
-
-  function handleKeydown(e: KeyboardEvent) {
-    if (e.key === "Escape" && open) {
-      onClose?.();
-    }
-  }
 </script>
 
-<svelte:window onkeydown={handleKeydown} />
+<Dialog {open}>
+  <DialogOverlay {open} onclick={onClose} />
+  <DialogContent {open} {onClose} class="max-w-md">
+    <DialogHeader>
+      <DialogTitle class="flex items-center gap-2">
+        <div class="p-1 rounded-md bg-cyan-950/80 border border-cyan-800 text-cyan-400">
+          <FileCode class="w-4 h-4" />
+        </div>
+        <span>Konversi Teks ke Berkas</span>
+      </DialogTitle>
+    </DialogHeader>
 
-{#if open}
-  <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs font-sans"
-    role="dialog"
-    aria-modal="true"
-    aria-label="Konversi ke Berkas"
-  >
-    <div class="w-full max-w-md p-5 rounded-2xl bg-card border border-border shadow-2xl text-foreground animate-in fade-in zoom-in-95 duration-150">
-      <div class="flex items-center justify-between pb-3 border-b border-border/60">
+    <DialogClose onclick={onClose} />
+
+    <div class="py-4 space-y-3 text-xs">
+      <div>
+        <label for="conv-filename" class="block font-medium text-muted-foreground mb-1">
+          Nama Berkas
+        </label>
         <div class="flex items-center gap-2">
-          <div class="p-1 rounded-md bg-cyan-950/80 border border-cyan-800 text-cyan-400">
-            <FileCode class="w-4 h-4" />
-          </div>
-          <h2 class="font-semibold text-sm">Konversi Teks ke Berkas</h2>
-        </div>
-        <button
-          type="button"
-          class="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-          onclick={() => onClose?.()}
-        >
-          <X class="w-4 h-4" />
-        </button>
-      </div>
-
-      <div class="py-4 space-y-3 text-xs">
-        <div>
-          <label for="conv-filename" class="block font-medium text-muted-foreground mb-1">
-            Nama Berkas
-          </label>
-          <div class="flex items-center gap-2">
-            <input
-              id="conv-filename"
-              type="text"
-              bind:value={filename}
-              class="flex-1 px-3 py-1.5 rounded-lg bg-background border border-border text-foreground font-mono focus:outline-hidden focus:ring-1 focus:ring-cyan-500"
-              placeholder="nama-berkas"
-            />
-            <select
-              bind:value={extension}
-              class="px-2.5 py-1.5 rounded-lg bg-background border border-border text-foreground font-mono cursor-pointer focus:outline-hidden"
-            >
-              <option value="md">.md</option>
-              <option value="txt">.txt</option>
-              <option value="json">.json</option>
-              <option value="ts">.ts</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="p-2.5 rounded-xl bg-muted/40 border border-border/40 text-[11px] text-muted-foreground space-y-1">
-          <div class="flex justify-between">
-            <span>Target Berkas:</span>
-            <span class="font-mono text-foreground">{fullFilename}</span>
-          </div>
-          <div class="flex justify-between">
-            <span>Ukuran Konten:</span>
-            <span class="font-mono text-foreground">{(byteSize / 1024).toFixed(1)} KB ({initialText.length} karakter)</span>
-          </div>
+          <input
+            id="conv-filename"
+            type="text"
+            bind:value={filename}
+            class="flex-1 px-3 py-2 rounded-lg bg-background border border-border text-foreground font-mono focus:outline-hidden focus:ring-1 focus:ring-cyan-500 min-h-[44px]"
+            placeholder="nama-berkas"
+          />
+          <select
+            bind:value={extension}
+            class="px-3 py-2 rounded-lg bg-background border border-border text-foreground font-mono cursor-pointer focus:outline-hidden min-h-[44px]"
+          >
+            <option value="md">.md</option>
+            <option value="txt">.txt</option>
+            <option value="json">.json</option>
+            <option value="ts">.ts</option>
+          </select>
         </div>
       </div>
 
-      <div class="flex items-center justify-end gap-2 pt-3 border-t border-border/60">
-        <Button variant="ghost" size="sm" onclick={() => onClose?.()} class="cursor-pointer">
-          Batal
-        </Button>
-        <Button
-          size="sm"
-          class="bg-cyan-600 hover:bg-cyan-500 text-white cursor-pointer"
-          onclick={handleConvert}
-          disabled={!initialText.trim()}
-        >
-          Konversi & Lampirkan
-        </Button>
+      <div class="p-2.5 rounded-xl bg-muted/40 border border-border/40 text-[11px] text-muted-foreground space-y-1">
+        <div class="flex justify-between">
+          <span>Target Berkas:</span>
+          <span class="font-mono text-foreground">{fullFilename}</span>
+        </div>
+        <div class="flex justify-between">
+          <span>Ukuran Konten:</span>
+          <span class="font-mono text-foreground">{(byteSize / 1024).toFixed(1)} KB ({initialText.length} karakter)</span>
+        </div>
       </div>
     </div>
-  </div>
-{/if}
+
+    <DialogFooter>
+      <Button variant="ghost" size="sm" onclick={onClose} class="min-h-[44px] cursor-pointer">
+        Batal
+      </Button>
+      <Button
+        size="sm"
+        class="bg-cyan-600 hover:bg-cyan-500 text-white min-h-[44px] cursor-pointer"
+        onclick={handleConvert}
+        disabled={!initialText.trim()}
+      >
+        Konversi & Lampirkan
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>

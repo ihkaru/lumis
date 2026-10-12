@@ -205,12 +205,18 @@
         {user}
         isOpenMobile={isMobileDrawerOpen}
         onSelectSession={selectSession}
-        onCreateSession={() => router.navigate("/chat/new")}
+        onCreateSession={() => {
+          isMobileDrawerOpen = false;
+          router.navigate("/chat/new");
+        }}
         onCloseMobile={() => (isMobileDrawerOpen = false)}
         onRenameSession={renameSession}
         onDeleteSession={deleteSession}
         onTogglePinSession={togglePin}
-        onOpenSettings={() => (isSettingsOpen = true)}
+        onOpenSettings={() => {
+          isMobileDrawerOpen = false;
+          isSettingsOpen = true;
+        }}
       />
 
       <!-- Main Chat Area -->
