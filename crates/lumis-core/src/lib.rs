@@ -10,12 +10,15 @@ pub mod traits;
 
 pub use error::{LumisError, Result};
 pub use models::{
-    ChatChunk, ChatCompletionRequest, ChatMessagePayload, CursorPage, CursorQuery, EnterpriseRole,
-    Message, MessageRole, ModelClearanceTier, NewMessage, NewSession, ProviderHealth,
-    ProviderHealthStatus, QuotaCheckResult, Session, TokenUsageRecord, User, UserClaims,
+    ChatChunk, ChatCompletionRequest, ChatMessagePayload, CursorPage, CursorQuery, Document,
+    DocumentChunk, EnterpriseRole, KnowledgeQuery, KnowledgeQueryResult, Message, MessageRole,
+    ModelClearanceTier, NewMessage, NewSession, ProviderHealth, ProviderHealthStatus,
+    QuotaCheckResult, Session, TokenUsageRecord, User, UserClaims,
 };
 pub use traits::{
     ChatRepository, ClaimTranslator, DefaultClaimTranslator, DriverHealth, GuardrailMatcher,
-    GuardrailVerdict, LlmProviderDriver, RelationalDriver, SqlDialect, TelemetryCollector,
-    TelemetryDiagnosticEvent, TelemetryExporter, TelemetrySeverity, TokenQuotaEngine,
+    GuardrailVerdict, KnowledgeVault, LlmProviderDriver, RelationalDriver, SqlDialect,
+    TelemetryCollector, TelemetryDiagnosticEvent, TelemetryExporter, TelemetrySeverity,
+    TokenQuotaEngine,
 };
+

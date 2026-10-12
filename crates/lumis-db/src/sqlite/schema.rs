@@ -43,6 +43,29 @@ pub async fn run_sqlite_migrations(pool: &SqlitePool) -> Result<()> {
 
         CREATE INDEX IF NOT EXISTS idx_messages_cursor
             ON messages(session_id, created_at DESC, id DESC);
+
+        CREATE TABLE IF NOT EXISTS documents (
+            id TEXT PRIMARY KEY,
+            tenant_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            content_type TEXT NOT NULL,
+            min_role INTEGER NOT NULL,
+            chunk_count INTEGER NOT NULL,
+            created_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS document_chunks (
+            id TEXT PRIMARY KEY,
+            document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+            tenant_id TEXT NOT NULL,
+            chunk_index INTEGER NOT NULL,
+            content TEXT NOT NULL,
+            min_role INTEGER NOT NULL,
+            embedding_json TEXT
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_chunks_role
+            ON document_chunks(tenant_id, min_role);
         "#,
     )
     .execute(pool)

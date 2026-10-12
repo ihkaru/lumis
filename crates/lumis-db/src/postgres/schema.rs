@@ -40,6 +40,29 @@ pub async fn run_pg_migrations(pool: &PgPool) -> Result<()> {
 
         CREATE INDEX IF NOT EXISTS idx_pg_messages_cursor
             ON messages(session_id, created_at DESC, id DESC);
+
+        CREATE TABLE IF NOT EXISTS documents (
+            id VARCHAR(64) PRIMARY KEY,
+            tenant_id VARCHAR(64) NOT NULL,
+            title VARCHAR(256) NOT NULL,
+            content_type VARCHAR(64) NOT NULL,
+            min_role SMALLINT NOT NULL,
+            chunk_count INTEGER NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS document_chunks (
+            id VARCHAR(64) PRIMARY KEY,
+            document_id VARCHAR(64) NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+            tenant_id VARCHAR(64) NOT NULL,
+            chunk_index INTEGER NOT NULL,
+            content TEXT NOT NULL,
+            min_role SMALLINT NOT NULL,
+            embedding_json TEXT
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_pg_chunks_role
+            ON document_chunks(tenant_id, min_role);
         "#,
     )
     .execute(pool)

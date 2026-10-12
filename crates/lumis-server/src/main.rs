@@ -52,14 +52,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let sentry_dsn = std::env::var("SENTRY_DSN").ok();
     let telemetry = Arc::new(CompositeTelemetryDispatcher::default_enterprise_suite(sentry_dsn));
     let quota_engine = Arc::new(lumis_server::finops::InMemoryQuotaEngine::new());
+    let knowledge_vault = Arc::new(lumis_server::rag::HybridKnowledgeVault::new());
 
-    // 5. Construct Application State with Vendor-Agnostic Telemetry
+    // 5. Construct Application State with Vendor-Agnostic Telemetry & Knowledge Vault
     let mut state = AppState::with_options(
         driver,
         guardrail,
         claim_translator,
         quota_engine,
         telemetry.clone(),
+        knowledge_vault,
         trusted_header,
     );
 

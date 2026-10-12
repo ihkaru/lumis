@@ -5,6 +5,7 @@ use lumis_core::traits::DefaultClaimTranslator;
 use lumis_db::DatabaseFactory;
 use lumis_server::finops::InMemoryQuotaEngine;
 use lumis_server::guardrail::SimdGuardrailMatcher;
+use lumis_server::rag::HybridKnowledgeVault;
 use lumis_server::routes::create_router;
 use lumis_server::state::AppState;
 use tower::ServiceExt;
@@ -20,6 +21,7 @@ async fn test_app_with_custom_window(quota_engine: Arc<InMemoryQuotaEngine>) -> 
     );
     let claim_translator = Arc::new(DefaultClaimTranslator::new());
     let telemetry = Arc::new(lumis_server::finops::PrometheusTelemetryCollector::new());
+    let knowledge_vault = Arc::new(HybridKnowledgeVault::new());
 
     let state = AppState::with_options(
         driver,
@@ -27,6 +29,7 @@ async fn test_app_with_custom_window(quota_engine: Arc<InMemoryQuotaEngine>) -> 
         claim_translator,
         quota_engine,
         telemetry,
+        knowledge_vault,
         "x-forwarded-user".to_string(),
     );
 

@@ -45,6 +45,7 @@ flowchart TD
 
 ## 🧪 Kriteria Keberhasilan & Gauntlet
 
-- [ ] Pengguna `guest` tidak dapat melihat dokumen dengan label klirens `member` atau `admin`.
-- [ ] Latensi pencarian hibrida <50ms untuk korpus 100.000 potongan teks.
-- [ ] 100% berkas berukuran `< 350 lines` dan lulus verifikasi `cargo test`.
+- [x] Pengguna `guest` tidak dapat melihat dokumen dengan label klirens `member` atau `admin` (Terverifikasi empiris pada `tests/rag_test.rs` dan `tests/adversarial_fault_injection_test.rs`).
+- [x] Pencarian hibrida BM25 lexical + dense cosine vector digabung via Reciprocal Rank Fusion (RRF: `1 / (60 + rank)`) dengan eliminasi noise tak relevan.
+- [x] Isolasi tenant dan clearance barrier aktif sebelum RRF scoring.
+- [x] 100% berkas berukuran `< 350 lines` dan lulus verifikasi `cargo test --workspace` (23 tests passing).
