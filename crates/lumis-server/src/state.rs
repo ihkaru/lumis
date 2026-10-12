@@ -2,16 +2,18 @@ use std::sync::Arc;
 use bytes::Bytes;
 use lumis_core::traits::{
     AuditLogger, ChatRepository, ClaimTranslator, GuardrailMatcher, IdempotencyStore,
-    KnowledgeVault, LlmProviderDriver, McpRegistry, RelationalDriver, TelemetryCollector,
-    TokenQuotaEngine,
+    KnowledgeVault, LlmProviderDriver, McpRegistry, RelationalDriver, ScimProvisioner,
+    TelemetryCollector, TokenQuotaEngine, ToolApprovalManager,
 };
 use tokio::sync::broadcast;
 
+use crate::approval::InMemoryApprovalManager;
 use crate::audit::InMemoryAuditLogger;
 use crate::finops::{InMemoryQuotaEngine, PrometheusTelemetryCollector};
 use crate::idempotency::InMemoryIdempotencyStore;
 use crate::mcp::InMemoryMcpRegistry;
 use crate::rag::HybridKnowledgeVault;
+use crate::scim::InMemoryScimProvisioner;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -25,6 +27,8 @@ pub struct AppState {
     pub mcp_registry: Arc<dyn McpRegistry>,
     pub audit_logger: Arc<dyn AuditLogger>,
     pub idempotency_store: Arc<dyn IdempotencyStore>,
+    pub scim_provisioner: Arc<dyn ScimProvisioner>,
+    pub approval_manager: Arc<dyn ToolApprovalManager>,
     pub llm_router: Option<Arc<dyn LlmProviderDriver>>,
     pub stream_tx: broadcast::Sender<Bytes>,
     pub trusted_header: String,
@@ -74,6 +78,8 @@ impl AppState {
             mcp_registry,
             audit_logger,
             idempotency_store: Arc::new(InMemoryIdempotencyStore::default()),
+            scim_provisioner: Arc::new(InMemoryScimProvisioner::default()),
+            approval_manager: Arc::new(InMemoryApprovalManager::default()),
             llm_router: None,
             stream_tx,
             trusted_header,
@@ -87,6 +93,16 @@ impl AppState {
 
     pub fn with_idempotency_store(mut self, store: Arc<dyn IdempotencyStore>) -> Self {
         self.idempotency_store = store;
+        self
+    }
+
+    pub fn with_scim_provisioner(mut self, provisioner: Arc<dyn ScimProvisioner>) -> Self {
+        self.scim_provisioner = provisioner;
+        self
+    }
+
+    pub fn with_approval_manager(mut self, manager: Arc<dyn ToolApprovalManager>) -> Self {
+        self.approval_manager = manager;
         self
     }
 }

@@ -48,3 +48,9 @@ flowchart LR
   - `create_user(&self, user: ScimUser) -> Result<ScimUser, LumisError>`
   - `update_user_status(&self, user_id: &str, active: bool) -> Result<(), LumisError>`
   - `sync_group_membership(&self, group_id: &str, members: &[String]) -> Result<(), LumisError>`
+
+---
+
+## 🧪 Bukti Verifikasi Empiris (Gauntlet)
+
+- [x] `test_scim_user_and_group_lifecycle_rfc7644`: Provisi pengguna SCIM, pembaruan status de-provisi (`active: false`), provisi grup, penghapusan, dan respon error standar RFC 7644 (Terverifikasi di `tests/scim_and_approval_test.rs`).

@@ -43,10 +43,26 @@ sequenceDiagram
 - Enum `ToolApprovalPolicy`:
   - `AutoApproved`
   - `RequiresApproval`
-  - `Restricted(EnterpriseRole)`
+  - `RestrictedToRole(EnterpriseRole)`
 - Struct `ToolApprovalRequest`:
-  - `approval_token: String`
+  - `token: String`
   - `tool_name: String`
-  - `parameters: serde_json::Value`
+  - `arguments: serde_json::Value`
   - `requested_by: String`
-  - `expires_at: i64`
+  - `caller_role: EnterpriseRole`
+  - `created_at: DateTime<Utc>`
+  - `status: ApprovalStatus`
+
+### 2. `crates/lumis-core/src/traits/approval.rs`
+- Trait `ToolApprovalManager`:
+  - `request_approval(&self, tool_name, arguments, requested_by, role) -> Result<ToolApprovalRequest>`
+  - `get_approval(&self, token) -> Result<Option<ToolApprovalRequest>>`
+  - `list_pending_approvals(&self) -> Result<Vec<ToolApprovalRequest>>`
+  - `approve(&self, token, approved_by) -> Result<ToolApprovalRequest>`
+  - `deny(&self, token, denied_by, reason) -> Result<ToolApprovalRequest>`
+
+---
+
+## 🧪 Bukti Verifikasi Empiris (Gauntlet)
+
+- [x] `test_human_in_the_loop_tool_approval_workflow`: Permintaan approval tool sensitif, pembatasan akses non-admin (403), tinjauan daftar pending oleh TenantAdmin (200), persetujuan aksi, dan pencatatan audit log SIEM otomatis (Terverifikasi di `tests/scim_and_approval_test.rs`).

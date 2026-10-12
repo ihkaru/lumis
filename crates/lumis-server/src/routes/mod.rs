@@ -1,3 +1,4 @@
+pub mod approval;
 pub mod audit;
 pub mod auth;
 pub mod chat;
@@ -5,6 +6,7 @@ pub mod health;
 pub mod knowledge;
 pub mod mcp;
 pub mod metrics;
+pub mod scim;
 pub mod stream;
 
 use axum::routing::get;
@@ -49,6 +51,24 @@ pub fn create_router(state: AppState) -> Router {
         .route("/api/mcp/tasks", axum::routing::post(mcp::spawn_task))
         .route("/api/mcp/tasks/{task_id}", get(mcp::get_task_status))
         .route("/api/mcp/tasks/{task_id}/cancel", axum::routing::post(mcp::cancel_task))
+
+        // Human-in-the-Loop Tool Execution Approvals (Phase 10)
+        .route("/api/mcp/approvals/pending", get(approval::list_pending_approvals))
+        .route("/api/mcp/approvals/{token}", get(approval::get_approval))
+        .route("/api/mcp/approvals/{token}/approve", axum::routing::post(approval::approve_request))
+        .route("/api/mcp/approvals/{token}/deny", axum::routing::post(approval::deny_request))
+
+        // SCIM 2.0 Identity Governance & Automated Group Provisioning (Phase 9 - RFC 7644)
+        .route("/scim/v2/Users", get(scim::list_scim_users).post(scim::create_scim_user))
+        .route(
+            "/scim/v2/Users/{id}",
+            get(scim::get_scim_user).patch(scim::patch_scim_user).delete(scim::delete_scim_user),
+        )
+        .route("/scim/v2/Groups", get(scim::list_scim_groups).post(scim::create_scim_group))
+        .route(
+            "/scim/v2/Groups/{id}",
+            get(scim::get_scim_group).delete(scim::delete_scim_group),
+        )
 
         // Centralized SIEM Auditing & Emergency SOC Killswitch
         .route("/api/admin/audit/events", get(audit::get_audit_events))
