@@ -22,7 +22,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Cache dependencies
-COPY Cargo.toml Cargo.lock ./
+COPY Cargo.toml ./
+COPY Cargo.lock* ./
 COPY crates/lumis-core/Cargo.toml crates/lumis-core/
 COPY crates/lumis-db/Cargo.toml crates/lumis-db/
 COPY crates/lumis-server/Cargo.toml crates/lumis-server/
