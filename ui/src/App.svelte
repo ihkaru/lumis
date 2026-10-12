@@ -1,10 +1,12 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { api } from "./lib/api";
-  import type { Message, Session, User } from "./lib/types";
+  import type { ArtifactSpecification, Message, Session, User } from "./lib/types";
+  import { parseArtifactsFromContent } from "./lib/artifact-parser";
   import { Button } from "$lib/components/ui/button";
   import { Badge } from "$lib/components/ui/badge";
   import { Textarea } from "$lib/components/ui/textarea";
+  import { Canvas } from "$lib/components/ui/canvas";
   import Zap from "lucide-svelte/icons/zap";
   import Plus from "lucide-svelte/icons/plus";
   import Menu from "lucide-svelte/icons/menu";
@@ -14,6 +16,7 @@
   import Cpu from "lucide-svelte/icons/cpu";
   import Shield from "lucide-svelte/icons/shield";
   import Loader2 from "lucide-svelte/icons/loader-2";
+  import Eye from "lucide-svelte/icons/eye";
 
   // Svelte 5 Runes
   let brandTitle = $state("Lumis");
@@ -25,6 +28,7 @@
   let isSending = $state(false);
   let errorMessage = $state<string | null>(null);
   let isMobileDrawerOpen = $state(false);
+  let activeArtifact = $state<ArtifactSpecification | null>(null);
 
   let activeSession = $derived(
     sessions.find((s) => s.id === activeSessionId) || null
@@ -225,11 +229,38 @@
     <!-- Message Bubble Stream (Word-Wrap Aware + 120Hz Smooth Scroll) -->
     <div class="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 smooth-momentum-scroll gpu-layer">
       {#each messages as m (m.id)}
+        {@const parsed = parseArtifactsFromContent(m.content)}
         <div class="flex {m.role === 'user' ? 'justify-end' : 'justify-start'}">
           <div
             class="max-w-2xl px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-sm break-words whitespace-pre-wrap [overflow-wrap:anywhere] {m.role === 'user' ? 'bg-cyan-600 text-white rounded-br-none' : 'bg-card border border-border text-card-foreground rounded-bl-none'}"
           >
-            {m.content}
+            {#if parsed.cleanText}
+              <div>{parsed.cleanText}</div>
+            {/if}
+            {#if parsed.artifacts.length > 0}
+              <div class="mt-2.5 space-y-2">
+                {#each parsed.artifacts as art}
+                  <div class="flex items-center justify-between p-2 rounded-lg bg-background/80 border border-border gap-2">
+                    <div class="flex items-center gap-2 min-w-0">
+                      <Zap class="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                      <span class="font-medium text-xs truncate text-foreground">{art.title}</span>
+                      <Badge variant="outline" class="text-[10px] uppercase font-mono shrink-0">
+                        {art.artifact_type.split("/")[1] || art.artifact_type}
+                      </Badge>
+                    </div>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      class="h-7 px-2 text-xs gap-1 font-sans shrink-0"
+                      onclick={() => (activeArtifact = art)}
+                    >
+                      <Eye class="w-3.5 h-3.5" />
+                      <span>Canvas</span>
+                    </Button>
+                  </div>
+                {/each}
+              </div>
+            {/if}
           </div>
         </div>
       {/each}
@@ -263,4 +294,15 @@
       </div>
     </footer>
   </main>
+
+  <!-- Interactive Artifact Split-Pane Canvas (Phase 13) -->
+  {#if activeArtifact}
+    <div class="fixed md:static inset-0 md:inset-auto z-40 md:z-20 w-full md:w-[480px] lg:w-[560px] xl:w-[640px] h-full shrink-0">
+      <Canvas
+        artifact={activeArtifact}
+        sessionId={activeSessionId || undefined}
+        onClose={() => (activeArtifact = null)}
+      />
+    </div>
+  {/if}
 </div>

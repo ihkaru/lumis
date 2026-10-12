@@ -1,4 +1,14 @@
-import type { BrandingConfig, CursorPage, DriverHealth, Message, RoleHierarchyInfo, Session, User } from "./types";
+import type {
+  ArtifactIpcResponse,
+  ArtifactSpecification,
+  BrandingConfig,
+  CursorPage,
+  DriverHealth,
+  Message,
+  RoleHierarchyInfo,
+  Session,
+  User,
+} from "./types";
 
 export const api = {
   async getBranding(): Promise<BrandingConfig> {
@@ -75,5 +85,37 @@ export const api = {
     const es = new EventSource("/api/stream");
     es.addEventListener("token", (e) => onToken(e.data));
     return es;
+  },
+
+  async parseArtifacts(text: string): Promise<ArtifactSpecification[]> {
+    const res = await fetch("/api/artifacts/parse", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    if (!res.ok) throw new Error("Failed to parse artifacts");
+    const data = await res.json();
+    return data.artifacts || [];
+  },
+
+  async sendArtifactIpc(
+    artifactId: string,
+    request: { request_id: string; action: string; payload?: unknown },
+    sessionId?: string
+  ): Promise<ArtifactIpcResponse> {
+    const res = await fetch("/api/artifacts/ipc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        artifact_id: artifactId,
+        session_id: sessionId,
+        request,
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: "Artifact IPC failed" }));
+      throw new Error(err.error || "Artifact IPC failed");
+    }
+    return res.json();
   },
 };

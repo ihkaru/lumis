@@ -66,3 +66,19 @@ export interface BrandingConfig {
   upgrade_channel: string;
 }
 
+export interface ArtifactSpecification {
+  identifier: string;
+  artifact_type: string;
+  title: string;
+  content: string;
+  version: number;
+}
+
+export interface ArtifactIpcResponse {
+  request_id: string;
+  success: boolean;
+  data?: Record<string, unknown>;
+  error?: string;
+}
+
+

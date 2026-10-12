@@ -10,12 +10,13 @@ pub mod traits;
 
 pub use error::{LumisError, Result};
 pub use models::{
-    AuditEventStatus, AuditLogEvent, ChatChunk, ChatCompletionRequest, ChatMessagePayload,
-    CursorPage, CursorQuery, Document, DocumentChunk, EnterpriseRole, KnowledgeQuery,
-    KnowledgeQueryResult, McpTaskState, McpTaskStatus, McpToolCallRequest, McpToolCallResult,
-    McpToolDefinition, Message, MessageRole, ModelClearanceTier, NewMessage, NewSession,
-    ProviderHealth, ProviderHealthStatus, QuotaCheckResult, Session, TokenUsageRecord, User,
-    UserClaims,
+    ArtifactIpcAction, ArtifactIpcRequest, ArtifactIpcResponse, ArtifactParser,
+    ArtifactSpecification, ArtifactType, AuditEventStatus, AuditLogEvent, ChatChunk,
+    ChatCompletionRequest, ChatMessagePayload, CursorPage, CursorQuery, Document,
+    DocumentChunk, EnterpriseRole, KnowledgeQuery, KnowledgeQueryResult, McpTaskState,
+    McpTaskStatus, McpToolCallRequest, McpToolCallResult, McpToolDefinition, Message,
+    MessageRole, ModelClearanceTier, NewMessage, NewSession, ProviderHealth, ProviderHealthStatus,
+    QuotaCheckResult, Session, TokenUsageRecord, User, UserClaims,
 };
 pub use traits::{
     AuditLogger, ChatRepository, ClaimTranslator, DefaultClaimTranslator, DriverHealth,

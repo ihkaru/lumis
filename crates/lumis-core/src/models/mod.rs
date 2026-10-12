@@ -1,4 +1,5 @@
 pub mod approval;
+pub mod artifact;
 pub mod audit;
 pub mod knowledge;
 pub mod llm;
@@ -12,6 +13,10 @@ pub mod telemetry;
 pub mod user;
 
 pub use approval::{ApprovalStatus, ToolApprovalPolicy, ToolApprovalRequest};
+pub use artifact::{
+    ArtifactIpcAction, ArtifactIpcRequest, ArtifactIpcResponse, ArtifactParser,
+    ArtifactSpecification, ArtifactType,
+};
 pub use audit::{AuditEventStatus, AuditLogEvent};
 pub use knowledge::{Document, DocumentChunk, KnowledgeQuery, KnowledgeQueryResult};
 pub use llm::{ChatChunk, ChatCompletionRequest, ChatMessagePayload, ProviderHealth, ProviderHealthStatus};

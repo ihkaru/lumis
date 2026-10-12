@@ -1,4 +1,5 @@
 pub mod approval;
+pub mod artifact;
 pub mod audit;
 pub mod auth;
 pub mod chat;
@@ -38,6 +39,9 @@ pub fn create_router(state: AppState) -> Router {
             "/api/sessions/{session_id}/messages",
             get(chat::list_messages).post(chat::send_message),
         )
+        // Interactive Artifacts & Sandboxed PostMessage IPC (Phase 13)
+        .route("/api/artifacts/parse", axum::routing::post(artifact::parse_artifacts))
+        .route("/api/artifacts/ipc", axum::routing::post(artifact::handle_artifact_ipc))
         // Enterprise Knowledge Vault & Role-Gated Hybrid RAG
         .route(
             "/api/knowledge/documents",
