@@ -10,15 +10,17 @@ pub mod traits;
 
 pub use error::{LumisError, Result};
 pub use models::{
-    ChatChunk, ChatCompletionRequest, ChatMessagePayload, CursorPage, CursorQuery, Document,
-    DocumentChunk, EnterpriseRole, KnowledgeQuery, KnowledgeQueryResult, Message, MessageRole,
-    ModelClearanceTier, NewMessage, NewSession, ProviderHealth, ProviderHealthStatus,
-    QuotaCheckResult, Session, TokenUsageRecord, User, UserClaims,
+    AuditEventStatus, AuditLogEvent, ChatChunk, ChatCompletionRequest, ChatMessagePayload,
+    CursorPage, CursorQuery, Document, DocumentChunk, EnterpriseRole, KnowledgeQuery,
+    KnowledgeQueryResult, McpTaskState, McpTaskStatus, McpToolCallRequest, McpToolCallResult,
+    McpToolDefinition, Message, MessageRole, ModelClearanceTier, NewMessage, NewSession,
+    ProviderHealth, ProviderHealthStatus, QuotaCheckResult, Session, TokenUsageRecord, User,
+    UserClaims,
 };
 pub use traits::{
-    ChatRepository, ClaimTranslator, DefaultClaimTranslator, DriverHealth, GuardrailMatcher,
-    GuardrailVerdict, KnowledgeVault, LlmProviderDriver, RelationalDriver, SqlDialect,
-    TelemetryCollector, TelemetryDiagnosticEvent, TelemetryExporter, TelemetrySeverity,
-    TokenQuotaEngine,
+    AuditLogger, ChatRepository, ClaimTranslator, DefaultClaimTranslator, DriverHealth,
+    GuardrailMatcher, GuardrailVerdict, KnowledgeVault, LlmProviderDriver, McpRegistry,
+    McpToolExecutor, RelationalDriver, SqlDialect, TelemetryCollector, TelemetryDiagnosticEvent,
+    TelemetryExporter, TelemetrySeverity, TokenQuotaEngine,
 };
 

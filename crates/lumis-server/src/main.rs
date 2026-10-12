@@ -53,8 +53,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let telemetry = Arc::new(CompositeTelemetryDispatcher::default_enterprise_suite(sentry_dsn));
     let quota_engine = Arc::new(lumis_server::finops::InMemoryQuotaEngine::new());
     let knowledge_vault = Arc::new(lumis_server::rag::HybridKnowledgeVault::new());
+    let mcp_registry = Arc::new(lumis_server::mcp::InMemoryMcpRegistry::default());
+    let audit_logger = Arc::new(lumis_server::audit::InMemoryAuditLogger::default());
 
-    // 5. Construct Application State with Vendor-Agnostic Telemetry & Knowledge Vault
+    // 5. Construct Application State with Telemetry, Knowledge Vault, MCP 2026 & SIEM Audit
     let mut state = AppState::with_options(
         driver,
         guardrail,
@@ -62,6 +64,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         quota_engine,
         telemetry.clone(),
         knowledge_vault,
+        mcp_registry,
+        audit_logger,
         trusted_header,
     );
 

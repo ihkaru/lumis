@@ -44,6 +44,19 @@ pub async fn send_message(
         .and_then(|v| v.to_str().ok())
         .unwrap_or("default");
 
+    // 0. SOC Emergency Killswitch Enforcement
+    if state.audit_logger.is_killswitch_active() {
+        let (_, reason, _) = state.audit_logger.get_killswitch_status();
+        let reason_msg = reason.unwrap_or_else(|| "Emergency security lockdown active".to_string());
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ErrorResponse {
+                error: format!("Global Emergency Killswitch Active: {}", reason_msg),
+            }),
+        )
+            .into_response();
+    }
+
     // 1. Policy Enforcement Point (PEP): Model Clearance verification
     if let Some(ref model_id) = payload.model_id {
         if let Err(e) = state.claim_translator.evaluate_model_clearance(role, model_id) {

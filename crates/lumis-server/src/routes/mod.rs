@@ -1,7 +1,9 @@
+pub mod audit;
 pub mod auth;
 pub mod chat;
 pub mod health;
 pub mod knowledge;
+pub mod mcp;
 pub mod metrics;
 pub mod stream;
 
@@ -40,6 +42,20 @@ pub fn create_router(state: AppState) -> Router {
             axum::routing::delete(knowledge::delete_document),
         )
         .route("/api/knowledge/query", axum::routing::post(knowledge::query_knowledge))
+
+        // Model Context Protocol (MCP 2026) & Asynchronous Tasks Extension
+        .route("/api/mcp/tools", get(mcp::list_tools))
+        .route("/api/mcp/tools/call", axum::routing::post(mcp::call_tool))
+        .route("/api/mcp/tasks", axum::routing::post(mcp::spawn_task))
+        .route("/api/mcp/tasks/{task_id}", get(mcp::get_task_status))
+        .route("/api/mcp/tasks/{task_id}/cancel", axum::routing::post(mcp::cancel_task))
+
+        // Centralized SIEM Auditing & Emergency SOC Killswitch
+        .route("/api/admin/audit/events", get(audit::get_audit_events))
+        .route(
+            "/api/admin/emergency/killswitch",
+            get(audit::get_killswitch).post(audit::set_killswitch),
+        )
 
         // Zero-Copy SSE Stream
         .route("/api/stream", get(stream::sse_handler))

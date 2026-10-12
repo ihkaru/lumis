@@ -22,6 +22,8 @@ async fn test_app_with_custom_window(quota_engine: Arc<InMemoryQuotaEngine>) -> 
     let claim_translator = Arc::new(DefaultClaimTranslator::new());
     let telemetry = Arc::new(lumis_server::finops::PrometheusTelemetryCollector::new());
     let knowledge_vault = Arc::new(HybridKnowledgeVault::new());
+    let mcp_registry = Arc::new(lumis_server::mcp::InMemoryMcpRegistry::default());
+    let audit_logger = Arc::new(lumis_server::audit::InMemoryAuditLogger::default());
 
     let state = AppState::with_options(
         driver,
@@ -30,6 +32,8 @@ async fn test_app_with_custom_window(quota_engine: Arc<InMemoryQuotaEngine>) -> 
         quota_engine,
         telemetry,
         knowledge_vault,
+        mcp_registry,
+        audit_logger,
         "x-forwarded-user".to_string(),
     );
 
