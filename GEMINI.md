@@ -39,6 +39,8 @@ Repository ini dilengkapi skill bawaan yang terpasang di `.agents/skills/`:
   - Verifier independen dan batasan baris deterministik.
 - **Old-Coder API Protocol** (`.agents/skills/old-coder-api/SKILL.md`):
   - Desain endpoint HTTP/REST/SSE, pagination kursor, idempotency, dan perlindungan breaking changes.
+- **Zero-Mock Detector Protocol** (`.agents/skills/zero-mock-detector/SKILL.md`):
+  - Deteksi statis otomatis kebocoran mock code, silent mocks, fake latency simulators, dan stubbed logic di jalur produksi.
 
 ---
 
@@ -71,10 +73,13 @@ Sebelum menyelesaikan tugas atau membuat commit, jalankan:
 # 1. Cek batasan baris (< 350 baris per file)
 bash scripts/check-line-limits.sh
 
-# 2. Cek kompilasi & test suites Rust
+# 2. Cek integritas zero-mock (Dilarang ada mock di jalur produksi)
+detect-mocks .
+
+# 3. Cek kompilasi & test suites Rust
 cargo check --workspace
 cargo test --workspace
 
-# 3. Cek frontend (Svelte 5 via Bun)
+# 4. Cek frontend (Svelte 5 via Bun)
 cd ui && bun run check && cd ..
 ```

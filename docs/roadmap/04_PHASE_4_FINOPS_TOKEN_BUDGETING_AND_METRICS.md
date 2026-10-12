@@ -38,9 +38,18 @@ flowchart LR
 
 ---
 
-## 📦 Komponen & Target Luaran
+## 📦 Komponen & Implementasi Terverifikasi
 
-1. `lumis_server::telemetry::otel`: Inisialisasi OpenTelemetry tracer dan meter provider dengan konvensi `gen_ai.*`.
-2. `lumis_server::middleware::quota`: Interceptor kuota token dan pencatat metrik histogram.
-3. `lumis_server::routes::metrics`: Endpoint scraper Prometheus.
-4. `tests/otel_finops_test.rs`: Pengujian kepatuhan atribut `gen_ai.*` dan pembatasan kuota 429.
+1. [x] [`lumis_core::traits::TokenQuotaEngine`](file:///root/projects/lumis/crates/lumis-core/src/traits/finops.rs) & [`TelemetryCollector`](file:///root/projects/lumis/crates/lumis-core/src/traits/finops.rs): Kontrak interface FinOps token budget dan OpenTelemetry semantic collector.
+2. [x] [`lumis_server::finops::InMemoryQuotaEngine`](file:///root/projects/lumis/crates/lumis-server/src/finops/quota_engine.rs): Enforcer sliding-window token quota berjenjang per role (SuperAdmin 10M, TenantAdmin 1M, PowerUser 200k, Member 50k, Guest 5k) dengan penolakan HTTP 429 Too Many Requests dan header `Retry-After`.
+3. [x] [`lumis_server::finops::PrometheusTelemetryCollector`](file:///root/projects/lumis/crates/lumis-server/src/finops/telemetry.rs): Pengumpul metrik OTel GenAI (`gen_ai_client_token_usage_total`, `gen_ai_client_operation_duration_ms_total`).
+4. [x] [`lumis_server::routes::metrics`](file:///root/projects/lumis/crates/lumis-server/src/routes/metrics.rs): Endpoint scraper Prometheus `GET /metrics` dan `GET /api/finops/summary`.
+5. [x] [`tests/otel_finops_test.rs`](file:///root/projects/lumis/crates/lumis-server/tests/otel_finops_test.rs): Gauntlet pengujian kuota token HTTP 429 dan kepatuhan Prometheus.
+
+---
+
+## 🧪 Kriteria Keberhasilan & Gauntlet
+
+- [x] Penegakan kuota token otomatis menghentikan request berlebih dengan respons HTTP 429 dan header `Retry-After`.
+- [x] Endpoint `GET /metrics` menghasilkan metrik berstandar OpenTelemetry GenAI 2026.
+- [x] 100% berkas berukuran `< 350 lines` dan diverifikasi dengan `detect-mocks .` serta `cargo test --workspace`.

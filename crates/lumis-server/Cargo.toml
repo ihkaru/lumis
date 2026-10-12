@@ -20,6 +20,7 @@ tower = { workspace = true }
 
 lumis-core = { path = "../lumis-core" }
 lumis-db = { path = "../lumis-db" }
+async-trait = { workspace = true }
 tokio.workspace = true
 tokio-stream = { version = "0.1", features = ["sync"] }
 axum.workspace = true

@@ -1,6 +1,7 @@
 pub mod auth;
 pub mod chat;
 pub mod health;
+pub mod metrics;
 pub mod stream;
 
 use axum::routing::get;
@@ -13,6 +14,9 @@ pub fn create_router(state: AppState) -> Router {
         // Health & Diagnostics
         .route("/health", get(health::health_check))
         .route("/health/db", get(health::db_health))
+        // Prometheus Metrics & FinOps Telemetry
+        .route("/metrics", get(metrics::get_metrics))
+        .route("/api/finops/summary", get(metrics::get_finops_summary))
         // Auth, Identity & Governance
         .route("/api/auth/me", get(auth::auth_me))
         .route("/api/admin/roles", get(auth::list_roles))
