@@ -3,7 +3,7 @@ use lumis_core::error::{LumisError, Result};
 use lumis_core::traits::{ChatRepository, RelationalDriver};
 use crate::postgres::PostgresDriver;
 use crate::sqlite::SqliteDriver;
-use sqlx::{PgPool, SqlitePool};
+use sqlx::PgPool;
 
 /// Enterprise Database Factory (EIP Factory & DIP).
 /// Dynamically initializes and returns Arc<dyn RelationalDriver> or Arc<dyn ChatRepository>
@@ -21,7 +21,12 @@ impl DatabaseFactory {
             Ok(Arc::new(driver))
         } else {
             tracing::info!("Initializing Lumis with SQLite WAL driver: {}", database_url);
-            let pool = SqlitePool::connect(database_url)
+            let options = database_url
+                .parse::<sqlx::sqlite::SqliteConnectOptions>()
+                .map_err(|e| LumisError::Database(format!("Invalid SQLite URL: {}", e)))?
+                .create_if_missing(true);
+            let pool = sqlx::sqlite::SqlitePoolOptions::new()
+                .connect_with(options)
                 .await
                 .map_err(|e| LumisError::Database(format!("SQLite connection failed: {}", e)))?;
             let driver = SqliteDriver::new(pool).await?;
