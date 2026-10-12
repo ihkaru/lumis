@@ -100,16 +100,24 @@ export const api = {
 
   async sendArtifactIpc(
     artifactId: string,
-    request: { request_id: string; action: string; payload?: unknown },
+    request: { request_id: string; action: string | Record<string, unknown>; payload?: unknown },
     sessionId?: string
   ): Promise<ArtifactIpcResponse> {
+    const actionPayload =
+      typeof request.action === "string"
+        ? { action: request.action, ...(request.payload ? { payload: request.payload } : {}) }
+        : request.action;
+
     const res = await fetch("/api/artifacts/ipc", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         artifact_id: artifactId,
         session_id: sessionId,
-        request,
+        request: {
+          request_id: request.request_id,
+          action: actionPayload,
+        },
       }),
     });
     if (!res.ok) {
