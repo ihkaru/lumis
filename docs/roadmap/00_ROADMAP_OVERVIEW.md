@@ -24,7 +24,7 @@ Dokumen ini adalah peta jalan strategis multi-fase untuk mengembangkan **Lumis**
 
 ---
 
-## 📊 Matriks 10 Fase Pengembangan Lumis
+## 📊 Matriks 11 Fase Pengembangan Lumis
 
 ```mermaid
 flowchart TD
@@ -37,6 +37,7 @@ flowchart TD
     P7 --> P8["Phase 8: Prompt Cache & Idempotency Pipeline"]
     P8 --> P9["Phase 9: SCIM 2.0 Identity Governance"]
     P9 --> P10["Phase 10: Human-in-the-Loop Tool Approval"]
+    P10 --> P11["Phase 11: UI Hygiene, Google Sans & Static Analysis"]
 ```
 
 | Fase | Dokumen Roadmap | Standar Legacy Didukung | Standar Modern 2026 Didukung |
@@ -51,6 +52,7 @@ flowchart TD
 | **08** | [Phase 8: Prompt Cache & Idempotency](08_PHASE_8_PROMPT_CACHE_AND_IDEMPOTENCY.md) | HTTP ETag, SHA-256 fingerprinting | Stable-Prefix KV Caching (OpenAI/Anthropic/vLLM), Deduplication |
 | **09** | [Phase 9: SCIM 2.0 Governance](09_PHASE_9_SCIM_IDENTITY_GOVERNANCE.md) | LDAP Group Sync, Active Directory | SCIM 2.0 (RFC 7643/7644), JIT De-provisioning, Okta/Entra ID |
 | **10** | [Phase 10: Tool Approvals](10_PHASE_10_TOOL_APPROVAL_POLICIES.md) | Manual supervisor review, tickets | Non-blocking cryptographic approval tokens, SSE interruption |
+| **11** | [Phase 11: UI Hygiene & Design Governance](11_PHASE_11_UI_HYGIENE_AND_DESIGN_GOVERNANCE.md) | Generic fallback typography, static layout | Full Google Sans, Zero Emoticon (SVG), Mobile Drawer, AST Linter |
 
 ---
 
