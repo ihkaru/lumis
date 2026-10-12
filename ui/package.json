@@ -10,8 +10,11 @@
     "check": "svelte-check --tsconfig ./tsconfig.json"
   },
   "devDependencies": {
+    "@sveltejs/acorn-typescript": "^1.0.13",
     "@sveltejs/vite-plugin-svelte": "^5.0.3",
+    "aria-query": "5.3.1",
     "autoprefixer": "^10.4.20",
+    "axobject-query": "^4.1.0",
     "postcss": "^8.4.49",
     "svelte": "^5.2.0",
     "svelte-check": "^4.1.0",

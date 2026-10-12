@@ -22,24 +22,93 @@ impl EnterpriseRole {
         *self as u8
     }
 
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::SuperAdmin => "super_admin",
+            Self::TenantAdmin => "tenant_admin",
+            Self::PowerUser => "power_user",
+            Self::Member => "member",
+            Self::Guest => "guest",
+        }
+    }
+
+    pub fn is_at_least(&self, required: EnterpriseRole) -> bool {
+        self.level() >= required.level()
+    }
+
+    pub fn can_access_clearance(&self, tier: &ModelClearanceTier) -> bool {
+        self.is_at_least(tier.required_role())
+    }
+
     pub fn from_str(s: &str) -> Self {
         match s.trim().to_lowercase().as_str() {
-            "super_admin" | "admin" | "ciso" | "root" | "system_admin" => Self::SuperAdmin,
-            "tenant_admin" | "dept_admin" | "satker_admin" | "manager" => Self::TenantAdmin,
-            "power_user" | "developer" | "engineer" | "analyst" | "operator" => Self::PowerUser,
-            "member" | "pegawai" | "staff" | "employee" | "user" => Self::Member,
+            "super_admin" | "admin" | "ciso" | "root" | "system_admin" | "security_officer"
+            | "administrator" => Self::SuperAdmin,
+            "tenant_admin" | "dept_admin" | "division_head" | "satker_admin" | "kepala_satker"
+            | "manager" | "org_admin" => Self::TenantAdmin,
+            "power_user" | "operator" | "lead" | "developer" | "engineer" | "analyst"
+            | "specialist" | "ppk" => Self::PowerUser,
+            "member" | "pegawai" | "staff" | "employee" | "user" | "internal" | "asn" => {
+                Self::Member
+            }
+            "guest" | "viewer" | "external" | "contractor" | "auditor" | "intern" | "tamu" => {
+                Self::Guest
+            }
             _ => Self::Guest,
         }
     }
+
+    pub fn from_claims(roles: &[String]) -> Self {
+        roles
+            .iter()
+            .map(|r| Self::from_str(r))
+            .max()
+            .unwrap_or(Self::Member)
+    }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ModelClearanceTier {
     TierBasic = 1,
     TierStandard = 2,
     TierAdvanced = 3,
     TierReasoning = 4,
+}
+
+impl ModelClearanceTier {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::TierBasic => "tier_basic",
+            Self::TierStandard => "tier_standard",
+            Self::TierAdvanced => "tier_advanced",
+            Self::TierReasoning => "tier_reasoning",
+        }
+    }
+
+    pub fn required_role(&self) -> EnterpriseRole {
+        match self {
+            Self::TierBasic => EnterpriseRole::Guest,
+            Self::TierStandard => EnterpriseRole::Member,
+            Self::TierAdvanced => EnterpriseRole::PowerUser,
+            Self::TierReasoning => EnterpriseRole::PowerUser,
+        }
+    }
+
+    pub fn from_model_id(model_id: &str) -> Self {
+        let m = model_id.to_lowercase();
+        if m.contains("r1") || m.contains("reasoning") || m.contains("o1") || m.contains("o3") {
+            Self::TierReasoning
+        } else if m.contains("mini") || m.contains("flash") || m.contains("nano") || m.contains("haiku") {
+            Self::TierBasic
+        } else if m.contains("sonnet") || m.contains("coder") || m.contains("opus") {
+            Self::TierAdvanced
+        } else if m.contains("pro") || m.contains("4o") || m.contains("claude") {
+            Self::TierStandard
+        } else {
+            Self::TierBasic
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -62,4 +131,6 @@ pub struct UserClaims {
     pub email: Option<String>,
     pub roles: Vec<String>,
     pub tenant_id: Option<String>,
+    pub department: Option<String>,
+    pub employee_id: Option<String>,
 }

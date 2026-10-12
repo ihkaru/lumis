@@ -1,11 +1,24 @@
-import type { CursorPage, Message, Session, User } from "./types";
+import type { CursorPage, DriverHealth, Message, RoleHierarchyInfo, Session, User } from "./types";
 
 export const api = {
-  async getMe(): Promise<{ authenticated: boolean; user?: User; role: string }> {
+  async getMe(): Promise<{ authenticated: boolean; user?: User; role: string; role_level: number; max_clearance_tier: string }> {
     const res = await fetch("/api/auth/me");
     if (!res.ok) throw new Error("Authentication failed");
     return res.json();
   },
+
+  async getDbHealth(): Promise<DriverHealth> {
+    const res = await fetch("/health/db");
+    if (!res.ok) throw new Error("Failed to fetch database health");
+    return res.json();
+  },
+
+  async listRoles(): Promise<RoleHierarchyInfo[]> {
+    const res = await fetch("/api/admin/roles");
+    if (!res.ok) throw new Error("Failed to list role hierarchy");
+    return res.json();
+  },
+
 
   async listSessions(cursorTime?: string, cursorId?: string, limit = 20): Promise<CursorPage<Session>> {
     const params = new URLSearchParams();

@@ -36,3 +36,25 @@ export interface User {
   role: "super_admin" | "tenant_admin" | "power_user" | "member" | "guest";
   tenant_id?: string;
 }
+
+export type ModelClearanceTier =
+  | "tier_basic"
+  | "tier_standard"
+  | "tier_advanced"
+  | "tier_reasoning";
+
+export interface DriverHealth {
+  dialect: "sqlite" | "postgres";
+  is_alive: boolean;
+  latency_ms: number;
+  active_connections: number;
+  max_connections: number;
+}
+
+export interface RoleHierarchyInfo {
+  role: string;
+  level: number;
+  canonical_name: string;
+  clearance_tier: ModelClearanceTier;
+}
+

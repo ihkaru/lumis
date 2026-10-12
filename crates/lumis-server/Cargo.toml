@@ -6,11 +6,18 @@ license.workspace = true
 authors.workspace = true
 repository.workspace = true
 
+[lib]
+path = "src/lib.rs"
+
 [[bin]]
 name = "lumis-server"
 path = "src/main.rs"
 
+[dev-dependencies]
+tower = { workspace = true }
+
 [dependencies]
+
 lumis-core = { path = "../lumis-core" }
 lumis-db = { path = "../lumis-db" }
 tokio.workspace = true

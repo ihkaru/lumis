@@ -1,48 +1,46 @@
-# 💰 Phase 4: FinOps, Token Budgeting & Telemetry
+# 💰 Phase 4: OpenTelemetry GenAI & AI FinOps Budgeting
 
-Fase ini menghadirkan tata kelola finansial kecerdasan artifisial (*AI FinOps*), penegakan kuota token per divisi/pegawai, dan observabilitas real-time via Prometheus.
-
----
-
-## 🎯 Sasaran Utama
-
-1. **Penegakan Kuota Token Granular**:
-   - Batas kuota harian/bulanan berdasarkan hierarki peran (`guest`: 10k token, `member`: 100k token, `power_user`: 1M token, `admin`: tak terbatas).
-   - Penghentian otomatis jika batas kuota tercapai dengan respon informatif `429 Too Many Requests`.
-2. **Kalkulasi Biaya Multi-Penyedia (Multi-Provider Cost Engine)**:
-   - Pencatatan konsumsi token input & output secara real-time.
-   - Perhitungan estimasi biaya per divisi/satker dalam mata uang lokal (IDR/USD).
-3. **Observabilitas Prometheus & Alerting**:
-   - Endpoint `/metrics` standar Prometheus (metrik: `lumis_tokens_consumed_total`, `lumis_active_streams`, `lumis_request_duration_seconds`).
-   - Integrasi webhook alert ke Slack/Telegram/Discord saat penggunaan token divisi mencapai 80% dan 100%.
+Fase ini melengkapi Lumis dengan observabilitas telemetri standar terbuka **OpenTelemetry (OTel) GenAI Semantic Conventions (`gen_ai.*`)** serta tata kelola finansial (*AI FinOps*) untuk pemantauan biaya token real-time.
 
 ---
 
-## 📐 Arsitektur FinOps & Observabilitas
+## 🎯 Sasaran Utama & Standar Enterprise 2026
+
+1. **OpenTelemetry GenAI Semantic Conventions (`gen_ai.*`)**:
+   - Standardisasi atribut observabilitas vendor-neutral:
+     - `gen_ai.provider.name` (openai, anthropic, deepseek, vllm).
+     - `gen_ai.operation.name` (`chat`, `embeddings`).
+     - `gen_ai.request.model` & `gen_ai.response.model`.
+     - `gen_ai.usage.input_tokens` & `gen_ai.usage.output_tokens`.
+   - Instrumen metrik standar OTel:
+     - `gen_ai.client.token.usage` (Histogram konsumsi token per role/tenant).
+     - `gen_ai.client.operation.duration` (Histogram latensi respons per provider).
+2. **W3C Distributed Tracing (`traceparent`, `tracestate`)**:
+   - Propagasi trace context lintas layanan backend enterprise tanpa memutus jejak panggilan (*trace lineage*).
+3. **Privasi & Keamanan Konten (Privacy-First Telemetry)**:
+   - Sesuai standar OTel GenAI 2026 dan regulasi UU PDP / GDPR: teks mentah prompt dan jawaban **tidak dicatat ke span secara default** (hanya metadata token dan durasi). Perekaman teks hanya aktif via *explicit opt-in event* di environment non-produksi.
+4. **Penegakan Kuota Token Granular & FinOps Alerting**:
+   - Batas kuota berjenjang per tenant dan peran pengguna.
+   - Ekspor metrik via OTLP gRPC/HTTP dan endpoint `/metrics` Prometheus.
+
+---
+
+## 📐 Arsitektur Observabilitas & FinOps
 
 ```mermaid
 flowchart LR
-    TokenStream["Token Stream Axum"] --> Counter["Token Accounting\n(In/Out Counter)"]
-    Counter --> QuotaEngine["Quota Engine\n(Valkey / DB State)"]
-    QuotaEngine -->|Sisa Kuota Valid| Deliver["Kirim Token ke Client"]
-    QuotaEngine -->|Kuota Habis| Throttle["Blokir & Peringatan 429"]
-    Counter --> Prometheus["Prometheus Metrics\n(/metrics)"]
-    Prometheus --> Grafana["Dashboard FinOps\n(Grafana / SOC Alert)"]
+    TokenStream["Token Stream Axum"] --> OTel["OTel Tracer & Metrics\n(gen_ai.* Attributes)"]
+    OTel --> Quota["FinOps Quota Engine\n(Valkey / DB State)"]
+    OTel --> Exporter["OTLP Exporter\n(W3C Trace Context)"]
+    Exporter --> APM["Enterprise APM\n(Datadog / Dynatrace / OTel Collector)"]
+    Quota -->|Kuota Tercapai| Alert["Webhook Alert\n(Slack / PagerDuty)"]
 ```
 
 ---
 
 ## 📦 Komponen & Target Luaran
 
-1. `lumis_core::models::quota`: Kontrak kuota token dan konfigurasi batas pengguna.
-2. `lumis_server::middleware::quota`: Interceptor penghitung token dan penegak kuota sebelum permintaan dieksekusi.
+1. `lumis_server::telemetry::otel`: Inisialisasi OpenTelemetry tracer dan meter provider dengan konvensi `gen_ai.*`.
+2. `lumis_server::middleware::quota`: Interceptor kuota token dan pencatat metrik histogram.
 3. `lumis_server::routes::metrics`: Endpoint scraper Prometheus.
-4. `tests/quota_test.rs`: Pengujian throttler kuota dan akurasi kalkulator biaya.
-
----
-
-## 🧪 Kriteria Keberhasilan & Gauntlet
-
-- [ ] Pengguna yang melebihi batas kuota harian otomatis dibatasi tanpa memengaruhi pengguna lain di departemen yang sama.
-- [ ] Metrik konsumsi token tercatat presisi 100% tanpa ada token yang hilang saat streaming terputus.
-- [ ] 100% berkas berukuran `< 350 lines` dan lulus verifikasi `cargo test`.
+4. `tests/otel_finops_test.rs`: Pengujian kepatuhan atribut `gen_ai.*` dan pembatasan kuota 429.

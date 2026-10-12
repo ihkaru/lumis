@@ -4,16 +4,14 @@
 //! Production Axum 0.8 HTTP / SSE Server.
 //! Pure async Rust, zero-copy token streaming, pluggable multi-database architecture.
 
-pub mod guardrail;
-pub mod routes;
-pub mod state;
-
 use std::net::SocketAddr;
 use std::sync::Arc;
-use guardrail::SimdGuardrailMatcher;
 use lumis_db::DatabaseFactory;
-use state::AppState;
+use lumis_server::guardrail::SimdGuardrailMatcher;
+use lumis_server::routes;
+use lumis_server::state::AppState;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -36,16 +34,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tracing::info!("Starting Lumis Enterprise Server on port {}", port);
 
-    // 1. Initialize Pluggable Database Repository (DIP)
-    let repo = DatabaseFactory::create_repository(&database_url).await?;
+    // 1. Initialize Pluggable Relational Driver (EIP Channel Adapter & DIP)
+    let driver = DatabaseFactory::create_driver(&database_url).await?;
+    driver.run_migrations().await?;
 
     // 2. Initialize SIMD Guardrail Matcher
     let guardrail = Arc::new(SimdGuardrailMatcher::new(
         SimdGuardrailMatcher::default_patterns(),
     )?);
 
-    // 3. Construct Application State
-    let state = AppState::new(repo, guardrail, trusted_header);
+    // 3. Initialize IAM Claims Translator (EIP Message Translator)
+    let claim_translator = Arc::new(lumis_core::traits::DefaultClaimTranslator::new());
+
+    // 4. Construct Application State
+    let state = AppState::new(driver, guardrail, claim_translator, trusted_header);
+
 
     // 4. Build Axum Router
     let app = routes::create_router(state);

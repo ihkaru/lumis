@@ -1,7 +1,11 @@
+pub mod driver;
 pub mod message;
 pub mod schema;
 pub mod session;
 pub mod user;
+
+pub use driver::SqliteDriver;
+
 
 use async_trait::async_trait;
 use lumis_core::error::Result;

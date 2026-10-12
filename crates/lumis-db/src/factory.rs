@@ -1,30 +1,37 @@
 use std::sync::Arc;
 use lumis_core::error::{LumisError, Result};
-use lumis_core::traits::ChatRepository;
-use crate::postgres::PostgresRepository;
-use crate::sqlite::SqliteRepository;
+use lumis_core::traits::{ChatRepository, RelationalDriver};
+use crate::postgres::PostgresDriver;
+use crate::sqlite::SqliteDriver;
 use sqlx::{PgPool, SqlitePool};
 
 /// Enterprise Database Factory (EIP Factory & DIP).
-/// Dynamically initializes and returns Arc<dyn ChatRepository> based on database URI.
+/// Dynamically initializes and returns Arc<dyn RelationalDriver> or Arc<dyn ChatRepository>
+/// based on database URI scheme.
 pub struct DatabaseFactory;
 
 impl DatabaseFactory {
-    pub async fn create_repository(database_url: &str) -> Result<Arc<dyn ChatRepository>> {
+    pub async fn create_driver(database_url: &str) -> Result<Arc<dyn RelationalDriver>> {
         if database_url.starts_with("postgres://") || database_url.starts_with("postgresql://") {
-            tracing::info!("Initializing Lumis with PostgreSQL backend...");
+            tracing::info!("Initializing Lumis with PostgreSQL driver...");
             let pool = PgPool::connect(database_url)
                 .await
                 .map_err(|e| LumisError::Database(format!("Postgres connection failed: {}", e)))?;
-            let repo = PostgresRepository::new(pool).await?;
-            Ok(Arc::new(repo))
+            let driver = PostgresDriver::new(pool).await?;
+            Ok(Arc::new(driver))
         } else {
-            tracing::info!("Initializing Lumis with SQLite WAL backend: {}", database_url);
+            tracing::info!("Initializing Lumis with SQLite WAL driver: {}", database_url);
             let pool = SqlitePool::connect(database_url)
                 .await
                 .map_err(|e| LumisError::Database(format!("SQLite connection failed: {}", e)))?;
-            let repo = SqliteRepository::new(pool).await?;
-            Ok(Arc::new(repo))
+            let driver = SqliteDriver::new(pool).await?;
+            Ok(Arc::new(driver))
         }
     }
+
+    pub async fn create_repository(database_url: &str) -> Result<Arc<dyn ChatRepository>> {
+        let driver = Self::create_driver(database_url).await?;
+        Ok(driver.repository())
+    }
 }
+

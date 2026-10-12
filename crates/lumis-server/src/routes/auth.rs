@@ -1,8 +1,9 @@
+use std::collections::HashMap;
 use axum::extract::State;
-use axum::http::{HeaderMap, StatusCode};
+use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::response::IntoResponse;
 use axum::Json;
-use lumis_core::models::{EnterpriseRole, User};
+use lumis_core::models::{EnterpriseRole, ModelClearanceTier, User, UserClaims};
 use serde::Serialize;
 use uuid::Uuid;
 
@@ -13,75 +14,163 @@ pub struct AuthResponse {
     pub authenticated: bool,
     pub user: Option<User>,
     pub role: EnterpriseRole,
+    pub role_level: u8,
+    pub claims: Option<UserClaims>,
+    pub max_clearance_tier: ModelClearanceTier,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RoleHierarchyInfo {
+    pub role: EnterpriseRole,
+    pub level: u8,
+    pub canonical_name: &'static str,
+    pub clearance_tier: ModelClearanceTier,
 }
 
 pub async fn auth_me(State(state): State<AppState>, headers: HeaderMap) -> impl IntoResponse {
-    // 1. Extract trusted identity from forward auth header
-    let username = headers
-        .get(&state.trusted_header)
-        .and_then(|h| h.to_str().ok())
-        .or_else(|| {
-            headers
-                .get("x-forwarded-user")
-                .and_then(|h| h.to_str().ok())
-        })
-        .unwrap_or("anonymous");
-
-    if username == "anonymous" {
-        return (
-            StatusCode::UNAUTHORIZED,
-            Json(serde_json::json!({ "authenticated": false, "error": "Missing SSO session" })),
-        )
-            .into_response();
+    // 1. Convert HeaderMap to HashMap<String, String> for claim extraction
+    let mut header_map = HashMap::new();
+    for (k, v) in headers.iter() {
+        if let Ok(str_val) = v.to_str() {
+            header_map.insert(k.as_str().to_lowercase(), str_val.to_string());
+        }
     }
 
+    // Support custom trusted_header override
+    if let Some(val) = headers.get(&state.trusted_header).and_then(|v| v.to_str().ok()) {
+        header_map.insert("x-forwarded-user".to_string(), val.to_string());
+    }
+
+    let claims = match state.claim_translator.extract_claims(&header_map) {
+        Ok(c) => c,
+        Err(_) => {
+            return (
+                StatusCode::UNAUTHORIZED,
+                Json(serde_json::json!({
+                    "authenticated": false,
+                    "error": "Missing authenticated enterprise identity header"
+                })),
+            )
+                .into_response();
+        }
+    };
+
+    let effective_role = state.claim_translator.resolve_effective_role(&claims);
+
     // 2. Resolve or JIT-provision user
-    match state.repo.get_user_by_username(username).await {
-        Ok(Some(existing_user)) => (
-            StatusCode::OK,
-            Json(AuthResponse {
-                authenticated: true,
-                role: existing_user.role,
-                user: Some(existing_user),
-            }),
-        )
-            .into_response(),
+    let user_res = state.repo.get_user_by_username(&claims.username).await;
+    let user = match user_res {
+        Ok(Some(mut existing_user)) => {
+            // SCIM JIT sync: update role if changed
+            if existing_user.role != effective_role || existing_user.email != claims.email {
+                existing_user.role = effective_role;
+                existing_user.email = claims.email.clone();
+                existing_user.updated_at = chrono::Utc::now();
+                let _ = state.repo.upsert_user(&existing_user).await;
+            }
+            existing_user
+        }
         Ok(None) => {
-            // JIT Provisioning
             let now = chrono::Utc::now();
             let new_user = User {
                 id: Uuid::new_v4().to_string(),
-                username: username.to_string(),
-                email: None,
-                role: EnterpriseRole::Member,
-                tenant_id: None,
+                username: claims.username.clone(),
+                email: claims.email.clone(),
+                role: effective_role,
+                tenant_id: claims.tenant_id.clone(),
                 preferences: serde_json::json!({}),
                 is_active: true,
                 created_at: now,
                 updated_at: now,
             };
-
             match state.repo.upsert_user(&new_user).await {
-                Ok(created) => (
-                    StatusCode::OK,
-                    Json(AuthResponse {
-                        authenticated: true,
-                        role: created.role,
-                        user: Some(created),
-                    }),
-                )
-                    .into_response(),
-                Err(e) => (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(serde_json::json!({ "error": e.to_string() })),
-                )
-                    .into_response(),
+                Ok(created) => created,
+                Err(e) => {
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(serde_json::json!({ "error": e.to_string() })),
+                    )
+                        .into_response();
+                }
             }
         }
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({ "error": e.to_string() })),
-        )
-            .into_response(),
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({ "error": e.to_string() })),
+            )
+                .into_response();
+        }
+    };
+
+    let max_clearance = match effective_role {
+        EnterpriseRole::SuperAdmin | EnterpriseRole::TenantAdmin | EnterpriseRole::PowerUser => {
+            ModelClearanceTier::TierReasoning
+        }
+        EnterpriseRole::Member => ModelClearanceTier::TierStandard,
+        EnterpriseRole::Guest => ModelClearanceTier::TierBasic,
+    };
+
+    let mut response = (
+        StatusCode::OK,
+        Json(AuthResponse {
+            authenticated: true,
+            role: user.role,
+            role_level: user.role.level(),
+            user: Some(user),
+            claims: Some(claims),
+            max_clearance_tier: max_clearance,
+        }),
+    )
+        .into_response();
+
+    // Inject standard Enterprise Context headers
+    if let Ok(val) = HeaderValue::from_str(effective_role.as_str()) {
+        response.headers_mut().insert("x-forwarded-role", val);
     }
+    if let Ok(val) = HeaderValue::from_str(max_clearance.as_str()) {
+        response.headers_mut().insert("x-forwarded-tier", val);
+    }
+    if let Ok(val) = HeaderValue::from_str(&effective_role.level().to_string()) {
+        response.headers_mut().insert("x-user-role-level", val);
+    }
+
+    response
+}
+
+pub async fn list_roles() -> impl IntoResponse {
+    let hierarchy = vec![
+        RoleHierarchyInfo {
+            role: EnterpriseRole::SuperAdmin,
+            level: 5,
+            canonical_name: "super_admin",
+            clearance_tier: ModelClearanceTier::TierReasoning,
+        },
+        RoleHierarchyInfo {
+            role: EnterpriseRole::TenantAdmin,
+            level: 4,
+            canonical_name: "tenant_admin",
+            clearance_tier: ModelClearanceTier::TierReasoning,
+        },
+        RoleHierarchyInfo {
+            role: EnterpriseRole::PowerUser,
+            level: 3,
+            canonical_name: "power_user",
+            clearance_tier: ModelClearanceTier::TierReasoning,
+        },
+        RoleHierarchyInfo {
+            role: EnterpriseRole::Member,
+            level: 2,
+            canonical_name: "member",
+            clearance_tier: ModelClearanceTier::TierStandard,
+        },
+        RoleHierarchyInfo {
+            role: EnterpriseRole::Guest,
+            level: 1,
+            canonical_name: "guest",
+            clearance_tier: ModelClearanceTier::TierBasic,
+        },
+    ];
+
+    (StatusCode::OK, Json(hierarchy))
 }

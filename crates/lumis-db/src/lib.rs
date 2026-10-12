@@ -9,5 +9,6 @@ pub mod postgres;
 pub mod sqlite;
 
 pub use factory::DatabaseFactory;
-pub use postgres::PostgresRepository;
-pub use sqlite::SqliteRepository;
+pub use postgres::{PostgresDriver, PostgresRepository};
+pub use sqlite::{SqliteDriver, SqliteRepository};
+
