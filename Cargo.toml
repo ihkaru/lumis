@@ -1,0 +1,31 @@
+[workspace]
+members = [
+    "crates/lumis-core",
+    "crates/lumis-db",
+    "crates/lumis-server",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["IPDS 6104 <ipds6104@bps.go.id>"]
+repository = "https://github.com/ipds6104/lumis"
+
+[workspace.dependencies]
+tokio = { version = "1.43", features = ["full"] }
+axum = { version = "0.8", features = ["macros"] }
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+async-trait = "0.1"
+uuid = { version = "1.12", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+bytes = "1.10"
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "tls-rustls", "sqlite", "postgres", "chrono", "uuid"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+aho-corasick = "1.1"
+smallvec = { version = "1.14", features = ["serde"] }
