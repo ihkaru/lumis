@@ -24,7 +24,7 @@ Dokumen ini adalah peta jalan strategis multi-fase untuk mengembangkan **Lumis**
 
 ---
 
-## 📊 Matriks 11 Fase Pengembangan Lumis
+## 📊 Matriks 12 Fase Pengembangan Lumis
 
 ```mermaid
 flowchart TD
@@ -38,6 +38,7 @@ flowchart TD
     P8 --> P9["Phase 9: SCIM 2.0 Identity Governance"]
     P9 --> P10["Phase 10: Human-in-the-Loop Tool Approval"]
     P10 --> P11["Phase 11: UI Hygiene, Google Sans & Static Analysis"]
+    P11 --> P12["Phase 12: shadcn-svelte & High Refresh Rate Engine"]
 ```
 
 | Fase | Dokumen Roadmap | Standar Legacy Didukung | Standar Modern 2026 Didukung |
@@ -53,6 +54,7 @@ flowchart TD
 | **09** | [Phase 9: SCIM 2.0 Governance](09_PHASE_9_SCIM_IDENTITY_GOVERNANCE.md) | LDAP Group Sync, Active Directory | SCIM 2.0 (RFC 7643/7644), JIT De-provisioning, Okta/Entra ID |
 | **10** | [Phase 10: Tool Approvals](10_PHASE_10_TOOL_APPROVAL_POLICIES.md) | Manual supervisor review, tickets | Non-blocking cryptographic approval tokens, SSE interruption |
 | **11** | [Phase 11: UI Hygiene & Design Governance](11_PHASE_11_UI_HYGIENE_AND_DESIGN_GOVERNANCE.md) | Generic fallback typography, static layout | Full Google Sans, Zero Emoticon (SVG), Mobile Drawer, AST Linter |
+| **12** | [Phase 12: shadcn-svelte & High Refresh Rate](12_PHASE_12_SHADCN_SVELTE_AND_HIGH_REFRESH_RATE_ENGINE.md) | Custom ad-hoc UI, CPU-bound 60Hz reflows | shadcn-svelte (bits-ui), Lucide icons, 120Hz/144Hz GPU Compositor |
 
 ---
 

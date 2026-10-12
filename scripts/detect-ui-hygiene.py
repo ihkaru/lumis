@@ -209,6 +209,66 @@ def check_mobile_responsiveness(root_dir: Path, files: List[Path]) -> List[Hygie
     return violations
 
 
+def check_shadcn_compliance(root_dir: Path) -> List[HygieneViolation]:
+    violations = []
+    components_json = root_dir / "components.json"
+    utils_ts = root_dir / "src" / "lib" / "utils.ts"
+    ui_dir = root_dir / "src" / "lib" / "components" / "ui"
+
+    if not components_json.exists():
+        violations.append(HygieneViolation(
+            "RULE_SHADCN_COMPLIANCE", str(components_json), 1,
+            "components.json missing. Must adhere to shadcn-svelte standard configuration."
+        ))
+
+    if not utils_ts.exists():
+        violations.append(HygieneViolation(
+            "RULE_SHADCN_COMPLIANCE", str(utils_ts), 1,
+            "src/lib/utils.ts missing. Must export standard 'cn' helper for clsx + tailwind-merge."
+        ))
+    else:
+        txt = utils_ts.read_text(encoding="utf-8")
+        if "function cn(" not in txt and "const cn =" not in txt:
+            violations.append(HygieneViolation(
+                "RULE_SHADCN_COMPLIANCE", str(utils_ts), 1,
+                "src/lib/utils.ts must export 'cn' helper function for class merging."
+            ))
+
+    if not ui_dir.exists():
+        violations.append(HygieneViolation(
+            "RULE_SHADCN_COMPLIANCE", str(ui_dir), 1,
+            "src/lib/components/ui/ directory missing. Standard shadcn-svelte atomic components required."
+        ))
+    return violations
+
+
+def check_high_refresh_rate_animation(root_dir: Path, files: List[Path]) -> List[HygieneViolation]:
+    violations = []
+    forbidden_transitions = ["transition-[width]", "transition-[height]", "transition-[left]", "transition-[right]"]
+
+    for f in files:
+        try:
+            content = f.read_text(encoding="utf-8")
+        except Exception:
+            continue
+
+        for ft in forbidden_transitions:
+            if ft in content:
+                violations.append(HygieneViolation(
+                    "RULE_HIGH_REFRESH_RATE_ANIMATION", str(f), 1,
+                    f"Forbidden layout transition '{ft}'. Box geometry animation causes reflows. Animate 'transform' (translate3d) instead."
+                ))
+
+        if f.name == "App.svelte":
+            has_gpu = any(k in content for k in ["will-change-transform", "transform-gpu", "gpu-layer", "will-change: transform"])
+            if not has_gpu:
+                violations.append(HygieneViolation(
+                    "RULE_HIGH_REFRESH_RATE_ANIMATION", str(f), 1,
+                    "Sidebar/drawer in App.svelte must include GPU compositing ('will-change-transform' or 'transform-gpu') for 120Hz/144Hz native refresh rate."
+                ))
+    return violations
+
+
 def main():
     parser = argparse.ArgumentParser(description="Deterministic Static UI Hygiene & Design Governance Inspector")
     parser.add_argument("path", nargs="?", default="ui", help="Target UI directory (defaults to 'ui')")
@@ -227,6 +287,8 @@ def main():
     violations.extend(check_google_sans_enforcement(target_path))
     violations.extend(check_word_wrap_awareness(ui_files))
     violations.extend(check_mobile_responsiveness(target_path, ui_files))
+    violations.extend(check_shadcn_compliance(target_path))
+    violations.extend(check_high_refresh_rate_animation(target_path, ui_files))
 
     if args.json:
         result = {
@@ -243,10 +305,12 @@ def main():
 
         if not violations:
             print("✅ 100% PASS: All UI Hygiene Invariants Satisfied!")
-            print("   - Zero Emoticon Policy: Enforced (Pure Vector Icons)")
+            print("   - Zero Emoticon Policy: Enforced (lucide-svelte / pure vector)")
             print("   - Google Sans Typography: Enforced (sans, text, code)")
             print("   - Word-Wrap Awareness: Enforced (no horizontal scroll leaks)")
             print("   - Mobile Responsiveness: Enforced (Drawer, Backdrop, Touch Targets)")
+            print("   - shadcn-svelte Standard: Enforced (components.json, cn(), components/ui/*)")
+            print("   - Native Refresh Rate (120Hz/144Hz): Enforced (GPU composited transform-only)")
             sys.exit(0)
         else:
             print(f"❌ FAILED: Found {len(violations)} Design Hygiene Violation(s):\n")
