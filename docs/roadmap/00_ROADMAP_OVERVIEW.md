@@ -24,7 +24,7 @@ Dokumen ini adalah peta jalan strategis multi-fase untuk mengembangkan **Lumis**
 
 ---
 
-## 📊 Matriks 12 Fase Pengembangan Lumis
+## 📊 Matriks 13 Fase Pengembangan Lumis
 
 ```mermaid
 flowchart TD
@@ -39,6 +39,7 @@ flowchart TD
     P9 --> P10["Phase 10: Human-in-the-Loop Tool Approval"]
     P10 --> P11["Phase 11: UI Hygiene, Google Sans & Static Analysis"]
     P11 --> P12["Phase 12: shadcn-svelte & High Refresh Rate Engine"]
+    P12 --> P13["Phase 13: Interactive Artifacts & Split-Pane Canvas"]
 ```
 
 | Fase | Dokumen Roadmap | Standar Legacy Didukung | Standar Modern 2026 Didukung |
@@ -55,6 +56,7 @@ flowchart TD
 | **10** | [Phase 10: Tool Approvals](10_PHASE_10_TOOL_APPROVAL_POLICIES.md) | Manual supervisor review, tickets | Non-blocking cryptographic approval tokens, SSE interruption |
 | **11** | [Phase 11: UI Hygiene & Design Governance](11_PHASE_11_UI_HYGIENE_AND_DESIGN_GOVERNANCE.md) | Generic fallback typography, static layout | Full Google Sans, Zero Emoticon (SVG), Mobile Drawer, AST Linter |
 | **12** | [Phase 12: shadcn-svelte & High Refresh Rate](12_PHASE_12_SHADCN_SVELTE_AND_HIGH_REFRESH_RATE_ENGINE.md) | Custom ad-hoc UI, CPU-bound 60Hz reflows | shadcn-svelte (bits-ui), Lucide icons, 120Hz/144Hz GPU Compositor |
+| **13** | [Phase 13: Interactive Artifacts & Canvas](13_PHASE_13_INTERACTIVE_ARTIFACTS_AND_CANVAS_ENGINE.md) | Static code snippet previews, destructive edits | Sandboxed Iframe Canvas, Zero CSS Bleed, DAG Message Forking |
 
 ---
 
