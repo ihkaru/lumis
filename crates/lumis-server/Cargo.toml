@@ -34,3 +34,5 @@ tracing-subscriber.workspace = true
 aho-corasick.workspace = true
 uuid.workspace = true
 chrono.workspace = true
+reqwest = { workspace = true }
+

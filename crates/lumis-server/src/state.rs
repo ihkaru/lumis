@@ -1,8 +1,8 @@
 use std::sync::Arc;
 use bytes::Bytes;
 use lumis_core::traits::{
-    ChatRepository, ClaimTranslator, GuardrailMatcher, RelationalDriver, TelemetryCollector,
-    TokenQuotaEngine,
+    ChatRepository, ClaimTranslator, GuardrailMatcher, LlmProviderDriver, RelationalDriver,
+    TelemetryCollector, TokenQuotaEngine,
 };
 use tokio::sync::broadcast;
 
@@ -16,6 +16,7 @@ pub struct AppState {
     pub claim_translator: Arc<dyn ClaimTranslator>,
     pub quota_engine: Arc<dyn TokenQuotaEngine>,
     pub telemetry: Arc<dyn TelemetryCollector>,
+    pub llm_router: Option<Arc<dyn LlmProviderDriver>>,
     pub stream_tx: broadcast::Sender<Bytes>,
     pub trusted_header: String,
 }
@@ -54,8 +55,14 @@ impl AppState {
             claim_translator,
             quota_engine,
             telemetry,
+            llm_router: None,
             stream_tx,
             trusted_header,
         }
+    }
+
+    pub fn with_llm_router(mut self, router: Arc<dyn LlmProviderDriver>) -> Self {
+        self.llm_router = Some(router);
+        self
     }
 }

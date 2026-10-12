@@ -15,3 +15,5 @@ uuid.workspace = true
 chrono.workspace = true
 bytes.workspace = true
 smallvec.workspace = true
+tokio = { workspace = true, features = ["sync"] }
+

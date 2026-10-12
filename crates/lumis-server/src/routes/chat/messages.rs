@@ -146,11 +146,64 @@ pub async fn send_message(
     let event_payload = serde_json::json!({
         "event": "user_message",
         "session_id": session_id,
-        "content": sanitized_content,
+        "content": sanitized_content.clone(),
     });
     let _ = state
         .stream_tx
         .send(bytes::Bytes::from(event_payload.to_string()));
+
+    // 7. If an LLM inference router is active, trigger streaming completion in background
+    if let Some(router) = state.llm_router.clone() {
+        let stream_tx = state.stream_tx.clone();
+        let repo = state.repo.clone();
+        let sess_id = session_id.clone();
+        let model = payload.model_id.clone().unwrap_or_else(|| "gpt-4o-mini".to_string());
+        let prompt = sanitized_content;
+
+        tokio::spawn(async move {
+            let req = lumis_core::models::ChatCompletionRequest {
+                model: model.clone(),
+                messages: vec![lumis_core::models::ChatMessagePayload {
+                    role: "user".to_string(),
+                    content: prompt,
+                }],
+                temperature: Some(0.7),
+                max_tokens: None,
+                stream: true,
+            };
+
+            if let Ok(mut rx) = router.complete_chat(&req).await {
+                let mut accumulated = String::new();
+                while let Some(chunk_res) = rx.recv().await {
+                    if let Ok(chunk) = chunk_res {
+                        accumulated.push_str(&chunk.content);
+                        let chunk_event = serde_json::json!({
+                            "event": "chunk",
+                            "session_id": sess_id,
+                            "delta": chunk.content,
+                            "is_done": chunk.is_done,
+                        });
+                        let _ = stream_tx.send(bytes::Bytes::from(chunk_event.to_string()));
+                        if chunk.is_done {
+                            break;
+                        }
+                    }
+                }
+
+                if !accumulated.is_empty() {
+                    let assistant_msg = NewMessage {
+                        session_id: sess_id,
+                        role: MessageRole::Assistant,
+                        content: accumulated,
+                        model_id: Some(model),
+                        token_count: None,
+                        metadata: None,
+                    };
+                    let _ = repo.append_message(&assistant_msg).await;
+                }
+            }
+        });
+    }
 
     (
         StatusCode::OK,
