@@ -30,13 +30,30 @@ fn resolve_role(state: &AppState, headers: &HeaderMap) -> EnterpriseRole {
 
 /// GET /api/mcp/tools
 /// Lists all tools accessible to the caller's role level.
+/// Supports conditional caching with ETag and If-None-Match to eliminate repeated querying (LibreChat#15757).
 pub async fn list_tools(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> impl IntoResponse {
     let role = resolve_role(&state, &headers);
+    let current_etag = state.mcp_registry.catalog_etag();
+
+    if let Some(if_none_match) = headers.get("if-none-match").and_then(|v| v.to_str().ok()) {
+        if if_none_match.trim() == current_etag {
+            return (
+                StatusCode::NOT_MODIFIED,
+                [("etag", current_etag)],
+                Json(serde_json::Value::Null),
+            ).into_response();
+        }
+    }
+
     let tools = state.mcp_registry.list_tools(role).await;
-    (StatusCode::OK, Json(tools)).into_response()
+    (
+        StatusCode::OK,
+        [("etag", current_etag)],
+        Json(serde_json::to_value(tools).unwrap_or(serde_json::Value::Null)),
+    ).into_response()
 }
 
 /// POST /api/mcp/tools/call

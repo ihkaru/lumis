@@ -1,6 +1,7 @@
 #![deny(unsafe_code)]
 
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, RwLock};
 use async_trait::async_trait;
 use chrono::Utc;
@@ -17,6 +18,7 @@ use uuid::Uuid;
 pub struct InMemoryMcpRegistry {
     tools: RwLock<HashMap<String, Arc<dyn McpToolExecutor>>>,
     tasks: RwLock<HashMap<String, McpTaskStatus>>,
+    revision: AtomicU64,
 }
 
 impl InMemoryMcpRegistry {
@@ -24,7 +26,16 @@ impl InMemoryMcpRegistry {
         Self {
             tools: RwLock::new(HashMap::new()),
             tasks: RwLock::new(HashMap::new()),
+            revision: AtomicU64::new(1),
         }
+    }
+
+    pub fn revision(&self) -> u64 {
+        self.revision.load(Ordering::SeqCst)
+    }
+
+    pub fn etag(&self) -> String {
+        format!("\"mcp-v{}\"", self.revision())
     }
 
     /// Helper to register built-in default enterprise tools.
@@ -55,6 +66,7 @@ impl McpRegistry for InMemoryMcpRegistry {
     async fn register_tool(&self, executor: Arc<dyn McpToolExecutor>) -> Result<()> {
         let mut tools = self.tools.write().unwrap();
         tools.insert(executor.name().to_string(), executor);
+        self.revision.fetch_add(1, Ordering::SeqCst);
         Ok(())
     }
 
@@ -178,6 +190,10 @@ impl McpRegistry for InMemoryMcpRegistry {
             }
         }
         Ok(false)
+    }
+
+    fn catalog_etag(&self) -> String {
+        self.etag()
     }
 }
 

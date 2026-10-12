@@ -24,16 +24,19 @@ Dokumen ini adalah peta jalan strategis multi-fase untuk mengembangkan **Lumis**
 
 ---
 
-## 📊 Matriks 7 Fase Pengembangan Lumis
+## 📊 Matriks 10 Fase Pengembangan Lumis
 
 ```mermaid
 flowchart TD
-    P1["Phase 1: Hybrid IAM & Universal RBAC\n(SAML 2.0, OIDC, SCIM 2.0, 5-Level RBAC)"] --> P2["Phase 2: Relational Driver Pattern\n(PostgreSQL Pool, SQLite WAL, Keyset Seek)"]
-    P2 --> P3["Phase 3: SIMD DLP & Guardrails\n(Aho-Corasick, PII Masking, Injection Shield)"]
-    P3 --> P4["Phase 4: OTel GenAI & FinOps Budgeting\n(gen_ai.* Metrics, Tenant Quotas, Cost Tracking)"]
-    P4 --> P5["Phase 5: Enterprise Knowledge RAG\n(BM25 Inverted Index, HNSW Vector, Role-Gated)"]
-    P5 --> P6["Phase 6: Model Context Protocol (MCP 2026)\n(Stateless Streamable HTTP, Tasks, Failover)"]
-    P6 --> P7["Phase 7: SIEM Audit & Compliance\n(Syslog/CEF, Structured JSON, SOC 2 / ISO 27001)"]
+    P1["Phase 1: Hybrid IAM & Universal RBAC"] --> P2["Phase 2: Relational Driver Pattern"]
+    P2 --> P3["Phase 3: SIMD DLP & Guardrails"]
+    P3 --> P4["Phase 4: OTel GenAI & FinOps Budgeting"]
+    P4 --> P5["Phase 5: Enterprise Knowledge RAG"]
+    P5 --> P6["Phase 6: Model Context Protocol (MCP 2026)"]
+    P6 --> P7["Phase 7: SIEM Audit & Compliance"]
+    P7 --> P8["Phase 8: Prompt Cache & Idempotency Pipeline"]
+    P8 --> P9["Phase 9: SCIM 2.0 Identity Governance"]
+    P9 --> P10["Phase 10: Human-in-the-Loop Tool Approval"]
 ```
 
 | Fase | Dokumen Roadmap | Standar Legacy Didukung | Standar Modern 2026 Didukung |
@@ -45,6 +48,9 @@ flowchart TD
 | **05** | [Phase 5: Enterprise RAG](05_PHASE_5_ENTERPRISE_RAG_AND_KNOWLEDGE_VAULT.md) | Lexical search, document tagging | Hybrid RAG (BM25 + HNSW), role-gated retrieval |
 | **06** | [Phase 6: MCP 2026 & Failover](06_PHASE_6_MODEL_FAILOVER_AND_PRIVATE_VLLM.md) | Circuit breaker, REST webhook | MCP 2026 (AAIF Stateless HTTP), Async Tasks, EMA |
 | **07** | [Phase 7: SIEM & Audit](07_PHASE_7_SIEM_AUDIT_LOGGING_AND_COMPLIANCE.md) | Syslog (RFC 5424), CEF, Splunk HEC | ECS Structured JSON, SOC 2 Type II, UU PDP No. 27/2022 |
+| **08** | [Phase 8: Prompt Cache & Idempotency](08_PHASE_8_PROMPT_CACHE_AND_IDEMPOTENCY.md) | HTTP ETag, SHA-256 fingerprinting | Stable-Prefix KV Caching (OpenAI/Anthropic/vLLM), Deduplication |
+| **09** | [Phase 9: SCIM 2.0 Governance](09_PHASE_9_SCIM_IDENTITY_GOVERNANCE.md) | LDAP Group Sync, Active Directory | SCIM 2.0 (RFC 7643/7644), JIT De-provisioning, Okta/Entra ID |
+| **10** | [Phase 10: Tool Approvals](10_PHASE_10_TOOL_APPROVAL_POLICIES.md) | Manual supervisor review, tickets | Non-blocking cryptographic approval tokens, SSE interruption |
 
 ---
 

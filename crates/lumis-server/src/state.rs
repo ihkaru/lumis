@@ -1,13 +1,15 @@
 use std::sync::Arc;
 use bytes::Bytes;
 use lumis_core::traits::{
-    AuditLogger, ChatRepository, ClaimTranslator, GuardrailMatcher, KnowledgeVault,
-    LlmProviderDriver, McpRegistry, RelationalDriver, TelemetryCollector, TokenQuotaEngine,
+    AuditLogger, ChatRepository, ClaimTranslator, GuardrailMatcher, IdempotencyStore,
+    KnowledgeVault, LlmProviderDriver, McpRegistry, RelationalDriver, TelemetryCollector,
+    TokenQuotaEngine,
 };
 use tokio::sync::broadcast;
 
 use crate::audit::InMemoryAuditLogger;
 use crate::finops::{InMemoryQuotaEngine, PrometheusTelemetryCollector};
+use crate::idempotency::InMemoryIdempotencyStore;
 use crate::mcp::InMemoryMcpRegistry;
 use crate::rag::HybridKnowledgeVault;
 
@@ -22,6 +24,7 @@ pub struct AppState {
     pub knowledge_vault: Arc<dyn KnowledgeVault>,
     pub mcp_registry: Arc<dyn McpRegistry>,
     pub audit_logger: Arc<dyn AuditLogger>,
+    pub idempotency_store: Arc<dyn IdempotencyStore>,
     pub llm_router: Option<Arc<dyn LlmProviderDriver>>,
     pub stream_tx: broadcast::Sender<Bytes>,
     pub trusted_header: String,
@@ -70,6 +73,7 @@ impl AppState {
             knowledge_vault,
             mcp_registry,
             audit_logger,
+            idempotency_store: Arc::new(InMemoryIdempotencyStore::default()),
             llm_router: None,
             stream_tx,
             trusted_header,
@@ -78,6 +82,11 @@ impl AppState {
 
     pub fn with_llm_router(mut self, router: Arc<dyn LlmProviderDriver>) -> Self {
         self.llm_router = Some(router);
+        self
+    }
+
+    pub fn with_idempotency_store(mut self, store: Arc<dyn IdempotencyStore>) -> Self {
+        self.idempotency_store = store;
         self
     }
 }

@@ -52,4 +52,9 @@ pub trait McpRegistry: Send + Sync {
 
     /// Cancels a running or queued asynchronous task.
     async fn cancel_task(&self, task_id: &str) -> Result<bool>;
+
+    /// Returns the current catalog revision ETag for conditional caching (RFC 7232).
+    fn catalog_etag(&self) -> String {
+        "\"mcp-v1\"".to_string()
+    }
 }

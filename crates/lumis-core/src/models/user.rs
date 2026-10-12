@@ -42,11 +42,11 @@ impl EnterpriseRole {
 
     pub fn from_str(s: &str) -> Self {
         match s.trim().to_lowercase().as_str() {
-            "super_admin" | "admin" | "ciso" | "root" | "system_admin" | "security_officer"
+            "super_admin" | "superadmin" | "admin" | "ciso" | "root" | "system_admin" | "security_officer"
             | "administrator" => Self::SuperAdmin,
-            "tenant_admin" | "dept_admin" | "division_head" | "satker_admin" | "kepala_satker"
+            "tenant_admin" | "tenantadmin" | "dept_admin" | "division_head" | "satker_admin" | "kepala_satker"
             | "manager" | "org_admin" => Self::TenantAdmin,
-            "power_user" | "operator" | "lead" | "developer" | "engineer" | "analyst"
+            "power_user" | "poweruser" | "operator" | "lead" | "developer" | "engineer" | "analyst"
             | "specialist" | "ppk" => Self::PowerUser,
             "member" | "pegawai" | "staff" | "employee" | "user" | "internal" | "asn" => {
                 Self::Member

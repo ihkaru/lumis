@@ -57,6 +57,44 @@ pub async fn send_message(
             .into_response();
     }
 
+    // 0.5. Start-Generation Idempotency Deduplication (Ahead of rate limiter & token quota - LibreChat#14349)
+    let idempotency_key = headers
+        .get("idempotency-key")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string());
+
+    if let Some(ref key) = idempotency_key {
+        match state.idempotency_store.claim(key, &username, Some(tenant_id)).await {
+            Ok(lumis_core::traits::IdempotencyClaimResult::InFlight) => {
+                return (
+                    StatusCode::OK,
+                    Json(serde_json::json!({
+                        "status": "attached_in_flight",
+                        "session_id": session_id,
+                        "idempotency_key": key,
+                    })),
+                )
+                    .into_response();
+            }
+            Ok(lumis_core::traits::IdempotencyClaimResult::Completed(cached_payload)) => {
+                return (
+                    StatusCode::OK,
+                    Json(serde_json::json!({
+                        "status": "completed_cached",
+                        "session_id": session_id,
+                        "idempotency_key": key,
+                        "cached": cached_payload,
+                    })),
+                )
+                    .into_response();
+            }
+            Ok(lumis_core::traits::IdempotencyClaimResult::Acquired) => {}
+            Err(e) => {
+                tracing::warn!("Idempotency claim error: {}", e);
+            }
+        }
+    }
+
     // 1. Policy Enforcement Point (PEP): Model Clearance verification
     if let Some(ref model_id) = payload.model_id {
         if let Err(e) = state.claim_translator.evaluate_model_clearance(role, model_id) {
@@ -216,6 +254,10 @@ pub async fn send_message(
                 }
             }
         });
+    }
+
+    if let Some(ref key) = idempotency_key {
+        let _ = state.idempotency_store.complete(key, "accepted").await;
     }
 
     (
