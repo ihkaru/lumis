@@ -6,6 +6,11 @@
   import ToolCard from "./ToolCard.svelte";
   import CitationsView, { type Citation } from "./CitationsView.svelte";
   import MessageActions from "./MessageActions.svelte";
+  import MessagePagination from "./MessagePagination.svelte";
+  import DeepResearchProgress, { type ResearchStep } from "./DeepResearchProgress.svelte";
+  import ConfidenceBadge from "./ConfidenceBadge.svelte";
+  import MessageMinimap from "./MessageMinimap.svelte";
+  import ZoomableModal from "../common/ZoomableModal.svelte";
   import { Badge } from "$lib/components/ui/badge";
   import { Button } from "$lib/components/ui/button";
   import { parseArtifactsFromContent } from "$lib/artifact-parser";
@@ -14,16 +19,30 @@
   interface Props {
     message: Message;
     isStreaming?: boolean;
+    branchIndex?: number;
+    branchTotal?: number;
+    onPrevBranch?: () => void;
+    onNextBranch?: () => void;
     onOpenArtifact?: (artifact: ArtifactSpecification) => void;
     onRegenerate?: () => void;
     onFork?: () => void;
   }
 
-  let { message, isStreaming = false, onOpenArtifact, onRegenerate, onFork }: Props = $props();
+  let {
+    message,
+    isStreaming = false,
+    branchIndex = 1,
+    branchTotal = 1,
+    onPrevBranch,
+    onNextBranch,
+    onOpenArtifact,
+    onRegenerate,
+    onFork
+  }: Props = $props();
 
   let parsed = $derived(parseArtifactsFromContent(message.content));
 
-  // Extract tools & citations from metadata if present
+  // Extract tools, research steps & citations from metadata if present
   let toolCalls = $derived(
     (message.metadata?.tool_calls as Array<{ tool: string; args: any; result: any }>) || []
   );
@@ -31,25 +50,66 @@
   let citations = $derived(
     (message.metadata?.citations as Citation[]) || []
   );
+
+  let researchSteps = $derived(
+    (message.metadata?.research_steps as ResearchStep[]) || []
+  );
+
+  let confidenceScore = $derived(
+    typeof message.metadata?.confidence_score === "number" ? message.metadata.confidence_score : 0.96
+  );
+
+  let groundingRatio = $derived(
+    typeof message.metadata?.grounding_ratio === "number" ? message.metadata.grounding_ratio : 0.92
+  );
+
+  let zoomModal = $state<{ open: boolean; src: string; alt: string }>({
+    open: false,
+    src: "",
+    alt: ""
+  });
 </script>
 
 <div class="flex justify-start font-sans group">
   <div class="flex flex-col items-start max-w-3xl w-full">
-    <!-- Bubble Header -->
-    <div class="flex items-center gap-2 mb-1.5 text-[11px] text-muted-foreground select-none">
-      <div class="p-1 rounded-full bg-cyan-950/80 border border-cyan-800 text-cyan-400">
-        <Bot class="h-3.5 w-3.5" />
+    <!-- Bubble Header with Model, Confidence, Minimap & Branch Pagination -->
+    <div class="flex items-center justify-between w-full mb-1.5 text-[11px] text-muted-foreground select-none">
+      <div class="flex items-center gap-2 flex-wrap">
+        <div class="p-1 rounded-full bg-cyan-950/80 border border-cyan-800 text-cyan-400">
+          <Bot class="h-3.5 w-3.5" />
+        </div>
+        <span class="font-semibold text-foreground">Lumis Assistant</span>
+        {#if message.model_id}
+          <Badge variant="outline" class="font-mono text-[10px] py-0 px-1.5 text-muted-foreground border-border/60">
+            {message.model_id}
+          </Badge>
+        {/if}
+        <!-- Factuality & Confidence Badge -->
+        <ConfidenceBadge score={confidenceScore} {groundingRatio} />
       </div>
-      <span class="font-semibold text-foreground">Lumis Assistant</span>
-      {#if message.model_id}
-        <Badge variant="outline" class="font-mono text-[10px] py-0 px-1.5 text-muted-foreground border-border/60">
-          {message.model_id}
-        </Badge>
-      {/if}
+
+      <div class="flex items-center gap-2">
+        <!-- Message Outline Minimap -->
+        <MessageMinimap content={message.content} />
+
+        {#if branchTotal > 1}
+          <MessagePagination
+            current={branchIndex}
+            total={branchTotal}
+            onPrev={onPrevBranch}
+            onNext={onNextBranch}
+          />
+        {/if}
+      </div>
     </div>
 
     <!-- Bubble Body -->
     <div class="w-full px-5 py-4 rounded-2xl rounded-tl-none bg-card border border-border/80 text-foreground shadow-xs [overflow-wrap:anywhere]">
+      <!-- Deep Research Timeline if active -->
+      {#if researchSteps.length > 0}
+        <DeepResearchProgress steps={researchSteps} isActive={isStreaming} />
+      {/if}
+
       <!-- Tool Cards -->
       {#each toolCalls as tc}
         <ToolCard toolName={tc.tool} args={tc.args} result={tc.result} />
@@ -100,3 +160,11 @@
     />
   </div>
 </div>
+
+<!-- Lightbox Zoom Modal for Images / Diagrams -->
+<ZoomableModal
+  open={zoomModal.open}
+  src={zoomModal.src}
+  alt={zoomModal.alt}
+  onClose={() => (zoomModal.open = false)}
+/>

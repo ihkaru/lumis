@@ -3,10 +3,14 @@
   import Square from "lucide-svelte/icons/square";
   import Paperclip from "lucide-svelte/icons/paperclip";
   import Mic from "lucide-svelte/icons/mic";
+  import Plus from "lucide-svelte/icons/plus";
   import ModelSelector from "./ModelSelector.svelte";
   import ModeSelector, { type ChatMode } from "./ModeSelector.svelte";
   import FileDropzone, { type AttachedFile } from "./FileDropzone.svelte";
   import AudioRecordModal from "./AudioRecordModal.svelte";
+  import ComposerActionMenu from "./ComposerActionMenu.svelte";
+  import AttachmentFileGroup from "./AttachmentFileGroup.svelte";
+  import ConvertToFileModal from "./ConvertToFileModal.svelte";
   import { Button } from "$lib/components/ui/button";
 
   interface Props {
@@ -18,6 +22,7 @@
     onStop: () => void;
     onModelChange: (modelId: string) => void;
     onModeChange: (mode: ChatMode) => void;
+    onClearChat?: () => void;
   }
 
   let {
@@ -29,13 +34,18 @@
     onStop,
     onModelChange,
     onModeChange,
+    onClearChat,
   }: Props = $props();
 
   let attachedFiles = $state<AttachedFile[]>([]);
   let isDragOver = $state(false);
   let isAudioModalOpen = $state(false);
+  let isActionMenuOpen = $state(false);
+  let isConvertModalOpen = $state(false);
   let fileInputRef: HTMLInputElement | null = null;
   let textareaRef: HTMLTextAreaElement | null = null;
+
+  let rawFileList = $derived(attachedFiles.map((a) => a.file));
 
   function handleAddFiles(rawFiles: File[]) {
     for (const f of rawFiles) {
@@ -59,6 +69,12 @@
     const target = attachedFiles.find((f) => f.id === id);
     if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
     attachedFiles = attachedFiles.filter((f) => f.id !== id);
+  }
+
+  function handleRemoveFileByIndex(idx: number) {
+    if (idx >= 0 && idx < attachedFiles.length) {
+      handleRemoveFile(attachedFiles[idx].id);
+    }
   }
 
   function handleFileSelect(e: Event) {
@@ -136,7 +152,17 @@
     aria-hidden="true"
   />
 
-  <!-- File Dropzone & Chips View -->
+  <!-- Multi-File Attachment Chip Group Preview -->
+  {#if attachedFiles.length > 0}
+    <div class="px-3 pt-2">
+      <AttachmentFileGroup
+        files={rawFileList}
+        onRemove={handleRemoveFileByIndex}
+      />
+    </div>
+  {/if}
+
+  <!-- File Dropzone View -->
   <FileDropzone
     files={attachedFiles}
     onAddFiles={handleAddFiles}
@@ -154,6 +180,17 @@
     }}
   />
 
+  <!-- Convert to File Modal -->
+  <ConvertToFileModal
+    open={isConvertModalOpen}
+    initialText={promptText}
+    onClose={() => (isConvertModalOpen = false)}
+    onConverted={(file) => {
+      handleAddFiles([file]);
+      promptText = "";
+    }}
+  />
+
   <!-- Textarea Area -->
   <div class="p-3">
     <textarea
@@ -164,20 +201,45 @@
       onpaste={handlePaste}
       placeholder="Tanyakan apa saja atau ketik prompt... (Enter kirim, Shift+Enter baris baru)"
       rows={1}
-      class="w-full resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none max-h-44 min-h-[44px] leading-relaxed [overflow-wrap:anywhere]"
+      class="w-full resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden max-h-44 min-h-[44px] leading-relaxed [overflow-wrap:anywhere]"
     ></textarea>
   </div>
 
   <!-- Composer Toolbar Bottom -->
-  <div class="flex flex-wrap items-center justify-between gap-2 px-3 pb-3 pt-1 border-t border-border/40 select-none">
+  <div class="relative flex flex-wrap items-center justify-between gap-2 px-3 pb-3 pt-1 border-t border-border/40 select-none">
+    <!-- Fast Action Menu Popover -->
+    <ComposerActionMenu
+      open={isActionMenuOpen}
+      onClose={() => (isActionMenuOpen = false)}
+      onAttachFile={() => fileInputRef?.click()}
+      onConvertToFile={() => (isConvertModalOpen = true)}
+      onClearChat={onClearChat}
+      onInsertPreset={(preset) => {
+        promptText = promptText ? `${promptText}\n${preset}` : preset;
+        autoResizeTextarea();
+      }}
+    />
+
     <div class="flex items-center gap-1.5 flex-wrap">
+      <!-- Fast Actions Trigger Button (+) -->
+      <Button
+        variant="ghost"
+        size="icon"
+        class="h-8 w-8 text-muted-foreground hover:text-cyan-400 hover:bg-muted cursor-pointer"
+        onclick={() => (isActionMenuOpen = !isActionMenuOpen)}
+        title="Aksi Cepat (+)"
+        aria-label="Aksi Cepat"
+      >
+        <Plus class="h-4 w-4" />
+      </Button>
+
       <ModelSelector {selectedModelId} onSelectModel={onModelChange} />
       <ModeSelector activeMode={chatMode} onSelectMode={onModeChange} />
       
       <Button
         variant="ghost"
         size="icon"
-        class="h-8 w-8 text-muted-foreground hover:text-cyan-400 hover:bg-muted"
+        class="h-8 w-8 text-muted-foreground hover:text-cyan-400 hover:bg-muted cursor-pointer"
         onclick={() => fileInputRef?.click()}
         title="Lampirkan Dokumen atau Gambar"
         aria-label="Lampirkan Dokumen atau Gambar"
@@ -188,7 +250,7 @@
       <Button
         variant="ghost"
         size="icon"
-        class="h-8 w-8 text-muted-foreground hover:text-cyan-400 hover:bg-muted"
+        class="h-8 w-8 text-muted-foreground hover:text-cyan-400 hover:bg-muted cursor-pointer"
         onclick={() => (isAudioModalOpen = true)}
         title="Rekam Suara"
         aria-label="Rekam Suara"
@@ -203,7 +265,7 @@
           variant="destructive"
           size="touch"
           onclick={onStop}
-          class="h-9 px-4 gap-1.5 font-semibold text-xs shadow-md animate-pulse"
+          class="h-9 px-4 gap-1.5 font-semibold text-xs shadow-md animate-pulse cursor-pointer"
           aria-label="Stop Generation"
         >
           <Square class="h-3.5 w-3.5 fill-current" />
@@ -215,7 +277,7 @@
           size="touch"
           onclick={handleSubmit}
           disabled={!promptText.trim() && attachedFiles.length === 0}
-          class="h-9 px-4 gap-1.5 font-semibold text-xs shadow-md"
+          class="h-9 px-4 gap-1.5 font-semibold text-xs shadow-md cursor-pointer"
           aria-label="Kirim Pesan"
         >
           <Send class="h-3.5 w-3.5" />

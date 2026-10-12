@@ -2,9 +2,11 @@
   import X from "lucide-svelte/icons/x";
   import UserIcon from "lucide-svelte/icons/user";
   import Palette from "lucide-svelte/icons/palette";
+  import Server from "lucide-svelte/icons/server";
   import ShieldCheck from "lucide-svelte/icons/shield-check";
   import AccountTab from "./AccountTab.svelte";
   import ThemesTab, { type ThemePalette } from "./ThemesTab.svelte";
+  import ProviderKeysTab from "./ProviderKeysTab.svelte";
   import AdminTab from "./AdminTab.svelte";
   import type { User } from "$lib/types";
 
@@ -30,7 +32,7 @@
     onSelectPalette,
   }: Props = $props();
 
-  let activeTab = $state<"account" | "themes" | "admin">("account");
+  let activeTab = $state<"account" | "themes" | "providers" | "admin">("account");
 </script>
 
 {#if isOpen}
@@ -62,6 +64,15 @@
 
         <button
           type="button"
+          onclick={() => (activeTab = "providers")}
+          class="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-xs font-medium cursor-pointer transition-colors {activeTab === 'providers' ? 'bg-cyan-950/60 text-cyan-400 border border-cyan-800/40 shadow-xs' : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'}"
+        >
+          <Server class="h-4 w-4" />
+          <span>Provider & API Key</span>
+        </button>
+
+        <button
+          type="button"
           onclick={() => (activeTab = "admin")}
           class="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-xs font-medium cursor-pointer transition-colors {activeTab === 'admin' ? 'bg-cyan-950/60 text-cyan-400 border border-cyan-800/40 shadow-xs' : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'}"
         >
@@ -74,7 +85,7 @@
       <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
         <header class="flex items-center justify-between border-b border-border px-6 py-3.5 shrink-0 bg-card">
           <h2 class="font-bold text-sm text-foreground capitalize">
-            {activeTab === "account" ? "Pengaturan Akun" : activeTab === "themes" ? "Tema & Skema Warna" : "Panel Administrasi"}
+            {activeTab === "account" ? "Pengaturan Akun" : activeTab === "themes" ? "Tema & Skema Warna" : activeTab === "providers" ? "Konfigurasi Provider AI" : "Panel Administrasi"}
           </h2>
           <button
             type="button"
@@ -91,6 +102,8 @@
             <AccountTab {user} {onLogout} />
           {:else if activeTab === "themes"}
             <ThemesTab {isDark} {palette} {onToggleDark} {onSelectPalette} />
+          {:else if activeTab === "providers"}
+            <ProviderKeysTab />
           {:else if activeTab === "admin"}
             <AdminTab />
           {/if}
