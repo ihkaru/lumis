@@ -14,7 +14,7 @@ COPY ui/ ./
 RUN bun run build
 
 # Stage 2: Build Pure-Rust Backend Binaries
-FROM rust:1.85-slim-bookworm AS backend-builder
+FROM rust:slim-bookworm AS backend-builder
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
