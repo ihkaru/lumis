@@ -3,7 +3,8 @@
 Dokumen ini adalah peta jalan strategis multi-fase untuk mengembangkan **Lumis** menjadi platform percakapan kecerdasan artifisial skala enterprise yang **minim hambatan adopsi (*zero friction enterprise adoption*)**, berlisensi MIT permisif, ultra-ringan (<25MB RAM), dan mendukung sinergi antara **standar warisan enterprise (*legacy standards*)** dan **standar mutakhir per Oktober 2026 (MCP 2026, OTel GenAI)**.
 
 > [!NOTE]
-> Untuk analisis komparasi detail mengapa dan bagaimana Lumis menggantikan Llumen secara operasional (termasuk penghapusan sidecar dan migrasi docker-compose), baca: [Llumen vs Lumis Operational Comparison](../LLUMEN_VS_LUMIS_OPERATIONAL_COMPARISON.md).
+> - Untuk analisis komparasi detail mengapa dan bagaimana Lumis menggantikan Llumen secara operasional (termasuk penghapusan sidecar dan migrasi docker-compose), baca: [Llumen vs Lumis Operational Comparison](../LLUMEN_VS_LUMIS_OPERATIONAL_COMPARISON.md).
+> - Untuk evaluasi kesiapan fungsional 3 arah antara Lumis, Llumen, dan LibreChat, baca: [Three-Way Gap Analysis (Lumis vs Llumen vs LibreChat)](../LUMIS_VS_LLUMEN_VS_LIBRECHAT_GAP_ANALYSIS.md).
 
 ---
 
