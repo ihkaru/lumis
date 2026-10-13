@@ -9,6 +9,7 @@ pub mod knowledge;
 pub mod mcp;
 pub mod metrics;
 pub mod scim;
+pub mod spa;
 pub mod stream;
 
 use axum::routing::get;
@@ -90,8 +91,16 @@ pub fn create_router(state: AppState) -> Router {
         .with_state(state);
 
     let static_dir = std::env::var("STATIC_DIR").unwrap_or_else(|_| "ui/dist".to_string());
-    if std::path::Path::new(&static_dir).exists() {
-        router.fallback_service(tower_http::services::ServeDir::new(static_dir))
+    let static_path = if std::path::Path::new(&static_dir).exists() {
+        Some(std::path::PathBuf::from(static_dir))
+    } else if std::path::Path::new(&format!("../../{}", static_dir)).exists() {
+        Some(std::path::PathBuf::from(format!("../../{}", static_dir)))
+    } else {
+        None
+    };
+
+    if let Some(path) = static_path {
+        router.fallback_service(spa::create_spa_service(path))
     } else {
         router
     }

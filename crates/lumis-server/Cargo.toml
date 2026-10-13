@@ -18,6 +18,7 @@ tower = { workspace = true }
 
 [dependencies]
 
+tower = { workspace = true }
 lumis-core = { path = "../lumis-core" }
 lumis-db = { path = "../lumis-db" }
 async-trait = { workspace = true }
