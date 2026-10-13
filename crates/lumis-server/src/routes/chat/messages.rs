@@ -38,7 +38,7 @@ pub async fn send_message(
     Path(session_id): Path<String>,
     Json(payload): Json<SendMessageRequest>,
 ) -> impl IntoResponse {
-    let (username, role) = resolve_claims_and_role(&state, &headers);
+    let (username, role) = resolve_claims_and_role(&state, &headers).await;
     let tenant_id = headers
         .get("x-tenant-id")
         .and_then(|v| v.to_str().ok())

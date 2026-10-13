@@ -14,7 +14,7 @@ pub async fn list_models(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> impl IntoResponse {
-    let (_username, role) = resolve_claims_and_role(&state, &headers);
+    let (_username, role) = resolve_claims_and_role(&state, &headers).await;
 
     let default_model = std::env::var("DEFAULT_MODEL").unwrap_or_else(|_| "my9model-free".to_string());
 

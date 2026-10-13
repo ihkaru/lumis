@@ -4,9 +4,12 @@
   import LogOut from "lucide-svelte/icons/log-out";
   import KeyRound from "lucide-svelte/icons/key-round";
   import Check from "lucide-svelte/icons/check";
+  import AlertTriangle from "lucide-svelte/icons/alert-triangle";
+  import Loader2 from "lucide-svelte/icons/loader-2";
   import type { User } from "$lib/types";
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
+  import { api } from "$lib/api";
 
   interface Props {
     user: User | null;
@@ -18,21 +21,37 @@
   let oldPassword = $state("");
   let newPassword = $state("");
   let confirmPassword = $state("");
+  let isSubmitting = $state(false);
   let statusMessage = $state<string | null>(null);
+  let errorMessage = $state<string | null>(null);
 
-  function handleUpdatePassword(e: SubmitEvent) {
+  async function handleUpdatePassword(e: SubmitEvent) {
     e.preventDefault();
-    if (!newPassword || newPassword !== confirmPassword) {
-      statusMessage = "Kata sandi baru tidak cocok.";
+    errorMessage = null;
+    statusMessage = null;
+
+    if (!newPassword || newPassword.length < 4) {
+      errorMessage = "Kata sandi baru minimal 4 karakter.";
       return;
     }
-    statusMessage = "Kata sandi berhasil diperbarui.";
-    oldPassword = "";
-    newPassword = "";
-    confirmPassword = "";
-    setTimeout(() => {
-      statusMessage = null;
-    }, 3000);
+
+    if (newPassword !== confirmPassword) {
+      errorMessage = "Konfirmasi kata sandi baru tidak cocok.";
+      return;
+    }
+
+    isSubmitting = true;
+    try {
+      await api.changePassword(oldPassword, newPassword);
+      statusMessage = "Kata sandi berhasil diperbarui.";
+      oldPassword = "";
+      newPassword = "";
+      confirmPassword = "";
+    } catch (err) {
+      errorMessage = err instanceof Error ? err.message : "Gagal memperbarui kata sandi.";
+    } finally {
+      isSubmitting = false;
+    }
   }
 </script>
 
@@ -71,6 +90,13 @@
       <span class="[overflow-wrap:anywhere] break-words">Ubah Kata Sandi Mandiri</span>
     </div>
 
+    {#if errorMessage}
+      <div class="p-2.5 rounded-lg bg-destructive/10 border border-destructive/40 text-destructive text-xs flex items-center gap-2 [overflow-wrap:anywhere] break-words">
+        <AlertTriangle class="h-4 w-4 shrink-0" />
+        <span>{errorMessage}</span>
+      </div>
+    {/if}
+
     {#if statusMessage}
       <div class="p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-800/40 text-emerald-400 text-xs flex items-center gap-2 [overflow-wrap:anywhere] break-words">
         <Check class="h-4 w-4 shrink-0" />
@@ -92,9 +118,14 @@
         <Input id="confirmPassword" type="password" bind:value={confirmPassword} placeholder="••••••••" class="h-9 text-xs" />
       </div>
       <div class="flex justify-end pt-1">
-        <Button type="submit" variant="default" size="sm" class="gap-1.5 text-xs min-h-[44px] sm:min-h-9 touch-manipulation">
-          <Check class="h-3.5 w-3.5" />
-          <span>Simpan Kata Sandi</span>
+        <Button type="submit" variant="default" size="sm" disabled={isSubmitting} class="gap-1.5 text-xs min-h-[44px] sm:min-h-9 touch-manipulation">
+          {#if isSubmitting}
+            <Loader2 class="h-3.5 w-3.5 animate-spin" />
+            <span>Menyimpan...</span>
+          {:else}
+            <Check class="h-3.5 w-3.5" />
+            <span>Simpan Kata Sandi</span>
+          {/if}
         </Button>
       </div>
     </form>

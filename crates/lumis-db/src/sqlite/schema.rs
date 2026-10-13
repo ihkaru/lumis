@@ -15,6 +15,7 @@ pub async fn run_sqlite_migrations(pool: &SqlitePool) -> Result<()> {
             tenant_id TEXT,
             preferences TEXT NOT NULL DEFAULT '{}',
             is_active INTEGER NOT NULL DEFAULT 1,
+            password_hash TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
@@ -83,6 +84,9 @@ pub async fn run_sqlite_migrations(pool: &SqlitePool) -> Result<()> {
     .execute(pool)
     .await
     .map_err(|e| LumisError::Database(e.to_string()))?;
+
+    // Idempotent migration for existing SQLite databases
+    let _ = sqlx::query("ALTER TABLE users ADD COLUMN password_hash TEXT;").execute(pool).await;
 
     Ok(())
 }

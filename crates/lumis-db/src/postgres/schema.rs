@@ -12,6 +12,7 @@ pub async fn run_pg_migrations(pool: &PgPool) -> Result<()> {
             tenant_id VARCHAR(64),
             preferences JSONB NOT NULL DEFAULT '{}',
             is_active BOOLEAN NOT NULL DEFAULT true,
+            password_hash VARCHAR(256),
             created_at TIMESTAMPTZ NOT NULL,
             updated_at TIMESTAMPTZ NOT NULL
         );
@@ -80,6 +81,9 @@ pub async fn run_pg_migrations(pool: &PgPool) -> Result<()> {
     .execute(pool)
     .await
     .map_err(|e| LumisError::Database(e.to_string()))?;
+
+    // Idempotent migration for existing PostgreSQL databases
+    let _ = sqlx::query("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(256);").execute(pool).await;
 
     Ok(())
 }

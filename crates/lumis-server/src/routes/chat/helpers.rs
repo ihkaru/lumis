@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use crate::state::AppState;
 
-pub fn resolve_claims_and_role(state: &AppState, headers: &HeaderMap) -> (String, EnterpriseRole) {
+pub async fn resolve_claims_and_role(state: &AppState, headers: &HeaderMap) -> (String, EnterpriseRole) {
     let mut header_map = HashMap::new();
     for (k, v) in headers.iter() {
         if let Ok(str_val) = v.to_str() {
@@ -18,8 +18,16 @@ pub fn resolve_claims_and_role(state: &AppState, headers: &HeaderMap) -> (String
     }
 
     if let Ok(claims) = state.claim_translator.extract_claims(&header_map) {
-        let role = state.claim_translator.resolve_effective_role(&claims);
-        (claims.username, role)
+        if !claims.roles.is_empty() {
+            let role = state.claim_translator.resolve_effective_role(&claims);
+            (claims.username, role)
+        } else {
+            // Local / Cookie session: Database is the single source of truth
+            match state.repo.get_user_by_username(&claims.username).await {
+                Ok(Some(u)) => (claims.username, u.role),
+                _ => (claims.username, EnterpriseRole::Member),
+            }
+        }
     } else {
         ("default_user".to_string(), EnterpriseRole::Member)
     }
@@ -38,6 +46,7 @@ pub async fn ensure_user(state: &AppState, username: &str, role: EnterpriseRole)
                 tenant_id: None,
                 preferences: serde_json::json!({}),
                 is_active: true,
+                password_hash: None,
                 created_at: now,
                 updated_at: now,
             };

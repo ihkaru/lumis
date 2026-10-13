@@ -244,4 +244,17 @@ export const api = {
     }
     return res.json();
   },
+
+  async changePassword(oldPassword: string, newPassword: string): Promise<{ status: string }> {
+    const res = await fetch("/api/auth/password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ old_password: oldPassword || undefined, new_password: newPassword }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: "Gagal memperbarui kata sandi" }));
+      throw new Error(err.error || "Gagal memperbarui kata sandi");
+    }
+    return res.json();
+  },
 };

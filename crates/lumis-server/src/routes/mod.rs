@@ -1,3 +1,4 @@
+pub mod admin_users;
 pub mod approval;
 pub mod artifact;
 pub mod audit;
@@ -38,9 +39,10 @@ pub fn create_router(state: AppState) -> Router {
         .route("/api/auth/me", get(auth::auth_me))
         .route("/api/auth/login", axum::routing::post(auth::login))
         .route("/api/auth/logout", axum::routing::post(auth::logout))
+        .route("/api/auth/password", axum::routing::post(auth::change_password))
         .route("/api/admin/roles", get(auth::list_roles))
-        .route("/api/admin/users", get(auth::list_admin_users))
-        .route("/api/admin/users/role", axum::routing::post(auth::update_user_role))
+        .route("/api/admin/users", get(admin_users::list_admin_users))
+        .route("/api/admin/users/role", axum::routing::post(admin_users::update_user_role))
         // Enterprise SAML 2.0 / rIDM BPS Identity Federation
         .route("/api/auth/sso", get(saml::saml_login))
         .route("/api/auth/saml/login", get(saml::saml_login))

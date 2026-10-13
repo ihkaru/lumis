@@ -45,6 +45,7 @@ async fn test_multi_turn_context_assembly_order_and_system_prompt() {
         tenant_id: Some("bps".to_string()),
         preferences: serde_json::json!({}),
         is_active: true,
+        password_hash: None,
         created_at: Utc::now(),
         updated_at: Utc::now(),
     };
@@ -150,6 +151,7 @@ async fn test_sliding_window_context_truncation_budget() {
         tenant_id: None,
         preferences: serde_json::json!({}),
         is_active: true,
+        password_hash: None,
         created_at: Utc::now(),
         updated_at: Utc::now(),
     };

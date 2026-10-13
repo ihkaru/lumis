@@ -30,7 +30,7 @@ pub struct KillswitchResponse {
     pub activated_by: Option<String>,
 }
 
-fn resolve_identity(state: &AppState, headers: &HeaderMap) -> (String, EnterpriseRole, String) {
+async fn resolve_identity(state: &AppState, headers: &HeaderMap) -> (String, EnterpriseRole, String) {
     let mut header_map = HashMap::new();
     for (k, v) in headers.iter() {
         if let Ok(str_val) = v.to_str() {
@@ -48,8 +48,16 @@ fn resolve_identity(state: &AppState, headers: &HeaderMap) -> (String, Enterpris
         .to_string();
 
     let (user_id, role) = if let Ok(claims) = state.claim_translator.extract_claims(&header_map) {
-        let r = state.claim_translator.resolve_effective_role(&claims);
-        (claims.username, r)
+        if !claims.roles.is_empty() {
+            let r = state.claim_translator.resolve_effective_role(&claims);
+            (claims.username, r)
+        } else {
+            let r = match state.repo.get_user_by_username(&claims.username).await {
+                Ok(Some(u)) => u.role,
+                _ => EnterpriseRole::Member,
+            };
+            (claims.username, r)
+        }
     } else {
         ("anonymous".to_string(), EnterpriseRole::Guest)
     };
@@ -64,7 +72,7 @@ pub async fn get_audit_events(
     headers: HeaderMap,
     Query(param): Query<AuditQueryParam>,
 ) -> impl IntoResponse {
-    let (tenant_id, caller_role, _) = resolve_identity(&state, &headers);
+    let (tenant_id, caller_role, _) = resolve_identity(&state, &headers).await;
     let limit = param.limit.unwrap_or(50);
 
     match state
@@ -119,7 +127,7 @@ pub async fn set_killswitch(
     headers: HeaderMap,
     Json(payload): Json<KillswitchRequest>,
 ) -> impl IntoResponse {
-    let (_, caller_role, user_id) = resolve_identity(&state, &headers);
+    let (_, caller_role, user_id) = resolve_identity(&state, &headers).await;
 
     if !caller_role.is_at_least(EnterpriseRole::TenantAdmin) {
         return (

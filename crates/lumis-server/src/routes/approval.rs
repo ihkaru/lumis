@@ -12,7 +12,7 @@ use serde_json::json;
 
 use crate::state::AppState;
 
-fn resolve_role_and_user(state: &AppState, headers: &HeaderMap) -> (String, EnterpriseRole) {
+async fn resolve_role_and_user(state: &AppState, headers: &HeaderMap) -> (String, EnterpriseRole) {
     let mut header_map = HashMap::new();
     for (k, v) in headers.iter() {
         if let Ok(str_val) = v.to_str() {
@@ -24,8 +24,16 @@ fn resolve_role_and_user(state: &AppState, headers: &HeaderMap) -> (String, Ente
     }
 
     if let Ok(claims) = state.claim_translator.extract_claims(&header_map) {
-        let role = state.claim_translator.resolve_effective_role(&claims);
-        (claims.username, role)
+        if !claims.roles.is_empty() {
+            let role = state.claim_translator.resolve_effective_role(&claims);
+            (claims.username, role)
+        } else {
+            let r = match state.repo.get_user_by_username(&claims.username).await {
+                Ok(Some(u)) => u.role,
+                _ => EnterpriseRole::Member,
+            };
+            (claims.username, r)
+        }
     } else {
         ("guest".to_string(), EnterpriseRole::Guest)
     }
@@ -37,7 +45,7 @@ pub async fn list_pending_approvals(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> impl IntoResponse {
-    let (_, role) = resolve_role_and_user(&state, &headers);
+    let (_, role) = resolve_role_and_user(&state, &headers).await;
     if !role.is_at_least(EnterpriseRole::TenantAdmin) {
         return (StatusCode::FORBIDDEN, Json(json!({ "error": "Insufficient privileges to review approvals" }))).into_response();
     }
@@ -71,7 +79,7 @@ pub async fn approve_request(
     headers: HeaderMap,
     Path(token): Path<String>,
 ) -> impl IntoResponse {
-    let (username, role) = resolve_role_and_user(&state, &headers);
+    let (username, role) = resolve_role_and_user(&state, &headers).await;
     if !role.is_at_least(EnterpriseRole::TenantAdmin) {
         return (StatusCode::FORBIDDEN, Json(json!({ "error": "Approval requires TenantAdmin clearance" }))).into_response();
     }
@@ -105,7 +113,7 @@ pub async fn deny_request(
     Path(token): Path<String>,
     Json(payload): Json<DenyApprovalRequest>,
 ) -> impl IntoResponse {
-    let (username, role) = resolve_role_and_user(&state, &headers);
+    let (username, role) = resolve_role_and_user(&state, &headers).await;
     if !role.is_at_least(EnterpriseRole::TenantAdmin) {
         return (StatusCode::FORBIDDEN, Json(json!({ "error": "Denying approvals requires TenantAdmin clearance" }))).into_response();
     }

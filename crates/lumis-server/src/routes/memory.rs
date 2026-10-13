@@ -23,7 +23,7 @@ pub async fn list_memories(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> impl IntoResponse {
-    let (username, role) = resolve_claims_and_role(&state, &headers);
+    let (username, role) = resolve_claims_and_role(&state, &headers).await;
     let user = match ensure_user(&state, &username, role).await {
         Ok(u) => u,
         Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": e }))).into_response(),
@@ -40,7 +40,7 @@ pub async fn create_memory(
     headers: HeaderMap,
     Json(payload): Json<CreateMemoryRequest>,
 ) -> impl IntoResponse {
-    let (username, role) = resolve_claims_and_role(&state, &headers);
+    let (username, role) = resolve_claims_and_role(&state, &headers).await;
     let user = match ensure_user(&state, &username, role).await {
         Ok(u) => u,
         Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": e }))).into_response(),
@@ -67,7 +67,7 @@ pub async fn delete_memory(
     headers: HeaderMap,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
-    let (username, role) = resolve_claims_and_role(&state, &headers);
+    let (username, role) = resolve_claims_and_role(&state, &headers).await;
     let user = match ensure_user(&state, &username, role).await {
         Ok(u) => u,
         Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": e }))).into_response(),

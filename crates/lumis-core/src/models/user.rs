@@ -120,8 +120,39 @@ pub struct User {
     pub tenant_id: Option<String>,
     pub preferences: serde_json::Value,
     pub is_active: bool,
+    #[serde(default, skip_serializing)]
+    pub password_hash: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+impl User {
+    pub fn hash_password(password: &str) -> String {
+        let salt = uuid::Uuid::new_v4().to_string();
+        Self::hash_with_salt(password, &salt)
+    }
+
+    pub fn hash_with_salt(password: &str, salt: &str) -> String {
+        use sha2::{Digest, Sha256};
+        let mut hasher = Sha256::new();
+        hasher.update(salt.as_bytes());
+        hasher.update(password.as_bytes());
+        format!("{}:{:x}", salt, hasher.finalize())
+    }
+
+    pub fn verify_password(&self, password: &str) -> bool {
+        match &self.password_hash {
+            Some(stored) => {
+                let parts: Vec<&str> = stored.split(':').collect();
+                if parts.len() != 2 {
+                    return false;
+                }
+                let calculated = Self::hash_with_salt(password, parts[0]);
+                calculated == *stored
+            }
+            None => true,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

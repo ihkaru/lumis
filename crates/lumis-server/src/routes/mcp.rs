@@ -10,7 +10,7 @@ use serde_json::json;
 
 use crate::state::AppState;
 
-fn resolve_role(state: &AppState, headers: &HeaderMap) -> EnterpriseRole {
+async fn resolve_role(state: &AppState, headers: &HeaderMap) -> EnterpriseRole {
     let mut header_map = HashMap::new();
     for (k, v) in headers.iter() {
         if let Ok(str_val) = v.to_str() {
@@ -22,7 +22,14 @@ fn resolve_role(state: &AppState, headers: &HeaderMap) -> EnterpriseRole {
     }
 
     if let Ok(claims) = state.claim_translator.extract_claims(&header_map) {
-        state.claim_translator.resolve_effective_role(&claims)
+        if !claims.roles.is_empty() {
+            state.claim_translator.resolve_effective_role(&claims)
+        } else {
+            match state.repo.get_user_by_username(&claims.username).await {
+                Ok(Some(u)) => u.role,
+                _ => EnterpriseRole::Member,
+            }
+        }
     } else {
         EnterpriseRole::Guest
     }
@@ -35,7 +42,7 @@ pub async fn list_tools(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> impl IntoResponse {
-    let role = resolve_role(&state, &headers);
+    let role = resolve_role(&state, &headers).await;
     let current_etag = state.mcp_registry.catalog_etag();
 
     if let Some(if_none_match) = headers.get("if-none-match").and_then(|v| v.to_str().ok()) {
@@ -63,7 +70,7 @@ pub async fn call_tool(
     headers: HeaderMap,
     Json(payload): Json<McpToolCallRequest>,
 ) -> impl IntoResponse {
-    let role = resolve_role(&state, &headers);
+    let role = resolve_role(&state, &headers).await;
     match state.mcp_registry.execute_tool(role, &payload).await {
         Ok(result) => (StatusCode::OK, Json(result)).into_response(),
         Err(lumis_core::error::LumisError::Forbidden(msg)) => {
@@ -85,7 +92,7 @@ pub async fn spawn_task(
     headers: HeaderMap,
     Json(payload): Json<McpToolCallRequest>,
 ) -> impl IntoResponse {
-    let role = resolve_role(&state, &headers);
+    let role = resolve_role(&state, &headers).await;
     match state.mcp_registry.spawn_task(role, &payload).await {
         Ok(status) => (StatusCode::ACCEPTED, Json(status)).into_response(),
         Err(lumis_core::error::LumisError::Forbidden(msg)) => {

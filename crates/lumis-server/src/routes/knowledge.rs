@@ -22,7 +22,7 @@ pub struct QueryKnowledgeRequest {
     pub top_k: Option<usize>,
 }
 
-fn resolve_tenant_and_role(state: &AppState, headers: &HeaderMap) -> (String, EnterpriseRole) {
+async fn resolve_tenant_and_role(state: &AppState, headers: &HeaderMap) -> (String, EnterpriseRole) {
     let mut header_map = HashMap::new();
     for (k, v) in headers.iter() {
         if let Ok(str_val) = v.to_str() {
@@ -40,7 +40,14 @@ fn resolve_tenant_and_role(state: &AppState, headers: &HeaderMap) -> (String, En
         .to_string();
 
     let role = if let Ok(claims) = state.claim_translator.extract_claims(&header_map) {
-        state.claim_translator.resolve_effective_role(&claims)
+        if !claims.roles.is_empty() {
+            state.claim_translator.resolve_effective_role(&claims)
+        } else {
+            match state.repo.get_user_by_username(&claims.username).await {
+                Ok(Some(u)) => u.role,
+                _ => EnterpriseRole::Member,
+            }
+        }
     } else {
         EnterpriseRole::Member
     };
@@ -53,7 +60,7 @@ pub async fn ingest_document(
     headers: HeaderMap,
     Json(payload): Json<IngestDocumentRequest>,
 ) -> impl IntoResponse {
-    let (tenant_id, caller_role) = resolve_tenant_and_role(&state, &headers);
+    let (tenant_id, caller_role) = resolve_tenant_and_role(&state, &headers).await;
     let min_role = payload
         .min_role
         .as_deref()
@@ -90,7 +97,7 @@ pub async fn list_documents(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> impl IntoResponse {
-    let (tenant_id, caller_role) = resolve_tenant_and_role(&state, &headers);
+    let (tenant_id, caller_role) = resolve_tenant_and_role(&state, &headers).await;
     match state.knowledge_vault.list_documents(&tenant_id, caller_role).await {
         Ok(docs) => (StatusCode::OK, Json(docs)).into_response(),
         Err(e) => (
@@ -106,7 +113,7 @@ pub async fn query_knowledge(
     headers: HeaderMap,
     Json(payload): Json<QueryKnowledgeRequest>,
 ) -> impl IntoResponse {
-    let (tenant_id, caller_role) = resolve_tenant_and_role(&state, &headers);
+    let (tenant_id, caller_role) = resolve_tenant_and_role(&state, &headers).await;
     let query = KnowledgeQuery {
         query: payload.query,
         tenant_id,
@@ -129,7 +136,7 @@ pub async fn delete_document(
     headers: HeaderMap,
     Path(document_id): Path<String>,
 ) -> impl IntoResponse {
-    let (tenant_id, caller_role) = resolve_tenant_and_role(&state, &headers);
+    let (tenant_id, caller_role) = resolve_tenant_and_role(&state, &headers).await;
     match state
         .knowledge_vault
         .delete_document(&tenant_id, &document_id, caller_role)

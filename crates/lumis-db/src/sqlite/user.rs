@@ -5,7 +5,7 @@ use sqlx::{Row, SqlitePool};
 
 pub async fn get_user_by_id(pool: &SqlitePool, id: &str) -> Result<Option<User>> {
     let row = sqlx::query(
-        "SELECT id, username, email, role, tenant_id, preferences, is_active, created_at, updated_at FROM users WHERE id = ?"
+        "SELECT id, username, email, role, tenant_id, preferences, is_active, password_hash, created_at, updated_at FROM users WHERE id = ?"
     )
     .bind(id)
     .fetch_optional(pool)
@@ -33,6 +33,7 @@ pub async fn get_user_by_id(pool: &SqlitePool, id: &str) -> Result<Option<User>>
             tenant_id: r.get("tenant_id"),
             preferences: serde_json::from_str(&prefs_str).unwrap_or(serde_json::Value::Null),
             is_active: r.get::<i32, _>("is_active") == 1,
+            password_hash: r.get("password_hash"),
             created_at: DateTime::parse_from_rfc3339(&created_at_str)
                 .map(|d| d.with_timezone(&Utc))
                 .unwrap_or_else(|_| Utc::now()),
@@ -49,12 +50,13 @@ pub async fn upsert_user(pool: &SqlitePool, user: &User) -> Result<User> {
 
     sqlx::query(
         r#"
-        INSERT INTO users (id, username, email, role, tenant_id, preferences, is_active, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO users (id, username, email, role, tenant_id, preferences, is_active, password_hash, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
             email = excluded.email,
             role = excluded.role,
             preferences = excluded.preferences,
+            password_hash = COALESCE(excluded.password_hash, users.password_hash),
             updated_at = excluded.updated_at
         "#
     )
@@ -65,6 +67,7 @@ pub async fn upsert_user(pool: &SqlitePool, user: &User) -> Result<User> {
     .bind(&user.tenant_id)
     .bind(&prefs)
     .bind(if user.is_active { 1 } else { 0 })
+    .bind(&user.password_hash)
     .bind(user.created_at.to_rfc3339())
     .bind(now)
     .execute(pool)
@@ -76,7 +79,7 @@ pub async fn upsert_user(pool: &SqlitePool, user: &User) -> Result<User> {
 
 pub async fn list_users(pool: &SqlitePool, limit: usize) -> Result<Vec<User>> {
     let rows = sqlx::query(
-        "SELECT id, username, email, role, tenant_id, preferences, is_active, created_at, updated_at FROM users ORDER BY created_at DESC LIMIT ?"
+        "SELECT id, username, email, role, tenant_id, preferences, is_active, password_hash, created_at, updated_at FROM users ORDER BY created_at DESC LIMIT ?"
     )
     .bind(limit as i64)
     .fetch_all(pool)
@@ -105,6 +108,7 @@ pub async fn list_users(pool: &SqlitePool, limit: usize) -> Result<Vec<User>> {
             tenant_id: r.get("tenant_id"),
             preferences: serde_json::from_str(&prefs_str).unwrap_or(serde_json::Value::Null),
             is_active: r.get::<i32, _>("is_active") == 1,
+            password_hash: r.get("password_hash"),
             created_at: DateTime::parse_from_rfc3339(&created_at_str)
                 .map(|d| d.with_timezone(&Utc))
                 .unwrap_or_else(|_| Utc::now()),

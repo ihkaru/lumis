@@ -43,6 +43,7 @@ async fn test_relational_driver_sqlite_in_memory() {
         tenant_id: Some("tenant-1".to_string()),
         preferences: serde_json::json!({"theme": "dark"}),
         is_active: true,
+        password_hash: None,
         created_at: now,
         updated_at: now,
     };

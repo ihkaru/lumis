@@ -60,6 +60,7 @@ async fn test_sentinel_round_trip_invariant_cannot_be_faked() {
         tenant_id: Some("satker_3100".to_string()),
         preferences: serde_json::json!({ "theme": "system" }),
         is_active: true,
+        password_hash: None,
         created_at: Utc::now(),
         updated_at: Utc::now(),
     };

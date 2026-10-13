@@ -46,7 +46,7 @@ pub async fn handle_artifact_ipc(
     headers: HeaderMap,
     Json(payload): Json<ArtifactIpcEnvelope>,
 ) -> impl IntoResponse {
-    let (username, role) = resolve_claims_and_role(&state, &headers);
+    let (username, role) = resolve_claims_and_role(&state, &headers).await;
     let tenant_id = headers
         .get("x-tenant-id")
         .and_then(|v| v.to_str().ok())

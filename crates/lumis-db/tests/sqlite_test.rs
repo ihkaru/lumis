@@ -19,6 +19,7 @@ async fn test_sqlite_repository_lifecycle() {
         tenant_id: Some("hq-01".to_string()),
         preferences: serde_json::json!({ "theme": "dark" }),
         is_active: true,
+        password_hash: None,
         created_at: chrono::Utc::now(),
         updated_at: chrono::Utc::now(),
     };

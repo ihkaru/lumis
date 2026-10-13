@@ -13,7 +13,7 @@ pub async fn list_sessions(
     headers: HeaderMap,
     Query(params): Query<PaginationQuery>,
 ) -> impl IntoResponse {
-    let (username, role) = resolve_claims_and_role(&state, &headers);
+    let (username, role) = resolve_claims_and_role(&state, &headers).await;
     let user_id = match ensure_user(&state, &username, role).await {
         Ok(u) => u.id,
         Err(_) => username,
@@ -42,7 +42,7 @@ pub async fn create_session(
     headers: HeaderMap,
     Json(payload): Json<CreateSessionRequest>,
 ) -> impl IntoResponse {
-    let (username, role) = resolve_claims_and_role(&state, &headers);
+    let (username, role) = resolve_claims_and_role(&state, &headers).await;
 
     // Policy Enforcement Point (PEP): Validate Model Clearance
     let clearance_res = state.claim_translator.evaluate_model_clearance(role, &payload.model_id);
