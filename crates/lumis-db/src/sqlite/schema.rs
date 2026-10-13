@@ -66,6 +66,18 @@ pub async fn run_sqlite_migrations(pool: &SqlitePool) -> Result<()> {
 
         CREATE INDEX IF NOT EXISTS idx_chunks_role
             ON document_chunks(tenant_id, min_role);
+
+        CREATE TABLE IF NOT EXISTS user_memories (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            category TEXT NOT NULL DEFAULT 'preference',
+            content TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_user_memories_user
+            ON user_memories(user_id, created_at DESC);
         "#,
     )
     .execute(pool)

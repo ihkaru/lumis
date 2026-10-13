@@ -1,3 +1,5 @@
+pub mod assembly;
+pub mod executor;
 pub mod helpers;
 pub mod messages;
 pub mod sessions;

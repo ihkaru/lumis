@@ -136,3 +136,16 @@ pub async fn delete_session(pool: &SqlitePool, id: &str) -> Result<bool> {
         .map_err(|e| LumisError::Database(e.to_string()))?;
     Ok(res.rows_affected() > 0)
 }
+
+pub async fn update_session_title(pool: &SqlitePool, id: &str, title: &str) -> Result<bool> {
+    let now = Utc::now();
+    let res = sqlx::query("UPDATE sessions SET title = ?, updated_at = ? WHERE id = ?")
+        .bind(title)
+        .bind(now.to_rfc3339())
+        .bind(id)
+        .execute(pool)
+        .await
+        .map_err(|e| LumisError::Database(e.to_string()))?;
+    Ok(res.rows_affected() > 0)
+}
+

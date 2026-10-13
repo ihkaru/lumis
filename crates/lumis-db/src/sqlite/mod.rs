@@ -1,4 +1,5 @@
 pub mod driver;
+pub mod memory;
 pub mod message;
 pub mod schema;
 pub mod session;
@@ -10,7 +11,7 @@ pub use driver::SqliteDriver;
 use async_trait::async_trait;
 use lumis_core::error::Result;
 use lumis_core::models::{
-    CursorPage, CursorQuery, Message, NewMessage, NewSession, Session, User,
+    CursorPage, CursorQuery, Message, NewMessage, NewSession, NewUserMemory, Session, User, UserMemory,
 };
 use lumis_core::traits::ChatRepository;
 use sqlx::SqlitePool;
@@ -62,6 +63,10 @@ impl ChatRepository for SqliteRepository {
         session::get_session(&self.pool, id).await
     }
 
+    async fn update_session_title(&self, session_id: &str, title: &str) -> Result<bool> {
+        session::update_session_title(&self.pool, session_id, title).await
+    }
+
     async fn list_sessions(
         &self,
         user_id: &str,
@@ -93,5 +98,17 @@ impl ChatRepository for SqliteRepository {
         limit: usize,
     ) -> Result<Vec<Message>> {
         message::search_messages(&self.pool, user_id, query_text, limit).await
+    }
+
+    async fn list_user_memories(&self, user_id: &str) -> Result<Vec<UserMemory>> {
+        memory::list_user_memories(&self.pool, user_id).await
+    }
+
+    async fn add_user_memory(&self, new_mem: &NewUserMemory) -> Result<UserMemory> {
+        memory::add_user_memory(&self.pool, new_mem).await
+    }
+
+    async fn delete_user_memory(&self, id: &str, user_id: &str) -> Result<bool> {
+        memory::delete_user_memory(&self.pool, id, user_id).await
     }
 }

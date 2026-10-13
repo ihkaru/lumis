@@ -16,6 +16,7 @@ pub trait ChatRepository: Send + Sync {
     // Session Operations
     async fn create_session(&self, new_session: &NewSession) -> Result<Session>;
     async fn get_session(&self, id: &str) -> Result<Option<Session>>;
+    async fn update_session_title(&self, session_id: &str, title: &str) -> Result<bool>;
     async fn list_sessions(
         &self,
         user_id: &str,
@@ -38,4 +39,9 @@ pub trait ChatRepository: Send + Sync {
         query: &str,
         limit: usize,
     ) -> Result<Vec<Message>>;
+
+    // User Memory Operations (Enterprise Long-Term Memory)
+    async fn list_user_memories(&self, user_id: &str) -> Result<Vec<crate::models::UserMemory>>;
+    async fn add_user_memory(&self, new_mem: &crate::models::NewUserMemory) -> Result<crate::models::UserMemory>;
+    async fn delete_user_memory(&self, id: &str, user_id: &str) -> Result<bool>;
 }

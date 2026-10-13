@@ -63,6 +63,18 @@ pub async fn run_pg_migrations(pool: &PgPool) -> Result<()> {
 
         CREATE INDEX IF NOT EXISTS idx_pg_chunks_role
             ON document_chunks(tenant_id, min_role);
+
+        CREATE TABLE IF NOT EXISTS user_memories (
+            id VARCHAR(64) PRIMARY KEY,
+            user_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            category VARCHAR(64) NOT NULL DEFAULT 'preference',
+            content TEXT NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_pg_user_memories_user
+            ON user_memories(user_id, created_at DESC);
         "#,
     )
     .execute(pool)

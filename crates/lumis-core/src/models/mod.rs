@@ -4,6 +4,7 @@ pub mod audit;
 pub mod knowledge;
 pub mod llm;
 pub mod mcp;
+pub mod memory;
 pub mod message;
 pub mod pagination;
 pub mod prompt_cache;
@@ -11,6 +12,8 @@ pub mod scim;
 pub mod session;
 pub mod telemetry;
 pub mod user;
+
+pub use memory::{NewUserMemory, UserMemory};
 
 pub use approval::{ApprovalStatus, ToolApprovalPolicy, ToolApprovalRequest};
 pub use artifact::{
