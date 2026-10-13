@@ -179,9 +179,11 @@ pub async fn saml_acs(
         }
     };
 
-    let subject = extract_tag(&saml_xml, "NameID")
+    let subject = extract_attr_val(&saml_xml, "nip")
+        .or_else(|| extract_tag(&saml_xml, "NameID"))
         .or_else(|| extract_tag(&saml_xml, "nameid"))
-        .unwrap_or_else(|| "bps_user@bps.go.id".to_string());
+        .or_else(|| extract_attr_val(&saml_xml, "email"))
+        .unwrap_or_else(|| "bps_user".to_string());
 
     let role_raw = extract_attr_val(&saml_xml, "Role")
         .or_else(|| extract_attr_val(&saml_xml, "groups"))
