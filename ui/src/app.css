@@ -41,20 +41,6 @@
 }
 
 @layer utilities {
-  /* Hardware Accelerated GPU Compositing (120Hz/144Hz Native Refresh Rate) */
-  .gpu-layer {
-    backface-visibility: hidden;
-    perspective: 1000px;
-  }
-  .will-change-transform {
-    will-change: transform;
-  }
-  .will-change-opacity {
-    will-change: opacity;
-  }
-  .ease-spring-120fps {
-    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-  }
   .smooth-momentum-scroll {
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;

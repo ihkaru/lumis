@@ -94,7 +94,7 @@
 {/if}
 
 <aside
-  class="fixed md:static inset-y-0 left-0 z-50 w-72 sm:w-80 bg-card border-r border-border flex flex-col justify-between gpu-layer transform-gpu will-change-transform ease-spring-120fps transition-all duration-300 shadow-2xl md:shadow-none {isOpenMobile ? 'translate-x-0 md:ml-0' : '-translate-x-full md:-ml-80'} select-none font-sans shrink-0 overflow-hidden"
+  class="fixed md:static inset-y-0 left-0 z-50 w-72 sm:w-80 bg-card border-r border-border flex flex-col justify-between transition-transform duration-300 shadow-2xl md:shadow-none {isOpenMobile ? 'translate-x-0 md:ml-0' : '-translate-x-full md:-ml-80'} select-none font-sans shrink-0 overflow-hidden"
   ontouchstart={handleTouchStart}
   ontouchend={handleTouchEnd}
   aria-label="Sidebar Navigasi"

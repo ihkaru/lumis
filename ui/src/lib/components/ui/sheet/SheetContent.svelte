@@ -28,7 +28,7 @@
 
 {#if open}
   <div
-    class="fixed z-50 bg-card border-border shadow-2xl flex flex-col justify-between gpu-layer transform-gpu will-change-transform ease-spring-120fps transition-transform duration-200 select-none font-sans {sideClasses[side]} {className}"
+    class="fixed z-50 bg-card border-border shadow-2xl flex flex-col justify-between transition-transform duration-200 select-none font-sans {sideClasses[side]} {className}"
     role="dialog"
     aria-modal="true"
   >

@@ -65,29 +65,42 @@ class RouterState {
     this.guards.push(guard);
   }
 
+  private isNavigating = false;
+
   private async handleNavigation(to: string, replace = false) {
-    const from = this.path;
-    for (const guard of this.guards) {
-      const verdict = await guard(to, from);
-      if (verdict === false) return;
-      if (typeof verdict === "string" && verdict !== to) {
-        return this.navigate(verdict, true);
+    if (this.isNavigating) return;
+    this.isNavigating = true;
+    try {
+      const from = this.path;
+      for (const guard of this.guards) {
+        const verdict = await guard(to, from);
+        if (verdict === false) return;
+        if (typeof verdict === "string" && verdict !== to) {
+          const cleanVerdict = verdict.split("?")[0];
+          const cleanTo = to.split("?")[0];
+          if (cleanVerdict !== cleanTo) {
+            this.isNavigating = false;
+            return this.navigate(verdict, true);
+          }
+        }
       }
-    }
 
-    if (typeof window !== "undefined") {
-      const targetUrl = window.location.hash.startsWith("#/") ? `#${to}` : to;
-      if (replace) {
-        window.history.replaceState({}, "", targetUrl);
-      } else {
-        window.history.pushState({}, "", targetUrl);
+      if (typeof window !== "undefined") {
+        const targetUrl = window.location.hash.startsWith("#/") ? `#${to}` : to;
+        if (replace) {
+          window.history.replaceState({}, "", targetUrl);
+        } else {
+          window.history.pushState({}, "", targetUrl);
+        }
       }
-    }
 
-    const cur = parseLocation();
-    this.path = cur.path;
-    this.params = cur.params;
-    this.query = cur.query;
+      const cur = parseLocation();
+      this.path = cur.path;
+      this.params = cur.params;
+      this.query = cur.query;
+    } finally {
+      this.isNavigating = false;
+    }
   }
 
   async navigate(to: string, replace = false) {

@@ -36,9 +36,10 @@
     // 1. Enterprise Route Guard (Svelte 5 Runes Navigation Pipeline)
     router.beforeEach(async (to) => {
       if (isAuthChecking) return true;
-      const isPublic = to === "/login" || to === "/markdown";
-      if (!user && !isPublic) return `/login?redirect=${encodeURIComponent(to)}`;
-      if (user && to === "/login") return "/chat/new";
+      const clean = to.split("?")[0];
+      const isPublic = clean === "/login" || clean === "/markdown";
+      if (!user && !isPublic) return `/login?redirect=${encodeURIComponent(clean)}`;
+      if (user && clean === "/login") return "/chat/new";
       return true;
     });
 
@@ -262,7 +263,7 @@
         <!-- Message Viewport -->
         <div
           bind:this={messageContainerEl}
-          class="flex-1 overflow-y-auto p-4 md:p-6 space-y-5 smooth-momentum-scroll gpu-layer"
+          class="flex-1 overflow-y-auto p-4 md:p-6 space-y-5 smooth-momentum-scroll"
         >
           {#if router.path === "/chat/new" || (!activeSessionId && messages.length === 0)}
             <NewChatWelcome

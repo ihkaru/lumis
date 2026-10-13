@@ -258,14 +258,6 @@ def check_high_refresh_rate_animation(root_dir: Path, files: List[Path]) -> List
                     "RULE_HIGH_REFRESH_RATE_ANIMATION", str(f), 1,
                     f"Forbidden layout transition '{ft}'. Box geometry animation causes reflows. Animate 'transform' (translate3d) instead."
                 ))
-
-        if f.name == "App.svelte":
-            has_gpu = any(k in content for k in ["will-change-transform", "transform-gpu", "gpu-layer", "will-change: transform"])
-            if not has_gpu:
-                violations.append(HygieneViolation(
-                    "RULE_HIGH_REFRESH_RATE_ANIMATION", str(f), 1,
-                    "Sidebar/drawer in App.svelte must include GPU compositing ('will-change-transform' or 'transform-gpu') for 120Hz/144Hz native refresh rate."
-                ))
     return violations
 
 

@@ -112,7 +112,7 @@
 {#if artifact}
   <aside
     class={cn(
-      "flex flex-col h-full w-full bg-card border-l border-border transition-all duration-150 will-change-transform gpu-layer",
+      "flex flex-col h-full w-full bg-card border-l border-border transition-all duration-150",
       className
     )}
     aria-label="Interactive Artifact Canvas"

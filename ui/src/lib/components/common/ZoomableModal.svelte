@@ -119,7 +119,7 @@
       <img
         {src}
         {alt}
-        class="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl transition-transform duration-150 ease-out will-change-transform select-none"
+        class="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl transition-transform duration-150 ease-out select-none"
         style="transform: scale({zoomLevel});"
       />
     </div>
