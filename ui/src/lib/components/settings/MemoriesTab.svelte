@@ -82,15 +82,15 @@
 <div class="space-y-6 font-sans text-xs">
   <!-- Header Intro Card -->
   <div class="flex items-start justify-between p-4 rounded-xl border border-border bg-card">
-    <div class="flex items-start gap-3">
-      <div class="p-2.5 rounded-xl bg-cyan-950/60 border border-cyan-800/40 text-cyan-400 shrink-0">
+    <div class="flex items-start gap-3 min-w-0">
+      <div class="p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary shrink-0">
         <Brain class="h-6 w-6" />
       </div>
-      <div>
-        <div class="font-bold text-sm text-foreground">
+      <div class="min-w-0 space-y-1">
+        <div class="font-bold text-sm text-foreground [overflow-wrap:anywhere] break-words">
           Memori Jangka Panjang (Durable User Memories)
         </div>
-        <p class="text-muted-foreground text-[11px] mt-1 leading-relaxed">
+        <p class="text-muted-foreground text-[11px] leading-relaxed [overflow-wrap:anywhere] break-words">
           Asisten AI mengingat preferensi, peran, dan konteks penting tentang Anda lintas seluruh sesi percakapan. Konteks ini diinjeksikan otomatis pada setiap interaksi.
         </p>
       </div>
@@ -98,7 +98,7 @@
   </div>
 
   {#if errorMessage}
-    <div class="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs">
+    <div class="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs [overflow-wrap:anywhere] break-words">
       {errorMessage}
     </div>
   {/if}
@@ -106,12 +106,12 @@
   <!-- Add New Memory Card -->
   <div class="p-4 rounded-xl border border-border bg-card space-y-3">
     <div class="font-semibold text-xs text-foreground flex items-center gap-2">
-      <Plus class="h-3.5 w-3.5 text-cyan-400" />
-      <span>Tambah Fakta atau Preferensi Baru</span>
+      <Plus class="h-3.5 w-3.5 text-primary shrink-0" />
+      <span class="[overflow-wrap:anywhere] break-words">Tambah Fakta atau Preferensi Baru</span>
     </div>
 
     <form onsubmit={handleAddMemory} class="flex flex-col sm:flex-row gap-2">
-      <div class="flex-1">
+      <div class="flex-1 min-w-0">
         <Input
           type="text"
           bind:value={newContent}
@@ -120,7 +120,7 @@
           disabled={isSaving}
         />
       </div>
-      <div class="w-full sm:w-36">
+      <div class="w-full sm:w-36 shrink-0">
         <select
           bind:value={newCategory}
           disabled={isSaving}
@@ -135,15 +135,15 @@
       </div>
       <Button
         type="submit"
-        variant="cyan"
+        variant="default"
         size="sm"
         disabled={isSaving || !newContent.trim()}
-        class="gap-1.5 text-xs shrink-0 min-h-[44px] sm:min-h-0"
+        class="gap-1.5 text-xs shrink-0 min-h-[44px] sm:min-h-9 touch-manipulation whitespace-normal break-words"
       >
         {#if isSaving}
-          <Loader2 class="h-3.5 w-3.5 animate-spin" />
+          <Loader2 class="h-3.5 w-3.5 animate-spin shrink-0" />
         {:else}
-          <Plus class="h-3.5 w-3.5" />
+          <Plus class="h-3.5 w-3.5 shrink-0" />
         {/if}
         <span>Simpan</span>
       </Button>
@@ -153,11 +153,11 @@
   <!-- Memories List Section -->
   <div class="space-y-2">
     <div class="flex items-center justify-between px-1">
-      <div class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+      <div class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider truncate">
         Daftar Memori Aktif ({memories.length})
       </div>
       {#if isLoading}
-        <div class="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <div class="flex items-center gap-1.5 text-[11px] text-muted-foreground shrink-0">
           <Loader2 class="h-3 w-3 animate-spin" />
           <span>Memuat...</span>
         </div>
@@ -166,14 +166,14 @@
 
     {#if isLoading && memories.length === 0}
       <div class="flex flex-col items-center justify-center p-8 rounded-xl border border-dashed border-border text-center space-y-2">
-        <Loader2 class="h-6 w-6 animate-spin text-cyan-400" />
+        <Loader2 class="h-6 w-6 animate-spin text-primary" />
         <span class="text-muted-foreground text-xs">Memuat memori pengguna...</span>
       </div>
     {:else if memories.length === 0}
       <div class="flex flex-col items-center justify-center p-8 rounded-xl border border-dashed border-border text-center space-y-2 bg-muted/10">
-        <Sparkles class="h-6 w-6 text-cyan-400" />
+        <Sparkles class="h-6 w-6 text-primary" />
         <div class="font-medium text-xs text-foreground">Belum Ada Memori Tersimpan</div>
-        <p class="text-[11px] text-muted-foreground max-w-sm">
+        <p class="text-[11px] text-muted-foreground max-w-sm [overflow-wrap:anywhere] break-words">
           Asisten AI akan mengingat konteks penting tentang Anda, atau Anda dapat menambahkannya secara manual menggunakan formulir di atas.
         </p>
       </div>
@@ -183,12 +183,12 @@
           <div class="flex items-start justify-between p-3 rounded-xl border border-border bg-card/60 hover:bg-card transition-colors gap-3">
             <div class="flex-1 min-w-0 space-y-1">
               <div class="flex items-center gap-2 flex-wrap">
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-cyan-950/60 text-cyan-400 border border-cyan-800/40 uppercase">
-                  <Tag class="h-2.5 w-2.5" />
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary border border-primary/20 uppercase">
+                  <Tag class="h-2.5 w-2.5 shrink-0" />
                   {mem.category}
                 </span>
                 <span class="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
-                  <Clock class="h-2.5 w-2.5" />
+                  <Clock class="h-2.5 w-2.5 shrink-0" />
                   {formatDate(mem.created_at)}
                 </span>
               </div>

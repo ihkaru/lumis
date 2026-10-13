@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { cn } from "$lib/utils";
+
   interface Props {
     open?: boolean;
     onclick?: () => void;
@@ -11,7 +13,10 @@
 {#if open}
   <button
     type="button"
-    class="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs transition-opacity duration-200 border-0 p-0 w-full h-full cursor-default select-none {className}"
+    class={cn(
+      "fixed inset-0 z-50 bg-black/75 backdrop-blur-xs transition-opacity duration-200 border-0 p-0 w-full h-full cursor-default select-none",
+      className
+    )}
     {onclick}
     aria-label="Tutup Dialog"
   ></button>

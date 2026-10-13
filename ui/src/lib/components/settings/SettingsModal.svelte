@@ -4,8 +4,8 @@
   import Server from "lucide-svelte/icons/server";
   import ShieldCheck from "lucide-svelte/icons/shield-check";
   import Brain from "lucide-svelte/icons/brain";
-  import { Dialog, DialogOverlay, DialogContent, DialogHeader, DialogTitle, DialogClose } from "$lib/components/ui/dialog";
-  import { Tabs, TabsList, TabsTrigger, TabsContent } from "$lib/components/ui/tabs";
+  import { Dialog, DialogOverlay, DialogContent, DialogTitle, DialogClose } from "$lib/components/ui/dialog";
+  import { Tabs, TabsContent } from "$lib/components/ui/tabs";
   import AccountTab from "./AccountTab.svelte";
   import ThemesTab, { type ThemePalette } from "./ThemesTab.svelte";
   import ProviderKeysTab from "./ProviderKeysTab.svelte";
@@ -36,73 +36,55 @@
   }: Props = $props();
 
   let activeTab = $state("account");
+
+  const tabList = [
+    { id: "account", label: "Akun & Profil", icon: UserIcon },
+    { id: "themes", label: "Tema & Warna", icon: Palette },
+    { id: "memories", label: "Memori AI", icon: Brain },
+    { id: "providers", label: "Provider AI", icon: Server },
+    { id: "admin", label: "Administrasi", icon: ShieldCheck },
+  ];
 </script>
 
 <Dialog open={isOpen}>
   <DialogOverlay open={isOpen} onclick={onClose} />
-  <DialogContent open={isOpen} {onClose} class="max-w-3xl h-[85vh] max-h-[620px] p-0 overflow-hidden flex flex-col md:flex-row">
-    <!-- Settings Sidebar Tabs -->
-    <aside class="w-full md:w-56 border-b md:border-b-0 md:border-r border-border bg-muted/20 p-3 space-y-1 shrink-0 flex flex-row md:flex-col justify-between md:justify-start">
-      <div class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-2 py-1 hidden md:block select-none">
+  <DialogContent
+    open={isOpen}
+    {onClose}
+    class="w-[95vw] sm:w-[92vw] md:max-w-3xl lg:max-w-4xl h-[88vh] max-h-[660px] p-0 overflow-hidden flex flex-col md:flex-row rounded-2xl border border-border bg-card shadow-2xl"
+  >
+    <!-- Navigation Tabs: Horizontal bar on Mobile (< md), Vertical sidebar on Desktop (>= md) -->
+    <aside class="w-full md:w-56 lg:w-60 border-b md:border-b-0 md:border-r border-border bg-muted/20 p-2 md:p-3 shrink-0 flex flex-row md:flex-col gap-1.5 overflow-x-auto md:overflow-x-visible no-scrollbar">
+      <div class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-2 py-1.5 hidden md:block select-none">
         Pengaturan
       </div>
 
-      <button
-        type="button"
-        onclick={() => (activeTab = "account")}
-        class="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-xs font-medium cursor-pointer transition-colors min-h-[44px] md:min-h-0 touch-manipulation {activeTab === 'account' ? 'bg-cyan-950/60 text-cyan-400 border border-cyan-800/40 shadow-xs' : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'}"
-      >
-        <UserIcon class="h-4 w-4 shrink-0" />
-        <span class="truncate">Akun & Profil</span>
-      </button>
-
-      <button
-        type="button"
-        onclick={() => (activeTab = "themes")}
-        class="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-xs font-medium cursor-pointer transition-colors min-h-[44px] md:min-h-0 touch-manipulation {activeTab === 'themes' ? 'bg-cyan-950/60 text-cyan-400 border border-cyan-800/40 shadow-xs' : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'}"
-      >
-        <Palette class="h-4 w-4 shrink-0" />
-        <span class="truncate">Tema & Warna</span>
-      </button>
-
-      <button
-        type="button"
-        onclick={() => (activeTab = "memories")}
-        class="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-xs font-medium cursor-pointer transition-colors min-h-[44px] md:min-h-0 touch-manipulation {activeTab === 'memories' ? 'bg-cyan-950/60 text-cyan-400 border border-cyan-800/40 shadow-xs' : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'}"
-      >
-        <Brain class="h-4 w-4 shrink-0" />
-        <span class="truncate">Memori AI</span>
-      </button>
-
-      <button
-        type="button"
-        onclick={() => (activeTab = "providers")}
-        class="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-xs font-medium cursor-pointer transition-colors min-h-[44px] md:min-h-0 touch-manipulation {activeTab === 'providers' ? 'bg-cyan-950/60 text-cyan-400 border border-cyan-800/40 shadow-xs' : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'}"
-      >
-        <Server class="h-4 w-4 shrink-0" />
-        <span class="truncate">Provider & API Key</span>
-      </button>
-
-      <button
-        type="button"
-        onclick={() => (activeTab = "admin")}
-        class="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-xs font-medium cursor-pointer transition-colors min-h-[44px] md:min-h-0 touch-manipulation {activeTab === 'admin' ? 'bg-cyan-950/60 text-cyan-400 border border-cyan-800/40 shadow-xs' : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'}"
-      >
-        <ShieldCheck class="h-4 w-4 shrink-0" />
-        <span class="truncate">Administrasi</span>
-      </button>
+      {#each tabList as tab}
+        {@const Icon = tab.icon}
+        {@const isActive = activeTab === tab.id}
+        <button
+          type="button"
+          onclick={() => (activeTab = tab.id)}
+          class="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium cursor-pointer transition-colors shrink-0 md:shrink md:w-full min-h-[44px] md:min-h-9 touch-manipulation {isActive ? 'bg-accent text-accent-foreground font-semibold shadow-xs border border-border/80' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}"
+        >
+          <Icon class="h-4 w-4 shrink-0" />
+          <span class="whitespace-nowrap md:whitespace-normal md:break-words text-left [overflow-wrap:anywhere]">
+            {tab.label}
+          </span>
+        </button>
+      {/each}
     </aside>
 
-    <!-- Settings Content Area -->
+    <!-- Main Content Area -->
     <main class="flex-1 flex flex-col min-w-0 overflow-hidden bg-card">
-      <header class="flex items-center justify-between border-b border-border px-6 py-3.5 shrink-0">
-        <DialogTitle class="text-sm font-bold capitalize">
-          {activeTab === "account" ? "Pengaturan Akun" : activeTab === "themes" ? "Tema & Skema Warna" : activeTab === "memories" ? "Memori & Personalisasi" : activeTab === "providers" ? "Konfigurasi Provider AI" : "Panel Administrasi"}
+      <header class="flex items-center justify-between border-b border-border px-4 sm:px-6 py-3.5 shrink-0 bg-card">
+        <DialogTitle class="text-sm font-semibold capitalize truncate pr-6">
+          {tabList.find((t) => t.id === activeTab)?.label || "Pengaturan"}
         </DialogTitle>
         <DialogClose onclick={onClose} class="relative top-0 right-0" />
       </header>
 
-      <div class="flex-1 overflow-y-auto p-6 smooth-momentum-scroll">
+      <div class="flex-1 overflow-y-auto p-4 sm:p-6 smooth-momentum-scroll min-w-0">
         <Tabs bind:value={activeTab}>
           <TabsContent value="account">
             <AccountTab {user} {onLogout} />
