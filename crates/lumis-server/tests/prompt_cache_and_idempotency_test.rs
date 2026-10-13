@@ -41,10 +41,7 @@ async fn test_prompt_layout_stable_prefix_invariance_and_anthropic_breakpoint() 
     let layout_turn1 = PromptLayout::new(
         system_instructions,
         &tool_schemas,
-        vec![ChatMessagePayload {
-            role: "user".to_string(),
-            content: "Hello assistant".to_string(),
-        }],
+        vec![ChatMessagePayload::new("user", "Hello assistant")],
         Some("Timestamp: 2026-10-12T19:00:00.000Z".to_string()),
     );
 
@@ -53,18 +50,9 @@ async fn test_prompt_layout_stable_prefix_invariance_and_anthropic_breakpoint() 
         system_instructions,
         &tool_schemas,
         vec![
-            ChatMessagePayload {
-                role: "user".to_string(),
-                content: "Hello assistant".to_string(),
-            },
-            ChatMessagePayload {
-                role: "assistant".to_string(),
-                content: "Greetings! How can I help?".to_string(),
-            },
-            ChatMessagePayload {
-                role: "user".to_string(),
-                content: "Can you query the database?".to_string(),
-            },
+            ChatMessagePayload::new("user", "Hello assistant"),
+            ChatMessagePayload::new("assistant", "Greetings! How can I help?"),
+            ChatMessagePayload::new("user", "Can you query the database?"),
         ],
         Some("Timestamp: 2026-10-12T19:00:45.123Z".to_string()),
     );

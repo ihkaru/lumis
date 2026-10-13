@@ -11,7 +11,7 @@ use crate::approval::InMemoryApprovalManager;
 use crate::audit::InMemoryAuditLogger;
 use crate::finops::{InMemoryQuotaEngine, PrometheusTelemetryCollector};
 use crate::idempotency::InMemoryIdempotencyStore;
-use crate::mcp::InMemoryMcpRegistry;
+use crate::mcp::{EnterpriseHookPipeline, InMemoryMcpRegistry};
 use crate::rag::HybridKnowledgeVault;
 
 #[derive(Clone)]
@@ -25,6 +25,7 @@ pub struct AppState {
     pub knowledge_vault: Arc<dyn KnowledgeVault>,
     pub mcp_registry: Arc<dyn McpRegistry>,
     pub audit_logger: Arc<dyn AuditLogger>,
+    pub hook_pipeline: Arc<EnterpriseHookPipeline>,
     pub idempotency_store: Arc<dyn IdempotencyStore>,
     pub scim_provisioner: Arc<dyn ScimProvisioner>,
     pub approval_manager: Arc<dyn ToolApprovalManager>,
@@ -66,6 +67,7 @@ impl AppState {
     ) -> Self {
         let repo = driver.repository();
         let (stream_tx, _) = broadcast::channel(1024);
+        let hook_pipeline = Arc::new(EnterpriseHookPipeline::with_defaults(audit_logger.clone()));
         Self {
             driver,
             repo: repo.clone(),
@@ -76,6 +78,7 @@ impl AppState {
             knowledge_vault,
             mcp_registry,
             audit_logger,
+            hook_pipeline,
             idempotency_store: Arc::new(InMemoryIdempotencyStore::default()),
             scim_provisioner: Arc::new(crate::scim::DatabaseScimProvisioner::new(repo)),
             approval_manager: Arc::new(InMemoryApprovalManager::default()),

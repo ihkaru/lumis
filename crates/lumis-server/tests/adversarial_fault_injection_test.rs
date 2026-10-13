@@ -183,16 +183,10 @@ async fn test_fault_injection_upstream_outage_fails_explicitly() {
         None,
     );
 
-    let test_request = ChatCompletionRequest {
-        model: "qwen2.5-coder".to_string(),
-        messages: vec![ChatMessagePayload {
-            role: "user".to_string(),
-            content: "Tuliskan kode verifikasi integritas".to_string(),
-        }],
-        temperature: Some(0.2),
-        max_tokens: Some(100),
-        stream: false,
-    };
+    let test_request = ChatCompletionRequest::new(
+        "qwen2.5-coder",
+        vec![ChatMessagePayload::new("user", "Tuliskan kode verifikasi integritas")],
+    );
 
     // Attempt: Primary fails -> switches to backup -> backup fails
     let result = router.complete_chat(&test_request).await;

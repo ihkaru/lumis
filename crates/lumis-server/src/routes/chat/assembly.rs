@@ -1,14 +1,27 @@
 use chrono::Utc;
-use lumis_core::models::{ChatMessagePayload, Message, MessageRole, Session, User, UserMemory};
+use lumis_core::models::{
+    ChatMessagePayload, McpToolDefinition, Message, MessageRole, Session, User, UserMemory,
+};
 
 pub const DEFAULT_MAX_CONTEXT_TOKENS: usize = 8192;
 
-/// Assemble the complete chat completion messages array for an inference turn.
-/// Enforces:
-/// 1. Stable prefix system prompt (base + session custom + persistent user memories)
-/// 2. Sliding window history pruning with token budget enforcement
-/// 3. Tail dynamic context injection (temporal/spatial stamp cache-friendly)
-/// 4. Current user prompt
+/// Format active MCP tool definitions into standard OpenAI JSON schema format.
+pub fn format_mcp_tools_for_openai(tools: &[McpToolDefinition]) -> Vec<serde_json::Value> {
+    tools
+        .iter()
+        .map(|t| {
+            serde_json::json!({
+                "type": "function",
+                "function": {
+                    "name": t.name,
+                    "description": t.description,
+                    "parameters": t.input_schema,
+                }
+            })
+        })
+        .collect()
+}
+
 /// Map internal model identifier to readable identity name
 pub fn format_model_identity(model_id: &str) -> &'static str {
     match model_id {
@@ -25,7 +38,7 @@ pub fn format_model_identity(model_id: &str) -> &'static str {
 
 /// Assemble the complete chat completion messages array for an inference turn.
 /// Enforces:
-/// 1. Stable prefix system prompt (base + session custom + persistent user memories + active engine)
+/// 1. Stable prefix system prompt (base + session custom + persistent user memories + active engine + tool capability)
 /// 2. Sliding window history pruning with token budget enforcement & duplicate prompt elimination
 /// 3. Tail dynamic context injection (temporal/spatial stamp cache-friendly)
 /// 4. Current user prompt
@@ -36,6 +49,7 @@ pub fn assemble_chat_context(
     current_query: &str,
     active_model: &str,
     user_memories: &[UserMemory],
+    available_tools: Option<&[McpToolDefinition]>,
     max_context_tokens: Option<usize>,
 ) -> Vec<ChatMessagePayload> {
     let budget = max_context_tokens.unwrap_or(DEFAULT_MAX_CONTEXT_TOKENS);
@@ -64,6 +78,18 @@ pub fn assemble_chat_context(
         system_text.push_str("</user_memories>");
     }
 
+    if let Some(tools) = available_tools {
+        if !tools.is_empty() {
+            system_text.push_str("\n\n<tools_capability>\n");
+            system_text.push_str("You have access to the following live enterprise tools:\n");
+            for t in tools {
+                let schema_brief = t.input_schema.to_string();
+                system_text.push_str(&format!("- `{}`: {}\n  Parameters: {}\n", t.name, t.description, schema_brief));
+            }
+            system_text.push_str("\nWhen asked to perform a search, calculation, database query, or API call:\n1. If function calling is supported, call the tool directly.\n2. Otherwise, emit:\n<tool_call>\n{\"name\": \"<tool_name>\", \"arguments\": { ... }}\n</tool_call>\nDo NOT claim you lack tools or cannot execute them when tools are listed above.\n</tools_capability>\n");
+        }
+    }
+
     let system_tokens = (system_text.len() / 4).max(1);
     let current_tokens = (current_query.len() / 4).max(1);
     let reserved_tail = 128; // for temporal context stamp
@@ -72,10 +98,11 @@ pub fn assemble_chat_context(
     messages.push(ChatMessagePayload {
         role: "system".to_string(),
         content: system_text,
+        tool_calls: None,
+        tool_call_id: None,
     });
 
     // 2. Sliding-Window Budget Pruning on History
-    // Exclude the current query if it was already appended to history
     let effective_history = if let Some(last) = history.last() {
         if last.role == MessageRole::User && last.content == current_query {
             &history[..history.len() - 1]
@@ -104,6 +131,8 @@ pub fn assemble_chat_context(
             selected_history.push(ChatMessagePayload {
                 role: role_str.to_string(),
                 content: msg.content.clone(),
+                tool_calls: None,
+                tool_call_id: None,
             });
         } else {
             pruned_any = true;
@@ -116,12 +145,14 @@ pub fn assemble_chat_context(
         messages.push(ChatMessagePayload {
             role: "system".to_string(),
             content: "[Context note: Earlier conversation turns have been pruned to fit context window.]".to_string(),
+            tool_calls: None,
+            tool_call_id: None,
         });
     }
 
     messages.extend(selected_history);
 
-    // 3. Tail Dynamic Context Stamp (Temporal / Regional Awareness)
+    // 3. Tail Dynamic Context Stamp
     let now = Utc::now();
     let timestamp_str = now.to_rfc3339();
     let tail_context = format!(
@@ -131,12 +162,16 @@ pub fn assemble_chat_context(
     messages.push(ChatMessagePayload {
         role: "system".to_string(),
         content: tail_context,
+        tool_calls: None,
+        tool_call_id: None,
     });
 
     // 4. Current User Prompt
     messages.push(ChatMessagePayload {
         role: "user".to_string(),
         content: current_query.to_string(),
+        tool_calls: None,
+        tool_call_id: None,
     });
 
     messages

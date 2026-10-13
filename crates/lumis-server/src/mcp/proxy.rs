@@ -61,3 +61,44 @@ impl McpToolExecutor for RemoteMcpToolProxy {
             .await
     }
 }
+
+/// Loads and registers all database-persisted MCP tools into the runtime registry.
+pub async fn sync_servers_to_registry(
+    repo: &std::sync::Arc<dyn lumis_core::traits::ChatRepository>,
+    registry: &std::sync::Arc<dyn lumis_core::traits::McpRegistry>,
+) -> usize {
+    let mut count = 0;
+    if let Ok(servers) = repo.list_mcp_servers("default").await {
+        let http_client = McpHttpClient::new();
+        for server in servers {
+            if !server.is_enabled {
+                continue;
+            }
+            if let Some(endpoint_url) = server.endpoint_url {
+                if let Ok(tools) = repo.list_mcp_tools(&server.id).await {
+                    for tool in tools {
+                        let schema = serde_json::from_str(&tool.input_schema_json)
+                            .unwrap_or_else(|_| serde_json::json!({}));
+                        let def = McpToolDefinition {
+                            name: tool.name.clone(),
+                            description: tool.description.unwrap_or_default(),
+                            input_schema: schema,
+                            min_role: EnterpriseRole::Member,
+                        };
+                        let proxy = std::sync::Arc::new(RemoteMcpToolProxy::new(
+                            tool.name,
+                            def,
+                            endpoint_url.clone(),
+                            None,
+                            http_client.clone(),
+                        ));
+                        if registry.register_tool(proxy).await.is_ok() {
+                            count += 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    count
+}

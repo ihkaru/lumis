@@ -71,12 +71,9 @@ impl LlmProviderDriver for HealthyTestDriver {
                 content: text,
                 is_done: false,
                 model: Some("vllm-deepseek".to_string()),
+                tool_calls: None,
             })).await;
-            let _ = tx.send(Ok(ChatChunk {
-                content: String::new(),
-                is_done: true,
-                model: None,
-            })).await;
+            let _ = tx.send(Ok(ChatChunk::new("", true))).await;
         });
         Ok(rx)
     }
@@ -108,16 +105,10 @@ async fn test_resilient_llm_router_automatic_failover_to_vllm() {
         Some(composite_telemetry.clone()),
     );
 
-    let req = ChatCompletionRequest {
-        model: "gpt-4o".to_string(),
-        messages: vec![ChatMessagePayload {
-            role: "user".to_string(),
-            content: "Tes reliabilitas sistem".to_string(),
-        }],
-        temperature: Some(0.5),
-        max_tokens: Some(100),
-        stream: true,
-    };
+    let req = ChatCompletionRequest::new(
+        "gpt-4o",
+        vec![ChatMessagePayload::new("user", "Tes reliabilitas sistem")],
+    );
 
     // Execute chat: Should automatically fail over to secondary vLLM
     let mut rx = router.complete_chat(&req).await.expect("Failover succeeded");

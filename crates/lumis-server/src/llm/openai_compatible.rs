@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use lumis_core::error::{LumisError, Result};
 use lumis_core::models::{
     ChatChunk, ChatCompletionRequest, ModelCapabilities, ModelDescriptor, ProviderHealth,
-    ProviderHealthStatus,
+    ProviderHealthStatus, ToolCallChunk,
 };
 use lumis_core::traits::LlmProviderDriver;
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
@@ -89,13 +89,22 @@ impl LlmProviderDriver for OpenAiCompatibleDriver {
         let url = format!("{}/chat/completions", self.base_url);
         let (tx, rx) = mpsc::channel(64);
 
-        let body = serde_json::json!({
+        let mut body = serde_json::json!({
             "model": request.model,
             "messages": request.messages,
             "temperature": request.temperature.unwrap_or(0.7),
             "max_tokens": request.max_tokens,
             "stream": true,
         });
+
+        if let Some(ref tools) = request.tools {
+            if !tools.is_empty() {
+                body["tools"] = serde_json::json!(tools);
+                if let Some(ref choice) = request.tool_choice {
+                    body["tool_choice"] = choice.clone();
+                }
+            }
+        }
 
         let resp_result = self
             .client
@@ -130,7 +139,7 @@ impl LlmProviderDriver for OpenAiCompatibleDriver {
                                 let trimmed = line.trim();
 
                                 if trimmed.is_empty() || trimmed.starts_with(':') {
-                                    continue; // Ignore SSE keepalives & comments like : OPENROUTER PROCESSING
+                                    continue;
                                 }
 
                                 if trimmed.starts_with("data: ") {
@@ -140,34 +149,44 @@ impl LlmProviderDriver for OpenAiCompatibleDriver {
                                             content: String::new(),
                                             is_done: true,
                                             model: None,
+                                            tool_calls: None,
                                         })).await;
                                         return;
                                     }
                                     if let Ok(val) = serde_json::from_str::<serde_json::Value>(data) {
-                                        let text_opt = val["choices"][0]["delta"]["content"].as_str()
-                                            .or_else(|| val["choices"][0]["delta"]["reasoning"].as_str())
+                                        let delta = &val["choices"][0]["delta"];
+                                        let text_opt = delta["content"].as_str()
+                                            .or_else(|| delta["reasoning"].as_str())
                                             .or_else(|| val["choices"][0]["message"]["content"].as_str());
 
-                                        if let Some(delta) = text_opt {
-                                            if !delta.is_empty() {
-                                                let _ = tx.send(Ok(ChatChunk {
-                                                    content: delta.to_string(),
-                                                    is_done: false,
-                                                    model: val["model"].as_str().map(|s| s.to_string()),
-                                                })).await;
-                                            }
+                                        let mut tool_chunks = None;
+                                        if let Some(tcs) = delta["tool_calls"].as_array() {
+                                            let list: Vec<ToolCallChunk> = tcs.iter().map(|tc| ToolCallChunk {
+                                                index: tc["index"].as_u64().unwrap_or(0) as usize,
+                                                id: tc["id"].as_str().map(|s| s.to_string()),
+                                                name: tc["function"]["name"].as_str().map(|s| s.to_string()),
+                                                arguments: tc["function"]["arguments"].as_str().map(|s| s.to_string()),
+                                            }).collect();
+                                            if !list.is_empty() { tool_chunks = Some(list); }
+                                        }
+
+                                        if text_opt.is_some() || tool_chunks.is_some() {
+                                            let _ = tx.send(Ok(ChatChunk {
+                                                content: text_opt.unwrap_or("").to_string(),
+                                                is_done: false,
+                                                model: val["model"].as_str().map(|s| s.to_string()),
+                                                tool_calls: tool_chunks,
+                                            })).await;
                                         }
                                     }
                                 } else if let Ok(val) = serde_json::from_str::<serde_json::Value>(trimmed) {
-                                    // Handle non-prefixed JSON completions or full responses
-                                    let text_opt = val["choices"][0]["message"]["content"].as_str()
-                                        .or_else(|| val["choices"][0]["delta"]["content"].as_str());
-
+                                    let text_opt = val["choices"][0]["message"]["content"].as_str();
                                     if let Some(text) = text_opt {
                                         let _ = tx.send(Ok(ChatChunk {
                                             content: text.to_string(),
                                             is_done: true,
                                             model: val["model"].as_str().map(|s| s.to_string()),
+                                            tool_calls: None,
                                         })).await;
                                         return;
                                     }
@@ -182,11 +201,11 @@ impl LlmProviderDriver for OpenAiCompatibleDriver {
                 }
             }
 
-            // Signal stream completion if not already terminated by [DONE]
             let _ = tx.send(Ok(ChatChunk {
                 content: String::new(),
                 is_done: true,
                 model: None,
+                tool_calls: None,
             })).await;
         });
 

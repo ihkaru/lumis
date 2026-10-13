@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from "svelte";
   import { api } from "./lib/api";
   import { router } from "./lib/router.svelte";
+  import { processStreamEvent } from "./lib/streamHandler";
   import type { ArtifactSpecification, Message, Session, User } from "./lib/types";
   import ErrorBoundary from "./lib/components/common/ErrorBoundary.svelte";
   import LoginPage from "./lib/components/auth/LoginPage.svelte";
@@ -73,28 +74,12 @@
 
     // 9router Real-Time Zero-Copy SSE Stream listener
     eventSource = api.connectStream((raw) => {
-      try {
-        const data = JSON.parse(raw);
-        if (data.event === "chunk" && data.session_id === activeSessionId) {
-          const lastIdx = messages.length - 1;
-          if (lastIdx >= 0 && messages[lastIdx].role === "assistant") {
-            messages[lastIdx].content += data.delta;
-            if (data.model_id && !messages[lastIdx].model_id) {
-              messages[lastIdx].model_id = data.model_id;
-            }
-            messages = [...messages];
-          } else {
-            messages = [...messages, { id: "stream_" + Date.now(), session_id: activeSessionId || "", role: "assistant", content: data.delta, model_id: data.model_id, created_at: new Date().toISOString() }];
-          }
-          scrollToBottom();
-          if (data.is_done) isGenerating = false;
-        } else if (data.event === "error" && data.session_id === activeSessionId) {
-          errorMessage = data.error;
-          isGenerating = false;
-        } else if (data.event === "title_generated" && data.session_id) {
-          sessions = sessions.map((s) => (s.id === data.session_id ? { ...s, title: data.title } : s));
-        }
-      } catch {}
+      const res = processStreamEvent(raw, { activeSessionId, messages, isGenerating, sessions, errorMessage });
+      messages = res.messages;
+      isGenerating = res.isGenerating;
+      sessions = res.sessions;
+      errorMessage = res.errorMessage;
+      if (res.shouldScroll) scrollToBottom();
     });
   });
 

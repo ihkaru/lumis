@@ -23,8 +23,9 @@ pub use artifact::{
 pub use audit::{AuditEventStatus, AuditLogEvent};
 pub use knowledge::{Document, DocumentChunk, KnowledgeQuery, KnowledgeQueryResult};
 pub use llm::{
-    ChatChunk, ChatCompletionRequest, ChatMessagePayload, ModelCapabilities, ModelDescriptor,
-    ProviderHealth, ProviderHealthStatus,
+    ChatChunk, ChatCompletionRequest, ChatMessageFunctionCall, ChatMessagePayload,
+    ChatMessageToolCall, ModelCapabilities, ModelDescriptor, ProviderHealth, ProviderHealthStatus,
+    ToolCallChunk,
 };
 pub use mcp::{
     McpAuthType, McpRiskTier, McpServerCreateInput, McpServerRecord, McpServerUpdateInput,

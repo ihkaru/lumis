@@ -112,6 +112,7 @@ async fn test_multi_turn_context_assembly_order_and_system_prompt() {
         &session.model_id,
         &user_memories,
         None,
+        None,
     );
 
     // Assert system prompt at index 0 contains base, custom session instructions, and user memories
@@ -190,6 +191,7 @@ async fn test_sliding_window_context_truncation_budget() {
         "Pertanyaan terakhir",
         &session.model_id,
         &[],
+        None,
         Some(350),
     );
 

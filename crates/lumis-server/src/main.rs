@@ -69,6 +69,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         trusted_header,
     );
 
+    let synced_tools = lumis_server::mcp::sync_servers_to_registry(&state.repo, &state.mcp_registry).await;
+    if synced_tools > 0 {
+        tracing::info!("Synchronized {} database MCP tools into active runtime registry", synced_tools);
+    }
+
     // 6. Optional: Initialize Resilient Multi-Provider LLM Router
     let primary_llm_url = std::env::var("LLM_API_BASE")
         .or_else(|_| std::env::var("OPENAI_BASE_URL"))
