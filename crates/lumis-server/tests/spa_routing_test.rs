@@ -68,8 +68,18 @@ async fn test_spa_asset_isolation_and_api_guard() {
     let app = test_app().await;
 
     // 1. Existing physical asset must return 200 with proper asset mime type
+    let assets_dir = if std::path::Path::new("ui/dist/assets").exists() {
+        "ui/dist/assets"
+    } else {
+        "../../ui/dist/assets"
+    };
+    let asset_file = std::fs::read_dir(assets_dir)
+        .ok()
+        .and_then(|mut entries| entries.find_map(|e| e.ok().map(|de| de.file_name().to_string_lossy().to_string())))
+        .unwrap_or_else(|| "index.html".to_string());
+
     let req_asset = Request::builder()
-        .uri("/assets/index-_r_61Sps.js")
+        .uri(format!("/assets/{}", asset_file))
         .body(Body::empty())
         .unwrap();
 

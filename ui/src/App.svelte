@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { api } from "./lib/api";
   import { router } from "./lib/router.svelte";
   import type { ArtifactSpecification, Message, Session, User } from "./lib/types";
@@ -32,12 +32,13 @@
   let selectedModelId = $state("my9model-free");
   let chatMode = $state<ChatMode>("normal");
   let errorMessage = $state<string | null>(null);
-  let isMobileDrawerOpen = $state(false);
+  let isMobileDrawerOpen = $state(typeof window !== "undefined" ? window.innerWidth >= 768 : true);
   let isSettingsOpen = $state(false);
   let isDark = $state(true);
   let themePalette = $state<ThemePalette>("llumen");
   let activeArtifact = $state<ArtifactSpecification | null>(null);
   let activeAbortController: AbortController | null = null;
+  let eventSource: EventSource | null = null;
   let messageContainerEl = $state<HTMLDivElement | null>(null);
 
   let activeSession = $derived(
@@ -63,10 +64,33 @@
       } else if (router.path === "/" && sessions.length > 0) {
         selectSession(sessions[0].id);
       }
+
+      // 9router Real-Time Zero-Copy SSE Stream listener
+      eventSource = api.connectStream((raw) => {
+        try {
+          const data = JSON.parse(raw);
+          if (data.event === "chunk" && data.session_id === activeSessionId) {
+            const lastIdx = messages.length - 1;
+            if (lastIdx >= 0 && messages[lastIdx].role === "assistant") {
+              messages[lastIdx].content += data.delta;
+              messages = [...messages];
+            } else {
+              messages = [...messages, { id: "stream_" + Date.now(), session_id: activeSessionId, role: "assistant", content: data.delta, created_at: new Date().toISOString() }];
+            }
+            scrollToBottom();
+            if (data.is_done) isGenerating = false;
+          } else if (data.event === "error" && data.session_id === activeSessionId) {
+            errorMessage = data.error;
+            isGenerating = false;
+          }
+        } catch {}
+      });
     } catch (e) {
       console.error("Init error:", e);
     }
   });
+
+  onDestroy(() => { eventSource?.close(); });
 
   // Watch URL params for deep-link navigation
   $effect(() => {
@@ -86,7 +110,7 @@
 
   async function selectSession(id: string) {
     activeSessionId = id;
-    isMobileDrawerOpen = false;
+    if (typeof window !== "undefined" && window.innerWidth < 768) isMobileDrawerOpen = false;
     errorMessage = null;
     router.navigate(`/chat/${id}`);
 
@@ -125,50 +149,28 @@
     errorMessage = null;
     activeAbortController = new AbortController();
 
-    // Optimistic UI append
-    const localUserMsg: Message = {
-      id: "temp_" + Date.now(),
-      session_id: activeSessionId,
-      role: "user",
-      content: text,
-      created_at: new Date().toISOString(),
-    };
+    // Optimistic UI append for User
+    const localUserMsg: Message = { id: "temp_" + Date.now(), session_id: activeSessionId, role: "user", content: text, created_at: new Date().toISOString() };
     messages = [...messages, localUserMsg];
     scrollToBottom();
 
     try {
       await api.sendMessage(activeSessionId, text, modelId);
-      const page = await api.listMessages(activeSessionId);
-      messages = page.items.reverse();
+      messages = [...messages, { id: "stream_" + Date.now(), session_id: activeSessionId, role: "assistant", content: "", created_at: new Date().toISOString() }];
       scrollToBottom();
     } catch (err: any) {
-      if (err.name !== "AbortError") {
-        errorMessage = err.message || "Gagal mengirimkan pesan.";
-      }
-    } finally {
+      if (err.name !== "AbortError") errorMessage = err.message || "Gagal mengirimkan pesan.";
       isGenerating = false;
+    } finally {
       activeAbortController = null;
     }
   }
 
-  function handleStop() {
-    activeAbortController?.abort();
-    activeAbortController = null;
-    isGenerating = false;
-  }
-  function scrollToBottom() {
-    setTimeout(() => { if (messageContainerEl) messageContainerEl.scrollTop = messageContainerEl.scrollHeight; }, 50);
-  }
-  function renameSession(id: string, newTitle: string) {
-    sessions = sessions.map((s) => (s.id === id ? { ...s, title: newTitle } : s));
-  }
-  function deleteSession(id: string) {
-    sessions = sessions.filter((s) => s.id !== id);
-    if (activeSessionId === id) { activeSessionId = null; messages = []; router.navigate("/chat/new"); }
-  }
-  function togglePin(target: Session) {
-    sessions = sessions.map((s) => (s.id === target.id ? { ...s, is_pinned: !s.is_pinned } : s));
-  }
+  function handleStop() { activeAbortController?.abort(); activeAbortController = null; isGenerating = false; }
+  function scrollToBottom() { setTimeout(() => { if (messageContainerEl) messageContainerEl.scrollTop = messageContainerEl.scrollHeight; }, 50); }
+  function renameSession(id: string, newTitle: string) { sessions = sessions.map((s) => (s.id === id ? { ...s, title: newTitle } : s)); }
+  function deleteSession(id: string) { sessions = sessions.filter((s) => s.id !== id); if (activeSessionId === id) { activeSessionId = null; messages = []; router.navigate("/chat/new"); } }
+  function togglePin(target: Session) { sessions = sessions.map((s) => (s.id === target.id ? { ...s, is_pinned: !s.is_pinned } : s)); }
 </script>
 
 <ErrorBoundary>
@@ -187,16 +189,6 @@
   <!-- Main Application Layout -->
   {:else}
     <div class="flex h-screen w-screen bg-background text-foreground antialiased font-sans overflow-hidden {isDark ? 'dark' : ''}">
-      <!-- Mobile Backdrop Overlay -->
-      {#if isMobileDrawerOpen}
-        <button
-          type="button"
-          class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40 md:hidden gpu-layer will-change-opacity transition-opacity duration-200 cursor-default w-full h-full border-0 p-0"
-          onclick={() => (isMobileDrawerOpen = false)}
-          aria-label="Tutup Navigasi"
-        ></button>
-      {/if}
-
       <!-- Sidebar -->
       <Sidebar
         {brandTitle}
@@ -206,7 +198,7 @@
         isOpenMobile={isMobileDrawerOpen}
         onSelectSession={selectSession}
         onCreateSession={() => {
-          isMobileDrawerOpen = false;
+          if (typeof window !== "undefined" && window.innerWidth < 768) isMobileDrawerOpen = false;
           router.navigate("/chat/new");
         }}
         onCloseMobile={() => (isMobileDrawerOpen = false)}
@@ -214,7 +206,7 @@
         onDeleteSession={deleteSession}
         onTogglePinSession={togglePin}
         onOpenSettings={() => {
-          isMobileDrawerOpen = false;
+          if (typeof window !== "undefined" && window.innerWidth < 768) isMobileDrawerOpen = false;
           isSettingsOpen = true;
         }}
       />
@@ -227,8 +219,8 @@
             <Button
               variant="outline"
               size="icon"
-              onclick={() => (isMobileDrawerOpen = true)}
-              class="md:hidden"
+              onclick={() => (isMobileDrawerOpen = !isMobileDrawerOpen)}
+              class="{isMobileDrawerOpen ? 'md:hidden' : ''} min-h-[44px] min-w-[44px] sm:min-h-9 sm:min-w-9"
               aria-label="Buka Menu"
             >
               <Menu class="w-5 h-5" />

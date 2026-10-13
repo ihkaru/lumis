@@ -127,6 +127,11 @@ impl LlmProviderDriver for OpenAiCompatibleDriver {
                             while let Some(newline_idx) = buffer.find('\n') {
                                 let line: String = buffer.drain(..=newline_idx).collect();
                                 let trimmed = line.trim();
+
+                                if trimmed.is_empty() || trimmed.starts_with(':') {
+                                    continue; // Ignore SSE keepalives & comments like : OPENROUTER PROCESSING
+                                }
+
                                 if trimmed.starts_with("data: ") {
                                     let data = trimmed.trim_start_matches("data: ").trim();
                                     if data == "[DONE]" {
@@ -138,7 +143,11 @@ impl LlmProviderDriver for OpenAiCompatibleDriver {
                                         return;
                                     }
                                     if let Ok(val) = serde_json::from_str::<serde_json::Value>(data) {
-                                        if let Some(delta) = val["choices"][0]["delta"]["content"].as_str() {
+                                        let text_opt = val["choices"][0]["delta"]["content"].as_str()
+                                            .or_else(|| val["choices"][0]["delta"]["reasoning"].as_str())
+                                            .or_else(|| val["choices"][0]["message"]["content"].as_str());
+
+                                        if let Some(delta) = text_opt {
                                             if !delta.is_empty() {
                                                 let _ = tx.send(Ok(ChatChunk {
                                                     content: delta.to_string(),
@@ -147,6 +156,19 @@ impl LlmProviderDriver for OpenAiCompatibleDriver {
                                                 })).await;
                                             }
                                         }
+                                    }
+                                } else if let Ok(val) = serde_json::from_str::<serde_json::Value>(trimmed) {
+                                    // Handle non-prefixed JSON completions or full responses
+                                    let text_opt = val["choices"][0]["message"]["content"].as_str()
+                                        .or_else(|| val["choices"][0]["delta"]["content"].as_str());
+
+                                    if let Some(text) = text_opt {
+                                        let _ = tx.send(Ok(ChatChunk {
+                                            content: text.to_string(),
+                                            is_done: true,
+                                            model: val["model"].as_str().map(|s| s.to_string()),
+                                        })).await;
+                                        return;
                                     }
                                 }
                             }
@@ -158,6 +180,13 @@ impl LlmProviderDriver for OpenAiCompatibleDriver {
                     }
                 }
             }
+
+            // Signal stream completion if not already terminated by [DONE]
+            let _ = tx.send(Ok(ChatChunk {
+                content: String::new(),
+                is_done: true,
+                model: None,
+            })).await;
         });
 
         Ok(rx)

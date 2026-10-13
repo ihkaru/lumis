@@ -93,7 +93,7 @@
 {/if}
 
 <aside
-  class="fixed md:static inset-y-0 left-0 z-50 w-72 sm:w-80 bg-card border-r border-border flex flex-col justify-between gpu-layer transform-gpu will-change-transform ease-spring-120fps transition-transform duration-200 shadow-2xl md:shadow-none {isOpenMobile ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} select-none font-sans"
+  class="fixed md:static inset-y-0 left-0 z-50 w-72 sm:w-80 bg-card border-r border-border flex flex-col justify-between gpu-layer transform-gpu will-change-transform ease-spring-120fps transition-all duration-300 shadow-2xl md:shadow-none {isOpenMobile ? 'translate-x-0 md:ml-0' : '-translate-x-full md:-ml-72 sm:md:-ml-80'} select-none font-sans shrink-0 overflow-hidden"
   ontouchstart={handleTouchStart}
   ontouchend={handleTouchEnd}
   aria-label="Sidebar Navigasi"
@@ -109,7 +109,7 @@
       </span>
     </div>
 
-    <!-- Header Actions (New Chat & Mobile Close Button) -->
+    <!-- Header Actions (New Chat & Universal Close Button) -->
     <div class="flex items-center gap-1.5 shrink-0">
       <Button
         variant="cyan"
@@ -126,11 +126,11 @@
         <span class="hidden sm:inline">Baru</span>
       </Button>
 
-      <!-- Prominent Mobile Close Button (>= 44px touch target) -->
+      <!-- Prominent Universal Close Button (Desktop & Mobile) -->
       <button
         type="button"
         onclick={onCloseMobile}
-        class="md:hidden min-h-[44px] min-w-[44px] h-11 w-11 flex items-center justify-center rounded-xl bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer border border-border/40 touch-manipulation"
+        class="min-h-[44px] min-w-[44px] h-11 w-11 flex items-center justify-center rounded-xl bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer border border-border/40 touch-manipulation"
         aria-label="Tutup Menu Navigasi"
         title="Tutup Menu Navigasi"
       >

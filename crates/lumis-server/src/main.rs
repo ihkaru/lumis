@@ -69,15 +69,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         trusted_header,
     );
 
-    // 6. Optional: Initialize Resilient Multi-Provider LLM Router (if upstream URLs configured)
+    // 6. Optional: Initialize Resilient Multi-Provider LLM Router
     let primary_llm_url = std::env::var("LLM_API_BASE")
+        .or_else(|_| std::env::var("OPENAI_BASE_URL"))
         .or_else(|_| std::env::var("OPENAI_API_BASE"))
-        .ok();
+        .or_else(|_| std::env::var("LLM_BASE_URL"))
+        .ok()
+        .filter(|s| !s.trim().is_empty())
+        .or_else(|| Some("https://router.dvlpid.my.id/v1".to_string()));
 
     if let Some(primary_url) = primary_llm_url {
-        let primary_key = std::env::var("LLM_API_KEY").or_else(|_| std::env::var("OPENAI_API_KEY")).ok();
+        let primary_key = std::env::var("LLM_API_KEY")
+            .or_else(|_| std::env::var("OPENAI_API_KEY"))
+            .ok()
+            .filter(|s| !s.trim().is_empty())
+            .or_else(|| Some("sk-9router-master-key".to_string()));
         let primary_driver = Arc::new(OpenAiCompatibleDriver::new(
-            "primary_upstream".to_string(),
+            "9router_primary".to_string(),
             primary_url,
             primary_key,
         ));

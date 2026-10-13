@@ -208,7 +208,9 @@ pub async fn send_message(
         let stream_tx = state.stream_tx.clone();
         let repo = state.repo.clone();
         let sess_id = session_id.clone();
-        let model = payload.model_id.clone().unwrap_or_else(|| "gpt-4o-mini".to_string());
+        let model = payload.model_id.clone().unwrap_or_else(|| {
+            std::env::var("DEFAULT_MODEL").unwrap_or_else(|_| "my9model-free".to_string())
+        });
         let prompt = sanitized_content;
 
         tokio::spawn(async move {
@@ -223,34 +225,51 @@ pub async fn send_message(
                 stream: true,
             };
 
-            if let Ok(mut rx) = router.complete_chat(&req).await {
-                let mut accumulated = String::new();
-                while let Some(chunk_res) = rx.recv().await {
-                    if let Ok(chunk) = chunk_res {
-                        accumulated.push_str(&chunk.content);
-                        let chunk_event = serde_json::json!({
-                            "event": "chunk",
-                            "session_id": sess_id,
-                            "delta": chunk.content,
-                            "is_done": chunk.is_done,
-                        });
-                        let _ = stream_tx.send(bytes::Bytes::from(chunk_event.to_string()));
-                        if chunk.is_done {
-                            break;
+            match router.complete_chat(&req).await {
+                Ok(mut rx) => {
+                    let mut accumulated = String::new();
+                    while let Some(chunk_res) = rx.recv().await {
+                        match chunk_res {
+                            Ok(chunk) => {
+                                accumulated.push_str(&chunk.content);
+                                let chunk_event = serde_json::json!({
+                                    "event": "chunk",
+                                    "session_id": sess_id,
+                                    "delta": chunk.content,
+                                    "is_done": chunk.is_done,
+                                });
+                                let _ = stream_tx.send(bytes::Bytes::from(chunk_event.to_string()));
+                                if chunk.is_done {
+                                    break;
+                                }
+                            }
+                            Err(e) => {
+                                tracing::error!("Error receiving chunk from LLM router: {}", e);
+                                break;
+                            }
                         }
                     }
-                }
 
-                if !accumulated.is_empty() {
-                    let assistant_msg = NewMessage {
-                        session_id: sess_id,
-                        role: MessageRole::Assistant,
-                        content: accumulated,
-                        model_id: Some(model),
-                        token_count: None,
-                        metadata: None,
-                    };
-                    let _ = repo.append_message(&assistant_msg).await;
+                    if !accumulated.is_empty() {
+                        let assistant_msg = NewMessage {
+                            session_id: sess_id,
+                            role: MessageRole::Assistant,
+                            content: accumulated,
+                            model_id: Some(model),
+                            token_count: None,
+                            metadata: None,
+                        };
+                        let _ = repo.append_message(&assistant_msg).await;
+                    }
+                }
+                Err(e) => {
+                    tracing::error!("LLM completion failed: {}", e);
+                    let err_event = serde_json::json!({
+                        "event": "error",
+                        "session_id": sess_id,
+                        "error": e.to_string(),
+                    });
+                    let _ = stream_tx.send(bytes::Bytes::from(err_event.to_string()));
                 }
             }
         });
