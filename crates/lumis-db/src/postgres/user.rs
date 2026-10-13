@@ -63,3 +63,39 @@ pub async fn upsert_user(pool: &PgPool, user: &User) -> Result<User> {
 
     Ok(user.clone())
 }
+
+pub async fn list_users(pool: &PgPool, limit: usize) -> Result<Vec<User>> {
+    let rows = sqlx::query(
+        "SELECT id, username, email, role, tenant_id, preferences, is_active, created_at, updated_at FROM users ORDER BY created_at DESC LIMIT $1"
+    )
+    .bind(limit as i64)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| LumisError::Database(e.to_string()))?;
+
+    let mut users = Vec::new();
+    for r in rows {
+        let role_num: i16 = r.get("role");
+        let role = match role_num {
+            5 => EnterpriseRole::SuperAdmin,
+            4 => EnterpriseRole::TenantAdmin,
+            3 => EnterpriseRole::PowerUser,
+            1 => EnterpriseRole::Guest,
+            _ => EnterpriseRole::Member,
+        };
+
+        users.push(User {
+            id: r.get("id"),
+            username: r.get("username"),
+            email: r.get("email"),
+            role,
+            tenant_id: r.get("tenant_id"),
+            preferences: r.get("preferences"),
+            is_active: r.get("is_active"),
+            created_at: r.get("created_at"),
+            updated_at: r.get("updated_at"),
+        });
+    }
+    Ok(users)
+}
+

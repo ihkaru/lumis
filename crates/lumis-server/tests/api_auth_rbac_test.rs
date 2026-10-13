@@ -154,3 +154,82 @@ async fn test_model_clearance_pep_enforcement() {
     let res = app.oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::CREATED);
 }
+
+#[tokio::test]
+async fn test_admin_user_management_rbac_gating() {
+    let app = test_app().await;
+
+    // 1. Member tries to list users -> 403 FORBIDDEN
+    let req = Request::builder()
+        .uri("/api/admin/users")
+        .header("x-forwarded-user", "regular_staff")
+        .header("x-forwarded-groups", "pegawai")
+        .body(Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+
+    // 2. SuperAdmin lists users -> 200 OK
+    let req = Request::builder()
+        .uri("/api/admin/users")
+        .header("x-forwarded-user", "ciso_admin")
+        .header("x-forwarded-groups", "ciso")
+        .body(Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    // 3. Member tries to update role -> 403 FORBIDDEN
+    let req = Request::builder()
+        .method("POST")
+        .uri("/api/admin/users/role")
+        .header("x-forwarded-user", "regular_staff")
+        .header("x-forwarded-groups", "pegawai")
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            serde_json::json!({
+                "username": "target_user",
+                "role": "super_admin"
+            })
+            .to_string(),
+        ))
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+
+    // 4. TenantAdmin tries to promote to SuperAdmin -> 403 FORBIDDEN
+    let req = Request::builder()
+        .method("POST")
+        .uri("/api/admin/users/role")
+        .header("x-forwarded-user", "unit_admin")
+        .header("x-forwarded-groups", "admin_satker")
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            serde_json::json!({
+                "username": "target_user",
+                "role": "super_admin"
+            })
+            .to_string(),
+        ))
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+
+    // 5. SuperAdmin updates role -> 200 OK (upserts user if not exist or returns updated)
+    let req = Request::builder()
+        .method("POST")
+        .uri("/api/admin/users/role")
+        .header("x-forwarded-user", "ciso_admin")
+        .header("x-forwarded-groups", "ciso")
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            serde_json::json!({
+                "username": "regular_staff",
+                "role": "power_user"
+            })
+            .to_string(),
+        ))
+        .unwrap();
+    let res = app.oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+}

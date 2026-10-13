@@ -55,6 +55,10 @@ impl ChatRepository for SqliteRepository {
         user::upsert_user(&self.pool, u).await
     }
 
+    async fn list_users(&self, limit: usize) -> Result<Vec<User>> {
+        user::list_users(&self.pool, limit).await
+    }
+
     async fn create_session(&self, new_session: &NewSession) -> Result<Session> {
         session::create_session(&self.pool, new_session).await
     }

@@ -12,6 +12,7 @@ pub trait ChatRepository: Send + Sync {
     async fn get_user_by_id(&self, id: &str) -> Result<Option<User>>;
     async fn get_user_by_username(&self, username: &str) -> Result<Option<User>>;
     async fn upsert_user(&self, user: &User) -> Result<User>;
+    async fn list_users(&self, limit: usize) -> Result<Vec<User>>;
 
     // Session Operations
     async fn create_session(&self, new_session: &NewSession) -> Result<Session>;

@@ -1,116 +1,84 @@
 <script lang="ts">
+  import ShieldAlert from "lucide-svelte/icons/shield-alert";
+  import Terminal from "lucide-svelte/icons/terminal";
   import Users from "lucide-svelte/icons/users";
-  import UserPlus from "lucide-svelte/icons/user-plus";
+  import FileText from "lucide-svelte/icons/file-text";
   import Activity from "lucide-svelte/icons/activity";
-  import Check from "lucide-svelte/icons/check";
-  import { Button } from "$lib/components/ui/button";
-  import { Input } from "$lib/components/ui/input";
   import { Badge } from "$lib/components/ui/badge";
-  import UserGrid from "./UserGrid.svelte";
+  import AdminKillswitchCard from "./admin/AdminKillswitchCard.svelte";
+  import AdminApprovalsList from "./admin/AdminApprovalsList.svelte";
+  import AdminUsersList from "./admin/AdminUsersList.svelte";
+  import AdminAuditLogs from "./admin/AdminAuditLogs.svelte";
+  import type { User } from "$lib/types";
 
-  interface ManagedUser {
-    id: string;
-    username: string;
-    role: string;
-    isActive: boolean;
+  interface Props {
+    user: User | null;
   }
 
-  let users = $state<ManagedUser[]>([
-    { id: "1", username: "admin.bps", role: "super_admin", isActive: true },
-    { id: "2", username: "power.user", role: "power_user", isActive: true },
-    { id: "3", username: "analyst.satker", role: "member", isActive: true },
-  ]);
+  let { user }: Props = $props();
 
-  let newUsername = $state("");
-  let newRole = $state("member");
-  let statusMessage = $state<string | null>(null);
+  let activeSubTab = $state<"soc" | "approvals" | "users" | "audit">("soc");
 
-  function handleCreateUser(e: SubmitEvent) {
-    e.preventDefault();
-    if (!newUsername.trim()) return;
-
-    users = [
-      ...users,
-      {
-        id: String(Date.now()),
-        username: newUsername.trim(),
-        role: newRole,
-        isActive: true,
-      },
-    ];
-
-    statusMessage = `Pengguna ${newUsername} berhasil ditambahkan.`;
-    newUsername = "";
-    setTimeout(() => {
-      statusMessage = null;
-    }, 3000);
-  }
+  const subTabs = [
+    { id: "soc", label: "Kontrol SOC & Engine", icon: ShieldAlert },
+    { id: "approvals", label: "Persetujuan MCP", icon: Terminal },
+    { id: "users", label: "Manajemen Pengguna", icon: Users },
+    { id: "audit", label: "Audit SIEM", icon: FileText },
+  ] as const;
 </script>
 
-<div class="space-y-6 font-sans text-xs">
-  <!-- System Health Card -->
+<div class="space-y-5 font-sans text-xs">
+  <!-- System Overview Banner -->
   <div class="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border border-border bg-card gap-2.5">
     <div class="flex items-center gap-2.5 min-w-0">
       <div class="p-2 rounded-lg bg-emerald-950/50 text-emerald-400 border border-emerald-800/40 shrink-0">
         <Activity class="h-4 w-4" />
       </div>
       <div class="min-w-0">
-        <div class="font-semibold text-xs text-foreground [overflow-wrap:anywhere] break-words">Status Engine Lumis</div>
-        <div class="text-[11px] text-muted-foreground [overflow-wrap:anywhere] break-words">Koneksi Database WAL & Model Gateway 100% Aktif</div>
+        <div class="font-semibold text-xs text-foreground [overflow-wrap:anywhere] break-words">
+          Pusat Kendali Administrasi Enterprise
+        </div>
+        <div class="text-[11px] text-muted-foreground [overflow-wrap:anywhere] break-words">
+          Akses terotorisasi untuk Administrator ({user?.role || "Admin"}). Terkoneksi ke SQLite/Postgres & SIEM.
+        </div>
       </div>
     </div>
-    <Badge variant="outline" class="text-emerald-400 border-emerald-800/40 bg-emerald-950/40 font-mono text-[10px] shrink-0 self-start sm:self-auto">
-      Ready
+    <Badge
+      variant="outline"
+      class="text-emerald-400 border-emerald-800/40 bg-emerald-950/40 font-mono text-[10px] shrink-0 self-start sm:self-auto"
+    >
+      Engine Ready
     </Badge>
   </div>
 
-  <!-- Create User Section -->
-  <div class="p-4 rounded-xl border border-border bg-card space-y-3">
-    <div class="font-semibold text-xs text-foreground flex items-center gap-2">
-      <UserPlus class="h-4 w-4 text-primary shrink-0" />
-      <span class="[overflow-wrap:anywhere] break-words">Tambah Pengguna Baru</span>
-    </div>
-
-    {#if statusMessage}
-      <div class="p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-800/40 text-emerald-400 text-xs flex items-center gap-2 [overflow-wrap:anywhere] break-words">
-        <Check class="h-3.5 w-3.5 shrink-0" />
-        <span>{statusMessage}</span>
-      </div>
-    {/if}
-
-    <form onsubmit={handleCreateUser} class="flex flex-col sm:flex-row gap-2">
-      <div class="flex-1 min-w-0">
-        <Input
-          type="text"
-          placeholder="Username / NIP..."
-          bind:value={newUsername}
-          required
-          class="h-9 text-xs"
-        />
-      </div>
-      <select
-        bind:value={newRole}
-        class="h-9 px-2.5 rounded-md border border-input bg-background text-xs font-sans text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring shrink-0"
+  <!-- Sub Navigation Bar -->
+  <div class="flex items-center gap-1.5 p-1 rounded-xl bg-muted/40 border border-border/80 overflow-x-auto no-scrollbar">
+    {#each subTabs as tab}
+      {@const Icon = tab.icon}
+      {@const isActive = activeSubTab === tab.id}
+      <button
+        type="button"
+        onclick={() => (activeSubTab = tab.id)}
+        class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium cursor-pointer transition-colors shrink-0 min-h-[44px] sm:min-h-8 touch-manipulation {isActive ? 'bg-card text-foreground font-semibold shadow-xs border border-border/80' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'}"
       >
-        <option value="member">Member</option>
-        <option value="power_user">Power User</option>
-        <option value="tenant_admin">Tenant Admin</option>
-        <option value="super_admin">Super Admin</option>
-      </select>
-      <Button type="submit" variant="default" size="sm" class="gap-1.5 text-xs min-h-[44px] sm:min-h-9 touch-manipulation whitespace-normal break-words shrink-0">
-        <UserPlus class="h-3.5 w-3.5 shrink-0" />
-        <span>Tambah</span>
-      </Button>
-    </form>
+        <Icon class="h-3.5 w-3.5 shrink-0" />
+        <span class="whitespace-nowrap [overflow-wrap:anywhere]">
+          {tab.label}
+        </span>
+      </button>
+    {/each}
   </div>
 
-  <!-- User Grid Table -->
-  <div class="p-4 rounded-xl border border-border bg-card space-y-3">
-    <div class="font-semibold text-xs text-foreground flex items-center gap-2">
-      <Users class="h-4 w-4 text-primary shrink-0" />
-      <span class="[overflow-wrap:anywhere] break-words">Daftar Pengguna Aktif</span>
-    </div>
-
-    <UserGrid {users} />
+  <!-- Sub Tab Contents -->
+  <div class="min-w-0">
+    {#if activeSubTab === "soc"}
+      <AdminKillswitchCard />
+    {:else if activeSubTab === "approvals"}
+      <AdminApprovalsList />
+    {:else if activeSubTab === "users"}
+      <AdminUsersList currentUser={user} />
+    {:else if activeSubTab === "audit"}
+      <AdminAuditLogs />
+    {/if}
   </div>
 </div>

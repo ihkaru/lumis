@@ -121,7 +121,12 @@ impl ClaimTranslator for DefaultClaimTranslator {
 
     fn resolve_effective_role(&self, claims: &UserClaims) -> EnterpriseRole {
         if claims.roles.is_empty() {
-            EnterpriseRole::Member
+            let role_from_user = EnterpriseRole::from_str(&claims.username);
+            if role_from_user.is_at_least(EnterpriseRole::TenantAdmin) {
+                role_from_user
+            } else {
+                EnterpriseRole::Member
+            }
         } else {
             EnterpriseRole::from_claims(&claims.roles)
         }

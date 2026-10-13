@@ -109,5 +109,36 @@ export interface ModelDescriptor {
   can_access: boolean;
 }
 
+export interface KillswitchStatus {
+  active: boolean;
+  reason: string | null;
+  activated_by: string | null;
+}
+
+export interface SiemAuditEvent {
+  event_id?: string;
+  id?: string;
+  timestamp: string;
+  tenant_id: string;
+  actor_id: string;
+  actor_role: string;
+  action?: string;
+  event_type?: string;
+  status: string;
+  resource_id?: string;
+  details: Record<string, unknown>;
+}
+
+export interface PendingToolApproval {
+  token: string;
+  tool_name: string;
+  caller_id: string;
+  caller_role: string;
+  risk_level: string;
+  args: Record<string, unknown>;
+  created_at: string;
+}
+
+
 
 

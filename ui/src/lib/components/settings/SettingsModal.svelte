@@ -37,13 +37,21 @@
 
   let activeTab = $state("account");
 
-  const tabList = [
+  const isAdmin = $derived(user?.role === "super_admin" || user?.role === "tenant_admin");
+
+  const tabList = $derived([
     { id: "account", label: "Akun & Profil", icon: UserIcon },
     { id: "themes", label: "Tema & Warna", icon: Palette },
     { id: "memories", label: "Memori AI", icon: Brain },
     { id: "providers", label: "Provider AI", icon: Server },
-    { id: "admin", label: "Administrasi", icon: ShieldCheck },
-  ];
+    ...(isAdmin ? [{ id: "admin", label: "Administrasi", icon: ShieldCheck }] : []),
+  ]);
+
+  $effect(() => {
+    if (!isAdmin && activeTab === "admin") {
+      activeTab = "account";
+    }
+  });
 </script>
 
 <Dialog open={isOpen}>
@@ -98,9 +106,11 @@
           <TabsContent value="providers">
             <ProviderKeysTab />
           </TabsContent>
-          <TabsContent value="admin">
-            <AdminTab />
-          </TabsContent>
+          {#if isAdmin}
+            <TabsContent value="admin">
+              <AdminTab {user} />
+            </TabsContent>
+          {/if}
         </Tabs>
       </div>
     </main>

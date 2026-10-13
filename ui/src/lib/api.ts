@@ -4,10 +4,13 @@ import type {
   BrandingConfig,
   CursorPage,
   DriverHealth,
+  KillswitchStatus,
   Message,
   ModelDescriptor,
+  PendingToolApproval,
   RoleHierarchyInfo,
   Session,
+  SiemAuditEvent,
   User,
   UserMemory,
 } from "./types";
@@ -174,5 +177,71 @@ export const api = {
       method: "DELETE",
     });
     if (!res.ok) throw new Error("Failed to delete memory");
+  },
+
+  async getKillswitch(): Promise<KillswitchStatus> {
+    const res = await fetch("/api/admin/emergency/killswitch");
+    if (!res.ok) throw new Error("Failed to fetch killswitch status");
+    return res.json();
+  },
+
+  async setKillswitch(active: boolean, reason: string): Promise<KillswitchStatus> {
+    const res = await fetch("/api/admin/emergency/killswitch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ active, reason }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: "Failed to update killswitch" }));
+      throw new Error(err.error || "Failed to update killswitch");
+    }
+    return res.json();
+  },
+
+  async getAuditEvents(limit = 50): Promise<SiemAuditEvent[]> {
+    const res = await fetch(`/api/admin/audit/events?limit=${limit}`);
+    if (!res.ok) throw new Error("Failed to fetch audit events");
+    return res.json();
+  },
+
+  async getPendingApprovals(): Promise<PendingToolApproval[]> {
+    const res = await fetch("/api/mcp/approvals/pending");
+    if (!res.ok) throw new Error("Failed to fetch pending approvals");
+    return res.json();
+  },
+
+  async resolveApproval(token: string, approved: boolean, reason?: string): Promise<{ status: string }> {
+    const endpoint = approved
+      ? `/api/mcp/approvals/${token}/approve`
+      : `/api/mcp/approvals/${token}/deny`;
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: reason || (approved ? "Approved by admin" : "Denied by admin") }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: "Failed to resolve approval" }));
+      throw new Error(err.error || "Failed to resolve approval");
+    }
+    return res.json();
+  },
+
+  async listAdminUsers(): Promise<User[]> {
+    const res = await fetch("/api/admin/users");
+    if (!res.ok) throw new Error("Failed to list users");
+    return res.json();
+  },
+
+  async updateUserRole(username: string, role: string): Promise<User> {
+    const res = await fetch("/api/admin/users/role", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, role }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: "Failed to update user role" }));
+      throw new Error(err.error || "Failed to update user role");
+    }
+    return res.json();
   },
 };
