@@ -12,11 +12,11 @@ services:
       - DATABASE_URL=sqlite:///data/lumis.sqlite?mode=rwc
       - TRUSTED_HEADER=x-forwarded-user
       - RUST_LOG=lumis_server=info,tower_http=info
-      - LLM_API_BASE=${LLM_API_BASE:-https://router.dvlpid.my.id/v1}
-      - LLM_API_KEY=${LLM_API_KEY:-sk-9router-master-key}
-      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://router.dvlpid.my.id/v1}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-sk-9router-master-key}
-      - DEFAULT_MODEL=${DEFAULT_MODEL:-my9model-free}
+      - LLM_API_BASE=${LLM_API_BASE:-https://api.openai.com/v1}
+      - LLM_API_KEY=${LLM_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DEFAULT_MODEL=${DEFAULT_MODEL:-gpt-4o-mini}
       - LLM_BACKUP_API_BASE=${LLM_BACKUP_API_BASE}
       - LLM_BACKUP_API_KEY=${LLM_BACKUP_API_KEY}
       - SENTRY_DSN=${SENTRY_DSN}
