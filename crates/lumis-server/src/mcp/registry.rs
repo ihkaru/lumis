@@ -70,6 +70,15 @@ impl McpRegistry for InMemoryMcpRegistry {
         Ok(())
     }
 
+    async fn unregister_tool(&self, name: &str) -> Result<bool> {
+        let mut tools = self.tools.write().unwrap();
+        let removed = tools.remove(name).is_some();
+        if removed {
+            self.revision.fetch_add(1, Ordering::SeqCst);
+        }
+        Ok(removed)
+    }
+
     async fn list_tools(&self, caller_role: EnterpriseRole) -> Vec<McpToolDefinition> {
         let tools = self.tools.read().unwrap();
         tools

@@ -1,5 +1,6 @@
 pub mod driver;
 pub mod identity;
+pub mod mcp;
 pub mod memory;
 pub mod message;
 pub mod schema;
@@ -172,5 +173,38 @@ impl ChatRepository for PostgresRepository {
 
     async fn delete_scim_group(&self, id: &str) -> Result<bool> {
         scim::delete_scim_group(&self.pool, id).await
+    }
+
+    // Model Context Protocol (MCP 2026) Server & Tool Persistence
+    async fn create_mcp_server(&self, server: &lumis_core::models::mcp::McpServerRecord) -> Result<lumis_core::models::mcp::McpServerRecord> {
+        mcp::create_mcp_server(&self.pool, server).await
+    }
+
+    async fn get_mcp_server(&self, id: &str, tenant_id: &str) -> Result<Option<lumis_core::models::mcp::McpServerRecord>> {
+        mcp::get_mcp_server(&self.pool, id, tenant_id).await
+    }
+
+    async fn list_mcp_servers(&self, tenant_id: &str) -> Result<Vec<lumis_core::models::mcp::McpServerRecord>> {
+        mcp::list_mcp_servers(&self.pool, tenant_id).await
+    }
+
+    async fn update_mcp_server(&self, server: &lumis_core::models::mcp::McpServerRecord) -> Result<lumis_core::models::mcp::McpServerRecord> {
+        mcp::update_mcp_server(&self.pool, server).await
+    }
+
+    async fn delete_mcp_server(&self, id: &str, tenant_id: &str) -> Result<bool> {
+        mcp::delete_mcp_server(&self.pool, id, tenant_id).await
+    }
+
+    async fn sync_mcp_tools(&self, server_id: &str, tools: &[lumis_core::models::mcp::McpToolRecord]) -> Result<()> {
+        mcp::sync_mcp_tools(&self.pool, server_id, tools).await
+    }
+
+    async fn list_mcp_tools(&self, server_id: &str) -> Result<Vec<lumis_core::models::mcp::McpToolRecord>> {
+        mcp::list_mcp_tools(&self.pool, server_id).await
+    }
+
+    async fn log_mcp_invocation(&self, invocation: &lumis_core::models::mcp::McpToolInvocationRecord) -> Result<()> {
+        mcp::log_mcp_invocation(&self.pool, invocation).await
     }
 }

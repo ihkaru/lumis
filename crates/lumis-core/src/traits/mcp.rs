@@ -30,6 +30,11 @@ pub trait McpRegistry: Send + Sync {
     /// Registers a tool executor into the runtime registry.
     async fn register_tool(&self, executor: Arc<dyn McpToolExecutor>) -> Result<()>;
 
+    /// Unregisters a tool from the runtime registry.
+    async fn unregister_tool(&self, _name: &str) -> Result<bool> {
+        Ok(false)
+    }
+
     /// Lists tools accessible to the caller based on their role.
     async fn list_tools(&self, caller_role: EnterpriseRole) -> Vec<McpToolDefinition>;
 

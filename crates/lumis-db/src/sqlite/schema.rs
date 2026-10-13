@@ -113,6 +113,53 @@ pub async fn run_sqlite_migrations(pool: &SqlitePool) -> Result<()> {
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS mcp_servers (
+            id TEXT PRIMARY KEY,
+            tenant_id TEXT NOT NULL,
+            created_by TEXT NOT NULL REFERENCES users(id),
+            name TEXT NOT NULL,
+            display_title TEXT NOT NULL,
+            description TEXT,
+            transport_type TEXT NOT NULL,
+            endpoint_url TEXT,
+            command_bin TEXT,
+            command_args TEXT,
+            auth_type TEXT NOT NULL,
+            encrypted_credentials TEXT,
+            is_enabled INTEGER NOT NULL DEFAULT 1,
+            risk_tier INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            CONSTRAINT uq_mcp_server_tenant_name UNIQUE (tenant_id, name)
+        );
+
+        CREATE TABLE IF NOT EXISTS mcp_tools (
+            id TEXT PRIMARY KEY,
+            server_id TEXT NOT NULL REFERENCES mcp_servers(id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            description TEXT,
+            input_schema_json TEXT NOT NULL DEFAULT '{}',
+            risk_tier INTEGER NOT NULL DEFAULT 1,
+            requires_approval INTEGER NOT NULL DEFAULT 0,
+            updated_at TEXT NOT NULL,
+            CONSTRAINT uq_mcp_tool_server_name UNIQUE (server_id, name)
+        );
+
+        CREATE TABLE IF NOT EXISTS mcp_tool_invocations (
+            id TEXT PRIMARY KEY,
+            tenant_id TEXT NOT NULL,
+            user_id TEXT NOT NULL REFERENCES users(id),
+            server_id TEXT NOT NULL REFERENCES mcp_servers(id) ON DELETE CASCADE,
+            tool_name TEXT NOT NULL,
+            status TEXT NOT NULL,
+            execution_time_ms INTEGER NOT NULL,
+            approval_token TEXT,
+            created_at TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_mcp_invocations_tenant_user
+            ON mcp_tool_invocations (tenant_id, user_id, created_at DESC);
         "#,
     )
     .execute(pool)

@@ -4,9 +4,11 @@
   import Users from "lucide-svelte/icons/users";
   import FileText from "lucide-svelte/icons/file-text";
   import Activity from "lucide-svelte/icons/activity";
+  import Server from "lucide-svelte/icons/server";
   import { Badge } from "$lib/components/ui/badge";
   import AdminKillswitchCard from "./admin/AdminKillswitchCard.svelte";
   import AdminApprovalsList from "./admin/AdminApprovalsList.svelte";
+  import AdminMcpServersList from "./admin/AdminMcpServersList.svelte";
   import AdminUsersList from "./admin/AdminUsersList.svelte";
   import AdminAuditLogs from "./admin/AdminAuditLogs.svelte";
   import type { User } from "$lib/types";
@@ -17,11 +19,12 @@
 
   let { user }: Props = $props();
 
-  let activeSubTab = $state<"soc" | "approvals" | "users" | "audit">("soc");
+  let activeSubTab = $state<"soc" | "approvals" | "mcp-servers" | "users" | "audit">("soc");
 
   const subTabs = [
     { id: "soc", label: "Kontrol SOC & Engine", icon: ShieldAlert },
     { id: "approvals", label: "Persetujuan MCP", icon: Terminal },
+    { id: "mcp-servers", label: "Server MCP", icon: Server },
     { id: "users", label: "Manajemen Pengguna", icon: Users },
     { id: "audit", label: "Audit SIEM", icon: FileText },
   ] as const;
@@ -75,6 +78,8 @@
       <AdminKillswitchCard />
     {:else if activeSubTab === "approvals"}
       <AdminApprovalsList />
+    {:else if activeSubTab === "mcp-servers"}
+      <AdminMcpServersList />
     {:else if activeSubTab === "users"}
       <AdminUsersList currentUser={user} />
     {:else if activeSubTab === "audit"}

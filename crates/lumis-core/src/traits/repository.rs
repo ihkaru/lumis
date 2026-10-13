@@ -64,5 +64,15 @@ pub trait ChatRepository: Send + Sync {
     async fn get_scim_group(&self, id: &str) -> Result<Option<crate::models::scim::ScimGroup>>;
     async fn upsert_scim_group(&self, group: &crate::models::scim::ScimGroup) -> Result<crate::models::scim::ScimGroup>;
     async fn delete_scim_group(&self, id: &str) -> Result<bool>;
+
+    // Model Context Protocol (MCP 2026) Server & Tool Persistence
+    async fn create_mcp_server(&self, server: &crate::models::mcp::McpServerRecord) -> Result<crate::models::mcp::McpServerRecord>;
+    async fn get_mcp_server(&self, id: &str, tenant_id: &str) -> Result<Option<crate::models::mcp::McpServerRecord>>;
+    async fn list_mcp_servers(&self, tenant_id: &str) -> Result<Vec<crate::models::mcp::McpServerRecord>>;
+    async fn update_mcp_server(&self, server: &crate::models::mcp::McpServerRecord) -> Result<crate::models::mcp::McpServerRecord>;
+    async fn delete_mcp_server(&self, id: &str, tenant_id: &str) -> Result<bool>;
+    async fn sync_mcp_tools(&self, server_id: &str, tools: &[crate::models::mcp::McpToolRecord]) -> Result<()>;
+    async fn list_mcp_tools(&self, server_id: &str) -> Result<Vec<crate::models::mcp::McpToolRecord>>;
+    async fn log_mcp_invocation(&self, invocation: &crate::models::mcp::McpToolInvocationRecord) -> Result<()>;
 }
 

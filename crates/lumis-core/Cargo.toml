@@ -17,4 +17,6 @@ bytes.workspace = true
 smallvec.workspace = true
 tokio = { workspace = true, features = ["sync"] }
 sha2.workspace = true
+aes-gcm.workspace = true
+base64.workspace = true
 

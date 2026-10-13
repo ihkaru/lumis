@@ -26,7 +26,11 @@ pub use llm::{
     ChatChunk, ChatCompletionRequest, ChatMessagePayload, ModelCapabilities, ModelDescriptor,
     ProviderHealth, ProviderHealthStatus,
 };
-pub use mcp::{McpTaskState, McpTaskStatus, McpToolCallRequest, McpToolCallResult, McpToolDefinition};
+pub use mcp::{
+    McpAuthType, McpRiskTier, McpServerCreateInput, McpServerRecord, McpServerUpdateInput,
+    McpTaskState, McpTaskStatus, McpToolCallRequest, McpToolCallResult, McpToolDefinition,
+    McpToolInvocationRecord, McpToolRecord, McpTransportType,
+};
 pub use message::{Message, MessageRole, NewMessage};
 pub use pagination::{CursorPage, CursorQuery};
 pub use prompt_cache::{IdempotencyRecord, IdempotencyState, McpCatalogRevision, PromptLayout};

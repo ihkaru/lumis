@@ -25,6 +25,9 @@ pub enum LumisError {
     #[error("Configuration error: {0}")]
     Config(String),
 
+    #[error("Validation error: {0}")]
+    Validation(String),
+
     #[error("Internal error: {0}")]
     Internal(String),
 }

@@ -6,6 +6,7 @@
 
 pub mod error;
 pub mod models;
+pub mod security;
 pub mod traits;
 
 pub use error::{LumisError, Result};
@@ -13,9 +14,11 @@ pub use models::{
     ArtifactIpcAction, ArtifactIpcRequest, ArtifactIpcResponse, ArtifactParser,
     ArtifactSpecification, ArtifactType, AuditEventStatus, AuditLogEvent, ChatChunk,
     ChatCompletionRequest, ChatMessagePayload, CursorPage, CursorQuery, Document,
-    DocumentChunk, EnterpriseRole, KnowledgeQuery, KnowledgeQueryResult, McpTaskState,
-    McpTaskStatus, McpToolCallRequest, McpToolCallResult, McpToolDefinition, Message,
-    MessageRole, ModelClearanceTier, NewMessage, NewSession, ProviderHealth, ProviderHealthStatus,
+    DocumentChunk, EnterpriseRole, KnowledgeQuery, KnowledgeQueryResult, McpAuthType,
+    McpRiskTier, McpServerCreateInput, McpServerRecord, McpServerUpdateInput, McpTaskState,
+    McpTaskStatus, McpToolCallRequest, McpToolCallResult, McpToolDefinition,
+    McpToolInvocationRecord, McpToolRecord, McpTransportType, Message, MessageRole,
+    ModelClearanceTier, NewMessage, NewSession, ProviderHealth, ProviderHealthStatus,
     QuotaCheckResult, Session, TokenUsageRecord, User, UserClaims,
 };
 pub use traits::{

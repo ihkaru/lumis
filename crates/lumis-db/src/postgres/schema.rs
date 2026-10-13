@@ -110,6 +110,53 @@ pub async fn run_pg_migrations(pool: &PgPool) -> Result<()> {
             created_at TIMESTAMPTZ NOT NULL,
             updated_at TIMESTAMPTZ NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS mcp_servers (
+            id VARCHAR(64) PRIMARY KEY,
+            tenant_id VARCHAR(64) NOT NULL,
+            created_by VARCHAR(64) NOT NULL REFERENCES users(id),
+            name VARCHAR(64) NOT NULL,
+            display_title VARCHAR(128) NOT NULL,
+            description TEXT,
+            transport_type VARCHAR(24) NOT NULL,
+            endpoint_url TEXT,
+            command_bin VARCHAR(128),
+            command_args TEXT,
+            auth_type VARCHAR(24) NOT NULL,
+            encrypted_credentials TEXT,
+            is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+            risk_tier SMALLINT NOT NULL DEFAULT 1,
+            created_at TIMESTAMPTZ NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL,
+            CONSTRAINT uq_pg_mcp_server_tenant_name UNIQUE (tenant_id, name)
+        );
+
+        CREATE TABLE IF NOT EXISTS mcp_tools (
+            id VARCHAR(64) PRIMARY KEY,
+            server_id VARCHAR(64) NOT NULL REFERENCES mcp_servers(id) ON DELETE CASCADE,
+            name VARCHAR(64) NOT NULL,
+            description TEXT,
+            input_schema_json TEXT NOT NULL DEFAULT '{}',
+            risk_tier SMALLINT NOT NULL DEFAULT 1,
+            requires_approval BOOLEAN NOT NULL DEFAULT FALSE,
+            updated_at TIMESTAMPTZ NOT NULL,
+            CONSTRAINT uq_pg_mcp_tool_server_name UNIQUE (server_id, name)
+        );
+
+        CREATE TABLE IF NOT EXISTS mcp_tool_invocations (
+            id VARCHAR(64) PRIMARY KEY,
+            tenant_id VARCHAR(64) NOT NULL,
+            user_id VARCHAR(64) NOT NULL REFERENCES users(id),
+            server_id VARCHAR(64) NOT NULL REFERENCES mcp_servers(id) ON DELETE CASCADE,
+            tool_name VARCHAR(64) NOT NULL,
+            status VARCHAR(24) NOT NULL,
+            execution_time_ms INTEGER NOT NULL,
+            approval_token VARCHAR(64),
+            created_at TIMESTAMPTZ NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_pg_mcp_invocations_tenant_user
+            ON mcp_tool_invocations (tenant_id, user_id, created_at DESC);
         "#,
     )
     .execute(pool)

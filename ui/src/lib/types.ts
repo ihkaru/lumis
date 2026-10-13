@@ -139,6 +139,32 @@ export interface PendingToolApproval {
   created_at: string;
 }
 
+export interface McpServerItem {
+  id: string;
+  tenant_id: string;
+  name: string;
+  display_title: string;
+  description?: string;
+  transport_type: "sse" | "streamable_http" | "stdio";
+  endpoint_url?: string;
+  auth_type: "none" | "bearer" | "basic" | "oauth2" | "obo";
+  is_enabled: boolean;
+  risk_tier: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface McpToolItem {
+  id: string;
+  server_id: string;
+  name: string;
+  description?: string;
+  input_schema_json: string;
+  risk_tier: number;
+  requires_approval: boolean;
+  updated_at: string;
+}
+
 
 
 

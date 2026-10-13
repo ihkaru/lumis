@@ -5,6 +5,8 @@ import type {
   CursorPage,
   DriverHealth,
   KillswitchStatus,
+  McpServerItem,
+  McpToolItem,
   Message,
   ModelDescriptor,
   PendingToolApproval,
@@ -254,6 +256,63 @@ export const api = {
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: "Gagal memperbarui kata sandi" }));
       throw new Error(err.error || "Gagal memperbarui kata sandi");
+    }
+    return res.json();
+  },
+
+  async listMcpServers(): Promise<{ servers: McpServerItem[] }> {
+    const res = await fetch("/api/mcp/servers");
+    if (!res.ok) throw new Error("Gagal mengambil daftar server MCP");
+    return res.json();
+  },
+
+  async createMcpServer(payload: any): Promise<{ server: McpServerItem; tools_count: number }> {
+    const res = await fetch("/api/mcp/servers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: "Gagal membuat server MCP" }));
+      throw new Error(err.error || "Gagal membuat server MCP");
+    }
+    return res.json();
+  },
+
+  async getMcpServer(id: string): Promise<{ server: McpServerItem; tools: McpToolItem[] }> {
+    const res = await fetch(`/api/mcp/servers/${id}`);
+    if (!res.ok) throw new Error("Gagal mengambil detail server MCP");
+    return res.json();
+  },
+
+  async updateMcpServer(id: string, payload: any): Promise<{ server: McpServerItem }> {
+    const res = await fetch(`/api/mcp/servers/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: "Gagal memperbarui server MCP" }));
+      throw new Error(err.error || "Gagal memperbarui server MCP");
+    }
+    return res.json();
+  },
+
+  async deleteMcpServer(id: string): Promise<boolean> {
+    const res = await fetch(`/api/mcp/servers/${id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Gagal menghapus server MCP");
+    return true;
+  },
+
+  async testMcpEndpoint(payload: { endpoint_url: string; auth_type?: string; raw_credentials?: string }): Promise<{ success: boolean; count: number }> {
+    const res = await fetch("/api/mcp/servers/test-endpoint", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: "Uji koneksi gagal" }));
+      throw new Error(err.error || "Uji koneksi gagal");
     }
     return res.json();
   },

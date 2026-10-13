@@ -50,3 +50,162 @@ pub struct McpTaskStatus {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
+
+/// Supported transport protocols for external MCP servers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum McpTransportType {
+    Sse,
+    StreamableHttp,
+    Stdio,
+}
+
+impl McpTransportType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Sse => "sse",
+            Self::StreamableHttp => "streamable_http",
+            Self::Stdio => "stdio",
+        }
+    }
+
+    pub fn from_str_opt(s: &str) -> Option<Self> {
+        match s {
+            "sse" => Some(Self::Sse),
+            "streamable_http" => Some(Self::StreamableHttp),
+            "stdio" => Some(Self::Stdio),
+            _ => None,
+        }
+    }
+}
+
+/// Supported authentication schemes for MCP servers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum McpAuthType {
+    None,
+    Bearer,
+    Basic,
+    OAuth2,
+    Obo,
+}
+
+impl McpAuthType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::Bearer => "bearer",
+            Self::Basic => "basic",
+            Self::OAuth2 => "oauth2",
+            Self::Obo => "obo",
+        }
+    }
+
+    pub fn from_str_opt(s: &str) -> Option<Self> {
+        match s {
+            "none" => Some(Self::None),
+            "bearer" => Some(Self::Bearer),
+            "basic" => Some(Self::Basic),
+            "oauth2" => Some(Self::OAuth2),
+            "obo" => Some(Self::Obo),
+            _ => None,
+        }
+    }
+}
+
+/// Security clearance and risk classification for MCP tools.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum McpRiskTier {
+    Safe = 1,
+    Mutation = 2,
+    Destructive = 3,
+}
+
+impl McpRiskTier {
+    pub fn as_i16(&self) -> i16 {
+        *self as i16
+    }
+
+    pub fn from_i16(val: i16) -> Self {
+        match val {
+            2 => Self::Mutation,
+            3 => Self::Destructive,
+            _ => Self::Safe,
+        }
+    }
+}
+
+/// Relational database record representing a registered MCP server.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct McpServerRecord {
+    pub id: String,
+    pub tenant_id: String,
+    pub created_by: String,
+    pub name: String,
+    pub display_title: String,
+    pub description: Option<String>,
+    pub transport_type: McpTransportType,
+    pub endpoint_url: Option<String>,
+    pub command_bin: Option<String>,
+    pub command_args: Option<Vec<String>>,
+    pub auth_type: McpAuthType,
+    pub encrypted_credentials: Option<String>,
+    pub is_enabled: bool,
+    pub risk_tier: McpRiskTier,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// Input payload to create a new MCP server.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct McpServerCreateInput {
+    pub name: String,
+    pub display_title: String,
+    pub description: Option<String>,
+    pub transport_type: McpTransportType,
+    pub endpoint_url: Option<String>,
+    pub command_bin: Option<String>,
+    pub command_args: Option<Vec<String>>,
+    pub auth_type: McpAuthType,
+    pub raw_credentials: Option<String>,
+    pub risk_tier: Option<McpRiskTier>,
+}
+
+/// Input payload to update an existing MCP server.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct McpServerUpdateInput {
+    pub display_title: Option<String>,
+    pub description: Option<String>,
+    pub endpoint_url: Option<String>,
+    pub raw_credentials: Option<String>,
+    pub is_enabled: Option<bool>,
+    pub risk_tier: Option<McpRiskTier>,
+}
+
+/// Relational database record representing an individual MCP tool discovered from a server.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct McpToolRecord {
+    pub id: String,
+    pub server_id: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub input_schema_json: String,
+    pub risk_tier: McpRiskTier,
+    pub requires_approval: bool,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// Relational audit log record for MCP tool execution.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct McpToolInvocationRecord {
+    pub id: String,
+    pub tenant_id: String,
+    pub user_id: String,
+    pub server_id: String,
+    pub tool_name: String,
+    pub status: String,
+    pub execution_time_ms: u32,
+    pub approval_token: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
