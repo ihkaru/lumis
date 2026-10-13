@@ -44,7 +44,7 @@
 
   // Extract tools, research steps & citations from metadata if present
   let toolCalls = $derived(
-    (message.metadata?.tool_calls as Array<{ tool: string; args: any; result: any }>) || []
+    (message.metadata?.tool_calls as Array<{ tool: string; server?: string; args: any; result: any; error?: string }>) || []
   );
 
   let citations = $derived(
@@ -103,8 +103,8 @@
       </div>
     </div>
 
-    <!-- Bubble Body -->
-    <div class="w-full px-5 py-4 rounded-2xl rounded-tl-none bg-card border border-border/80 text-foreground shadow-xs [overflow-wrap:anywhere]">
+    <!-- Assistant Response Stream (Borderless, Flat Modern Layout) -->
+    <div class="w-full text-foreground [overflow-wrap:anywhere] space-y-3 pt-0.5">
       <!-- Deep Research Timeline if active -->
       {#if researchSteps.length > 0}
         <DeepResearchProgress steps={researchSteps} isActive={isStreaming} />
@@ -112,7 +112,7 @@
 
       <!-- Tool Cards -->
       {#each toolCalls as tc}
-        <ToolCard toolName={tc.tool} args={tc.args} result={tc.result} />
+        <ToolCard toolName={tc.tool} serverName={tc.server} args={tc.args} result={tc.result} error={tc.error} />
       {/each}
 
       <!-- Markdown & Reasoning Body -->
@@ -129,7 +129,7 @@
             <span>Interactive Artifacts ({parsed.artifacts.length})</span>
           </div>
           {#each parsed.artifacts as art}
-            <div class="flex items-center justify-between p-2.5 rounded-xl bg-background/80 border border-border gap-2">
+            <div class="flex items-center justify-between p-2.5 rounded-xl bg-muted/30 border border-border/60 gap-2">
               <div class="flex items-center gap-2 min-w-0">
                 <span class="font-medium text-xs text-foreground truncate">{art.title}</span>
                 <Badge variant="outline" class="text-[10px] uppercase font-mono shrink-0">
