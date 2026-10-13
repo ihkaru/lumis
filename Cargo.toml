@@ -7,11 +7,11 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 license = "MIT"
-authors = ["IPDS 6104 <ipds6104@bps.go.id>"]
-repository = "https://github.com/ipds6104/lumis"
+authors = ["IPDS 6104 <ipds6104@bps.go.id>", "Ihkaru <ihkaru@users.noreply.github.com>"]
+repository = "https://github.com/ihkaru/lumis"
 
 [workspace.dependencies]
 tokio = { version = "1.43", features = ["full"] }
