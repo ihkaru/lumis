@@ -41,30 +41,30 @@ pub struct AcsFormPayload {
 fn get_idp_sso_url() -> String {
     env::var("SAML_SSO_URL")
         .or_else(|_| env::var("RIDM_BPS_SAML_SSO_URL"))
-        .unwrap_or_else(|_| "https://auth.dvlpid.my.id/t/bps/saml/sso".to_string())
+        .unwrap_or_else(|_| "https://sso.enterprise.internal/saml/sso".to_string())
 }
 
 fn get_idp_metadata_url() -> String {
     env::var("SAML_METADATA_URL")
         .or_else(|_| env::var("RIDM_BPS_SAML_METADATA_URL"))
-        .unwrap_or_else(|_| "https://auth.dvlpid.my.id/t/bps/saml/metadata".to_string())
+        .unwrap_or_else(|_| "https://sso.enterprise.internal/saml/metadata".to_string())
 }
 
 fn get_sp_entity_id() -> String {
     env::var("SAML_SP_ENTITY_ID")
-        .unwrap_or_else(|_| "https://chat.dvlpid.my.id/saml/metadata".to_string())
+        .unwrap_or_else(|_| "http://localhost:8080/saml/metadata".to_string())
 }
 
 fn get_sp_acs_url() -> String {
     env::var("SAML_SP_ACS_URL")
-        .unwrap_or_else(|_| "https://chat.dvlpid.my.id/api/auth/saml/acs".to_string())
+        .unwrap_or_else(|_| "http://localhost:8080/api/auth/saml/acs".to_string())
 }
 
 pub async fn saml_config() -> impl IntoResponse {
     let resp = SamlConfigResponse {
-        provider: "rIDM".to_string(),
-        tenant: "bps".to_string(),
-        idp_entity_id: "https://auth.dvlpid.my.id/t/bps".to_string(),
+        provider: env::var("SAML_IDP_PROVIDER_NAME").unwrap_or_else(|_| "Enterprise_SAML".to_string()),
+        tenant: env::var("SAML_TENANT").unwrap_or_else(|_| "default".to_string()),
+        idp_entity_id: env::var("SAML_IDP_ENTITY_ID").unwrap_or_else(|_| "https://sso.enterprise.internal".to_string()),
         idp_sso_url: get_idp_sso_url(),
         idp_metadata_url: get_idp_metadata_url(),
         sp_entity_id: get_sp_entity_id(),
@@ -183,7 +183,7 @@ pub async fn saml_acs(
         .or_else(|| extract_tag(&saml_xml, "NameID"))
         .or_else(|| extract_tag(&saml_xml, "nameid"))
         .or_else(|| extract_attr_val(&saml_xml, "email"))
-        .unwrap_or_else(|| "bps_user".to_string());
+        .unwrap_or_else(|| "saml_user".to_string());
 
     let role_raw = extract_attr_val(&saml_xml, "Role")
         .or_else(|| extract_attr_val(&saml_xml, "groups"))

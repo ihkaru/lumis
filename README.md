@@ -101,7 +101,7 @@ flowchart TD
 
 ### 1. Menjalankan Backend (Standalone Mode)
 ```bash
-git clone https://github.com/ipds6104/lumis.git
+git clone https://github.com/ihkaru/lumis.git
 cd lumis
 cargo run -p lumis-server
 ```

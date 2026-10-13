@@ -115,7 +115,7 @@
         <Input
           type="text"
           bind:value={newContent}
-          placeholder="Misal: Saya bekerja di Tim Statistik Sosial BPS..."
+          placeholder="Misal: Saya bekerja di Tim Riset Data & Analitika..."
           class="h-9 text-xs"
           disabled={isSaving}
         />

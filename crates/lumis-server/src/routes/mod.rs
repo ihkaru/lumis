@@ -45,7 +45,7 @@ pub fn create_router(state: AppState) -> Router {
         .route("/api/admin/users", get(admin_users::list_admin_users))
         .route("/api/admin/users/role", axum::routing::post(admin_users::update_user_role))
         .route("/api/admin/users/status", axum::routing::post(admin_users::update_user_status))
-        // Enterprise SAML 2.0 / rIDM BPS Identity Federation
+        // Enterprise SAML 2.0 Identity Federation
         .route("/api/auth/sso", get(saml::saml_login))
         .route("/api/auth/saml/login", get(saml::saml_login))
         .route("/api/auth/saml/config", get(saml::saml_config))

@@ -21,9 +21,9 @@
     },
     {
       icon: FileSearch,
-      title: "Analisis Data Sensitif BPS",
-      desc: "Evaluasi tabel statistik survei dengan kepatuhan DLP dan UU PDP.",
-      prompt: "Jelaskan langkah audit DLP dan kepatuhan privasi untuk data survei statistik.",
+      title: "Analisis Data Sensitif & DLP",
+      desc: "Evaluasi dokumen dan dataset organisasi dengan kepatuhan privasi dan DLP.",
+      prompt: "Jelaskan langkah audit DLP dan kepatuhan privasi untuk data sensitif perusahaan.",
     },
     {
       icon: Cpu,

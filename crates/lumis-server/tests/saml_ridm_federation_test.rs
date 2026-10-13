@@ -43,9 +43,9 @@ async fn test_saml_config_endpoint() {
 
     let bytes = to_bytes(resp.into_body(), usize::MAX).await.unwrap();
     let val: Value = serde_json::from_slice(&bytes).unwrap();
-    assert_eq!(val["provider"], "rIDM");
-    assert_eq!(val["tenant"], "bps");
-    assert_eq!(val["idp_entity_id"], "https://auth.dvlpid.my.id/t/bps");
+    assert_eq!(val["provider"], "Enterprise_SAML");
+    assert_eq!(val["tenant"], "default");
+    assert_eq!(val["idp_entity_id"], "https://sso.enterprise.internal");
 }
 
 #[tokio::test]
@@ -67,8 +67,8 @@ async fn test_saml_metadata_endpoint() {
     let bytes = to_bytes(resp.into_body(), usize::MAX).await.unwrap();
     let xml = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(xml.contains("<md:EntityDescriptor"));
-    assert!(xml.contains("https://chat.dvlpid.my.id/saml/metadata"));
-    assert!(xml.contains("https://chat.dvlpid.my.id/api/auth/saml/acs"));
+    assert!(xml.contains("http://localhost:8080/saml/metadata"));
+    assert!(xml.contains("http://localhost:8080/api/auth/saml/acs"));
 }
 
 #[tokio::test]
@@ -86,7 +86,7 @@ async fn test_saml_sso_redirect_and_json() {
 
     let bytes = to_bytes(resp_json.into_body(), usize::MAX).await.unwrap();
     let val: Value = serde_json::from_slice(&bytes).unwrap();
-    assert!(val["redirect_url"].as_str().unwrap().starts_with("https://auth.dvlpid.my.id/t/bps/saml/sso?SAMLRequest="));
+    assert!(val["redirect_url"].as_str().unwrap().starts_with("https://sso.enterprise.internal/saml/sso?SAMLRequest="));
 
     // 2. HTTP 302 Redirect mode
     let req_red = Request::builder()
@@ -97,7 +97,7 @@ async fn test_saml_sso_redirect_and_json() {
     let resp_red = app.oneshot(req_red).await.unwrap();
     assert_eq!(resp_red.status(), StatusCode::FOUND);
     let loc = resp_red.headers().get(header::LOCATION).unwrap().to_str().unwrap();
-    assert!(loc.starts_with("https://auth.dvlpid.my.id/t/bps/saml/sso?SAMLRequest="));
+    assert!(loc.starts_with("https://sso.enterprise.internal/saml/sso?SAMLRequest="));
 }
 
 #[tokio::test]
