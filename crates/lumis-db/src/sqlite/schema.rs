@@ -134,6 +134,17 @@ pub async fn run_sqlite_migrations(pool: &SqlitePool) -> Result<()> {
             is_mandatory INTEGER NOT NULL DEFAULT 0,
             allowed_roles TEXT NOT NULL DEFAULT '["admin","user","auditor"]',
             oauth_config TEXT,
+            ssrf_policy TEXT NOT NULL DEFAULT 'strict',
+            egress_allowlist TEXT,
+            sandbox_type TEXT NOT NULL DEFAULT 'restricted_process',
+            max_memory_mb INTEGER NOT NULL DEFAULT 256,
+            timeout_seconds INTEGER NOT NULL DEFAULT 30,
+            dlp_enabled INTEGER NOT NULL DEFAULT 1,
+            dlp_rules TEXT NOT NULL DEFAULT '["credit_card","nik","phone","email","jwt"]',
+            rate_limit_rpm INTEGER NOT NULL DEFAULT 60,
+            daily_request_limit INTEGER NOT NULL DEFAULT 1000,
+            kms_provider TEXT NOT NULL DEFAULT 'local',
+            kms_key_id TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             CONSTRAINT uq_mcp_server_tenant_name UNIQUE (tenant_id, name)
@@ -160,6 +171,8 @@ pub async fn run_sqlite_migrations(pool: &SqlitePool) -> Result<()> {
             status TEXT NOT NULL,
             execution_time_ms INTEGER NOT NULL,
             approval_token TEXT,
+            payload_redacted INTEGER NOT NULL DEFAULT 0,
+            redaction_summary TEXT,
             created_at TEXT NOT NULL
         );
 
@@ -175,6 +188,9 @@ pub async fn run_sqlite_migrations(pool: &SqlitePool) -> Result<()> {
             token_type TEXT NOT NULL DEFAULT 'Bearer',
             scope TEXT,
             expires_at INTEGER,
+            is_revoked INTEGER NOT NULL DEFAULT 0,
+            revoked_at TEXT,
+            idp_session_id TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             CONSTRAINT uq_user_mcp_oauth UNIQUE (user_id, server_id)
@@ -186,6 +202,16 @@ pub async fn run_sqlite_migrations(pool: &SqlitePool) -> Result<()> {
             is_enabled INTEGER NOT NULL DEFAULT 1,
             updated_at TEXT NOT NULL,
             PRIMARY KEY (user_id, server_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS mcp_usage_quotas (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            server_id TEXT NOT NULL REFERENCES mcp_servers(id) ON DELETE CASCADE,
+            window_date TEXT NOT NULL,
+            request_count INTEGER NOT NULL DEFAULT 0,
+            updated_at TEXT NOT NULL,
+            CONSTRAINT uq_mcp_quota UNIQUE (user_id, server_id, window_date)
         );
         "#,
     )
@@ -200,6 +226,24 @@ pub async fn run_sqlite_migrations(pool: &SqlitePool) -> Result<()> {
     let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN is_mandatory INTEGER NOT NULL DEFAULT 0;").execute(pool).await;
     let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN allowed_roles TEXT NOT NULL DEFAULT '[\"admin\",\"user\",\"auditor\"]';").execute(pool).await;
     let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN oauth_config TEXT;").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN ssrf_policy TEXT NOT NULL DEFAULT 'strict';").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN egress_allowlist TEXT;").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN sandbox_type TEXT NOT NULL DEFAULT 'restricted_process';").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN max_memory_mb INTEGER NOT NULL DEFAULT 256;").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN timeout_seconds INTEGER NOT NULL DEFAULT 30;").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN dlp_enabled INTEGER NOT NULL DEFAULT 1;").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN dlp_rules TEXT NOT NULL DEFAULT '[\"credit_card\",\"nik\",\"phone\",\"email\",\"jwt\"]';").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN rate_limit_rpm INTEGER NOT NULL DEFAULT 60;").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN daily_request_limit INTEGER NOT NULL DEFAULT 1000;").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN kms_provider TEXT NOT NULL DEFAULT 'local';").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN kms_key_id TEXT;").execute(pool).await;
+
+    let _ = sqlx::query("ALTER TABLE mcp_tool_invocations ADD COLUMN payload_redacted INTEGER NOT NULL DEFAULT 0;").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_tool_invocations ADD COLUMN redaction_summary TEXT;").execute(pool).await;
+
+    let _ = sqlx::query("ALTER TABLE user_mcp_oauth_tokens ADD COLUMN is_revoked INTEGER NOT NULL DEFAULT 0;").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE user_mcp_oauth_tokens ADD COLUMN revoked_at TEXT;").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE user_mcp_oauth_tokens ADD COLUMN idp_session_id TEXT;").execute(pool).await;
 
     // Idempotent backfill from legacy users.password_hash into user_identities
     let _ = sqlx::query(

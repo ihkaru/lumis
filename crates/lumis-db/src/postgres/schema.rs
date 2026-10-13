@@ -131,6 +131,17 @@ pub async fn run_pg_migrations(pool: &PgPool) -> Result<()> {
             is_mandatory BOOLEAN NOT NULL DEFAULT FALSE,
             allowed_roles TEXT NOT NULL DEFAULT '["admin","user","auditor"]',
             oauth_config TEXT,
+            ssrf_policy VARCHAR(32) NOT NULL DEFAULT 'strict',
+            egress_allowlist TEXT,
+            sandbox_type VARCHAR(32) NOT NULL DEFAULT 'restricted_process',
+            max_memory_mb INTEGER NOT NULL DEFAULT 256,
+            timeout_seconds INTEGER NOT NULL DEFAULT 30,
+            dlp_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+            dlp_rules TEXT NOT NULL DEFAULT '["credit_card","nik","phone","email","jwt"]',
+            rate_limit_rpm INTEGER NOT NULL DEFAULT 60,
+            daily_request_limit INTEGER NOT NULL DEFAULT 1000,
+            kms_provider VARCHAR(32) NOT NULL DEFAULT 'local',
+            kms_key_id TEXT,
             created_at TIMESTAMPTZ NOT NULL,
             updated_at TIMESTAMPTZ NOT NULL,
             CONSTRAINT uq_pg_mcp_server_tenant_name UNIQUE (tenant_id, name)
@@ -157,6 +168,8 @@ pub async fn run_pg_migrations(pool: &PgPool) -> Result<()> {
             status VARCHAR(24) NOT NULL,
             execution_time_ms INTEGER NOT NULL,
             approval_token VARCHAR(64),
+            payload_redacted BOOLEAN NOT NULL DEFAULT FALSE,
+            redaction_summary TEXT,
             created_at TIMESTAMPTZ NOT NULL
         );
 
@@ -172,6 +185,9 @@ pub async fn run_pg_migrations(pool: &PgPool) -> Result<()> {
             token_type VARCHAR(24) NOT NULL DEFAULT 'Bearer',
             scope TEXT,
             expires_at BIGINT,
+            is_revoked BOOLEAN NOT NULL DEFAULT FALSE,
+            revoked_at TIMESTAMPTZ,
+            idp_session_id VARCHAR(128),
             created_at TIMESTAMPTZ NOT NULL,
             updated_at TIMESTAMPTZ NOT NULL,
             CONSTRAINT uq_pg_user_mcp_oauth UNIQUE (user_id, server_id)
@@ -183,6 +199,16 @@ pub async fn run_pg_migrations(pool: &PgPool) -> Result<()> {
             is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
             updated_at TIMESTAMPTZ NOT NULL,
             PRIMARY KEY (user_id, server_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS mcp_usage_quotas (
+            id VARCHAR(64) PRIMARY KEY,
+            user_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            server_id VARCHAR(64) NOT NULL REFERENCES mcp_servers(id) ON DELETE CASCADE,
+            window_date VARCHAR(24) NOT NULL,
+            request_count INTEGER NOT NULL DEFAULT 0,
+            updated_at TIMESTAMPTZ NOT NULL,
+            CONSTRAINT uq_pg_mcp_quota UNIQUE (user_id, server_id, window_date)
         );
         "#,
     )
@@ -197,6 +223,24 @@ pub async fn run_pg_migrations(pool: &PgPool) -> Result<()> {
     let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN IF NOT EXISTS is_mandatory BOOLEAN NOT NULL DEFAULT FALSE;").execute(pool).await;
     let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN IF NOT EXISTS allowed_roles TEXT NOT NULL DEFAULT '[\"admin\",\"user\",\"auditor\"]';").execute(pool).await;
     let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN IF NOT EXISTS oauth_config TEXT;").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN IF NOT EXISTS ssrf_policy VARCHAR(32) NOT NULL DEFAULT 'strict';").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN IF NOT EXISTS egress_allowlist TEXT;").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN IF NOT EXISTS sandbox_type VARCHAR(32) NOT NULL DEFAULT 'restricted_process';").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN IF NOT EXISTS max_memory_mb INTEGER NOT NULL DEFAULT 256;").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN IF NOT EXISTS timeout_seconds INTEGER NOT NULL DEFAULT 30;").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN IF NOT EXISTS dlp_enabled BOOLEAN NOT NULL DEFAULT TRUE;").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN IF NOT EXISTS dlp_rules TEXT NOT NULL DEFAULT '[\"credit_card\",\"nik\",\"phone\",\"email\",\"jwt\"]';").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN IF NOT EXISTS rate_limit_rpm INTEGER NOT NULL DEFAULT 60;").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN IF NOT EXISTS daily_request_limit INTEGER NOT NULL DEFAULT 1000;").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN IF NOT EXISTS kms_provider VARCHAR(32) NOT NULL DEFAULT 'local';").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN IF NOT EXISTS kms_key_id TEXT;").execute(pool).await;
+
+    let _ = sqlx::query("ALTER TABLE mcp_tool_invocations ADD COLUMN IF NOT EXISTS payload_redacted BOOLEAN NOT NULL DEFAULT FALSE;").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_tool_invocations ADD COLUMN IF NOT EXISTS redaction_summary TEXT;").execute(pool).await;
+
+    let _ = sqlx::query("ALTER TABLE user_mcp_oauth_tokens ADD COLUMN IF NOT EXISTS is_revoked BOOLEAN NOT NULL DEFAULT FALSE;").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE user_mcp_oauth_tokens ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMPTZ;").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE user_mcp_oauth_tokens ADD COLUMN IF NOT EXISTS idp_session_id VARCHAR(128);").execute(pool).await;
 
     // Idempotent backfill from legacy users.password_hash into user_identities
     let _ = sqlx::query(

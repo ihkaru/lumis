@@ -79,7 +79,7 @@
     {:else if activeSubTab === "approvals"}
       <AdminApprovalsList />
     {:else if activeSubTab === "mcp-servers"}
-      <AdminMcpServersList />
+      <AdminMcpServersList currentUser={user} />
     {:else if activeSubTab === "users"}
       <AdminUsersList currentUser={user} />
     {:else if activeSubTab === "audit"}

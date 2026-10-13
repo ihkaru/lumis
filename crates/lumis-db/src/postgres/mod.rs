@@ -2,6 +2,8 @@ pub mod driver;
 pub mod identity;
 pub mod mcp;
 pub mod mcp_oauth;
+pub mod mcp_quota;
+pub mod mcp_tools;
 pub mod memory;
 pub mod message;
 pub mod schema;
@@ -226,6 +228,10 @@ impl ChatRepository for PostgresRepository {
         mcp_oauth::delete_user_mcp_oauth_token(&self.pool, user_id, server_id).await
     }
 
+    async fn revoke_tokens_by_session_or_user(&self, user_id: &str, idp_session_id: Option<&str>) -> Result<u64> {
+        mcp_oauth::revoke_tokens_by_session_or_user(&self.pool, user_id, idp_session_id).await
+    }
+
     async fn get_user_mcp_preference(&self, user_id: &str, server_id: &str) -> Result<Option<bool>> {
         mcp_oauth::get_user_mcp_preference(&self.pool, user_id, server_id).await
     }
@@ -236,5 +242,13 @@ impl ChatRepository for PostgresRepository {
 
     async fn list_user_mcp_preferences(&self, user_id: &str) -> Result<Vec<lumis_core::models::mcp::UserMcpPreferenceRecord>> {
         mcp_oauth::list_user_mcp_preferences(&self.pool, user_id).await
+    }
+
+    async fn check_and_increment_mcp_quota(&self, user_id: &str, server_id: &str, daily_limit: i32) -> Result<bool> {
+        mcp_quota::check_and_increment_mcp_quota(&self.pool, user_id, server_id, daily_limit).await
+    }
+
+    async fn get_mcp_quota_usage(&self, user_id: &str, server_id: &str) -> Result<i32> {
+        mcp_quota::get_mcp_quota_usage(&self.pool, user_id, server_id).await
     }
 }

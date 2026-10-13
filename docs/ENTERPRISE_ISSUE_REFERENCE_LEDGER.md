@@ -39,6 +39,7 @@ Ledger ini adalah catatan komparatif resmi dan permanen yang mendokumentasikan i
 | **REF-26** | `LibreChat#14488`<br>`Database schema compatibility issues during rollouts` | Migrasi DDL destruktif memutus komunikasi pod lama (*vN*) dan baru (*vN+1*) selama rolling update di Kubernetes/Coolify. | **Expand-and-Contract DDL Pattern & Advisory Lock Migration**: Perubahan skema aditif bertahap, DDL terisolasi dari DML, dan migrasi boot idempotent tanpa downtime. | `RESOLVED_AND_VERIFIED`<br>`docs/roadmap/14_PHASE_14_ZERO_FORK_ENTERPRISE_UPGRADE_AND_DISTRIBUTION.md` |
 | **REF-27** | `Llumen#CONV-01`<br>`Multi-Turn Context & Dynamic Temporal Stamp` | Permintaan chat hanya menyertakan 1 prompt terakhir tanpa riwayat percakapan masa lalu, atau timestamp merusak system prompt cache. | **Multi-Turn Context Assembly & Cache-Safe Tail Stamp**: Pemuatan kronologis pesan, sliding-window budget pruning, dan injeksi temporal stamp di tail user message. | `RESOLVED_AND_VERIFIED`<br>`tests/conversation_memory_test.rs` |
 | **REF-28** | `LibreChat#10809`<br>`Optimize Memory System to Use Single API Call` | Sistem memori membutuhkan ekstra 1 API call per turn, meningkatkan latensi dan biaya ganda bagi tenant. | **Single-Call Durable User Memory (`user_memories`)**: Injeksi memori persisten langsung ke blok `<user_memories>` dalam konteks sistem tanpa extra call. | `RESOLVED_AND_VERIFIED`<br>`tests/conversation_memory_test.rs` |
+| **REF-29** | `MCP-CISO#01`<br>`Enterprise MCP CISO Governance, DLP & Quotas` | Keluhan CISO enterprise terkait unconstrained MCP egress (SSRF), plaintext token leakage di IdP de-provisioning, payload PII leakage, unbounded API abuse, dan kurangnya role-gating granular. | **Enterprise MCP CISO Invariants**: Envelope KMS encryption, SSRF Egress allowlist, DLP regex scrubbing audit, RFC 7009 backchannel revocation, multi-dimensional quotas (`mcp_usage_quotas`), dan role-gated UI compliance. | `RESOLVED_AND_VERIFIED`<br>`tests/enterprise_mcp_lifecycle_test.rs`<br>`tests/enterprise_mcp_oauth_and_rbac_test.rs` |
 
 ---
 
@@ -55,6 +56,10 @@ Ledger ini adalah catatan komparatif resmi dan permanen yang mendokumentasikan i
 ### 3. REF-05: Orphaned Vector Embeddings (LibreChat #14988)
 - **Akar Masalah**: Operasi hapus file pada decoupled Python RAG API tidak menghapus chunks yang terkait di pgvector karena tidak adanya constraint foreign key relasional.
 - **Invarian Lumis**: Skema basis data (`documents` dan `document_chunks`) menggunakan relasi relasional `ON DELETE CASCADE`. Pada implementasi in-memory, `chunks.retain(|c| c.document_id != document_id)` dieksekusi secara sinkron dan atomik.
+
+### 4. REF-29: Enterprise MCP CISO Governance, DLP & Quotas (MCP-CISO#01)
+- **Akar Masalah**: Integrasi tool eksternal model context protocol tanpa kontrol egress memungkinkan eksfiltrasi data ke private network/cloud metadata (SSRF); kegagalan IdP de-provisioning meninggalkan token aktif; tidak adanya DLP scrubbing mencatat NIK/PII ke audit logs.
+- **Invarian Lumis**: Skema database relasional aditif (`ssrf_policy`, `egress_allowlist`, `sandbox_type`, `dlp_enabled`, `rate_limit_rpm`, `daily_request_limit`, dan tabel `mcp_usage_quotas`); RFC 7009 backchannel logout revocation (`/api/mcp/oauth/backchannel-logout`); serta UI Svelte 5 dengan role-gating (Read-Only Compliance untuk Auditor, Quota Tracker untuk User, Full CISO Controls untuk SuperAdmin).
 
 ---
 

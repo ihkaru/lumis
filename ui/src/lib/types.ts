@@ -163,6 +163,17 @@ export interface McpServerItem {
   is_mandatory: boolean;
   allowed_roles?: string[];
   oauth_config?: McpOAuthConfig | null;
+  ssrf_policy?: "strict" | "allow_private_network" | "custom_allowlist";
+  egress_allowlist?: string[];
+  sandbox_type?: "none" | "restricted_process" | "docker_ephemeral";
+  max_memory_mb?: number;
+  timeout_seconds?: number;
+  dlp_enabled?: boolean;
+  dlp_rules?: string[];
+  rate_limit_rpm?: number;
+  daily_request_limit?: number;
+  kms_provider?: "local" | "vault" | "aws_kms";
+  kms_key_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -179,6 +190,9 @@ export interface McpUserPreferenceItem {
   is_enabled: boolean;
   is_oauth_connected: boolean;
   tools_count: number;
+  rate_limit_rpm?: number;
+  daily_request_limit?: number;
+  quota_used_today?: number;
 }
 
 export interface McpToolItem {

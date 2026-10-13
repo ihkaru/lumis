@@ -9,19 +9,25 @@ pub async fn save_user_mcp_oauth_token(
 ) -> Result<UserMcpOAuthTokenRecord> {
     let created_at_str = token.created_at.to_rfc3339();
     let updated_at_str = token.updated_at.to_rfc3339();
+    let is_revoked_int = if token.is_revoked { 1 } else { 0 };
+    let revoked_at_str = token.revoked_at.map(|dt| dt.to_rfc3339());
 
     sqlx::query(
         r#"
         INSERT INTO user_mcp_oauth_tokens (
             id, user_id, server_id, access_token_encrypted, refresh_token_encrypted,
-            token_type, scope, expires_at, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            token_type, scope, expires_at, is_revoked, revoked_at, idp_session_id,
+            created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT (user_id, server_id) DO UPDATE SET
             access_token_encrypted = excluded.access_token_encrypted,
             refresh_token_encrypted = excluded.refresh_token_encrypted,
             token_type = excluded.token_type,
             scope = excluded.scope,
             expires_at = excluded.expires_at,
+            is_revoked = excluded.is_revoked,
+            revoked_at = excluded.revoked_at,
+            idp_session_id = excluded.idp_session_id,
             updated_at = excluded.updated_at
         "#,
     )
@@ -33,6 +39,9 @@ pub async fn save_user_mcp_oauth_token(
     .bind(&token.token_type)
     .bind(&token.scope)
     .bind(token.expires_at)
+    .bind(is_revoked_int)
+    .bind(revoked_at_str)
+    .bind(&token.idp_session_id)
     .bind(created_at_str)
     .bind(updated_at_str)
     .execute(pool)
@@ -50,7 +59,8 @@ pub async fn get_user_mcp_oauth_token(
     let row = sqlx::query(
         r#"
         SELECT id, user_id, server_id, access_token_encrypted, refresh_token_encrypted,
-               token_type, scope, expires_at, created_at, updated_at
+               token_type, scope, expires_at, is_revoked, revoked_at, idp_session_id,
+               created_at, updated_at
         FROM user_mcp_oauth_tokens
         WHERE user_id = ? AND server_id = ?
         "#,
@@ -63,6 +73,9 @@ pub async fn get_user_mcp_oauth_token(
 
     let Some(r) = row else { return Ok(None); };
 
+    let is_revoked_int: i64 = r.try_get("is_revoked").unwrap_or(0);
+    let revoked_at_raw: Option<String> = r.try_get("revoked_at").unwrap_or(None);
+    let revoked_at = revoked_at_raw.and_then(|s| DateTime::parse_from_rfc3339(&s).ok().map(|dt| dt.with_timezone(&Utc)));
     let created_at_str: String = r.try_get("created_at").map_err(|e| LumisError::Database(e.to_string()))?;
     let updated_at_str: String = r.try_get("updated_at").map_err(|e| LumisError::Database(e.to_string()))?;
 
@@ -75,6 +88,9 @@ pub async fn get_user_mcp_oauth_token(
         token_type: r.try_get("token_type").unwrap_or_else(|_| "Bearer".to_string()),
         scope: r.try_get("scope").unwrap_or(None),
         expires_at: r.try_get("expires_at").unwrap_or(None),
+        is_revoked: is_revoked_int != 0,
+        revoked_at,
+        idp_session_id: r.try_get("idp_session_id").unwrap_or(None),
         created_at: DateTime::parse_from_rfc3339(&created_at_str)
             .map(|dt| dt.with_timezone(&Utc))
             .unwrap_or_else(|_| Utc::now()),
@@ -82,6 +98,27 @@ pub async fn get_user_mcp_oauth_token(
             .map(|dt| dt.with_timezone(&Utc))
             .unwrap_or_else(|_| Utc::now()),
     }))
+}
+
+pub async fn revoke_tokens_by_session_or_user(
+    pool: &SqlitePool,
+    user_id: &str,
+    idp_session_id: Option<&str>,
+) -> Result<u64> {
+    let now_str = Utc::now().to_rfc3339();
+    let query_str = if idp_session_id.is_some() {
+        "UPDATE user_mcp_oauth_tokens SET is_revoked = 1, revoked_at = ? WHERE user_id = ? OR idp_session_id = ?"
+    } else {
+        "UPDATE user_mcp_oauth_tokens SET is_revoked = 1, revoked_at = ? WHERE user_id = ?"
+    };
+
+    let mut q = sqlx::query(query_str).bind(&now_str).bind(user_id);
+    if let Some(sid) = idp_session_id {
+        q = q.bind(sid);
+    }
+
+    let res = q.execute(pool).await.map_err(|e| LumisError::Database(e.to_string()))?;
+    Ok(res.rows_affected())
 }
 
 pub async fn delete_user_mcp_oauth_token(

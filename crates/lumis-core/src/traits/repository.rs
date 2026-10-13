@@ -80,8 +80,13 @@ pub trait ChatRepository: Send + Sync {
     async fn save_user_mcp_oauth_token(&self, token: &crate::models::mcp::UserMcpOAuthTokenRecord) -> Result<crate::models::mcp::UserMcpOAuthTokenRecord>;
     async fn get_user_mcp_oauth_token(&self, user_id: &str, server_id: &str) -> Result<Option<crate::models::mcp::UserMcpOAuthTokenRecord>>;
     async fn delete_user_mcp_oauth_token(&self, user_id: &str, server_id: &str) -> Result<bool>;
+    async fn revoke_tokens_by_session_or_user(&self, user_id: &str, idp_session_id: Option<&str>) -> Result<u64>;
     async fn get_user_mcp_preference(&self, user_id: &str, server_id: &str) -> Result<Option<bool>>;
     async fn set_user_mcp_preference(&self, user_id: &str, server_id: &str, is_enabled: bool) -> Result<()>;
     async fn list_user_mcp_preferences(&self, user_id: &str) -> Result<Vec<crate::models::mcp::UserMcpPreferenceRecord>>;
+
+    // MCP Quota and Rate Limiting
+    async fn check_and_increment_mcp_quota(&self, user_id: &str, server_id: &str, daily_limit: i32) -> Result<bool>;
+    async fn get_mcp_quota_usage(&self, user_id: &str, server_id: &str) -> Result<i32>;
 }
 

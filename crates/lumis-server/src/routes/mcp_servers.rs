@@ -145,6 +145,17 @@ pub async fn create_server(
         is_mandatory: payload.is_mandatory.unwrap_or(false),
         allowed_roles: payload.allowed_roles.unwrap_or_else(|| vec!["admin".to_string(), "user".to_string(), "auditor".to_string()]),
         oauth_config: payload.oauth_config,
+        ssrf_policy: payload.ssrf_policy.unwrap_or_else(|| "strict".to_string()),
+        egress_allowlist: payload.egress_allowlist,
+        sandbox_type: payload.sandbox_type.unwrap_or_else(|| "restricted_process".to_string()),
+        max_memory_mb: payload.max_memory_mb.unwrap_or(256),
+        timeout_seconds: payload.timeout_seconds.unwrap_or(30),
+        dlp_enabled: payload.dlp_enabled.unwrap_or(true),
+        dlp_rules: payload.dlp_rules.unwrap_or_else(|| vec!["credit_card".to_string(), "nik".to_string(), "phone".to_string(), "email".to_string(), "jwt".to_string()]),
+        rate_limit_rpm: payload.rate_limit_rpm.unwrap_or(60),
+        daily_request_limit: payload.daily_request_limit.unwrap_or(1000),
+        kms_provider: payload.kms_provider.unwrap_or_else(|| "local".to_string()),
+        kms_key_id: payload.kms_key_id,
         created_at: now,
         updated_at: now,
     };
@@ -233,6 +244,17 @@ pub async fn update_server(
     if let Some(m) = payload.is_mandatory { updated.is_mandatory = m; }
     if let Some(ar) = payload.allowed_roles { updated.allowed_roles = ar; }
     if let Some(oc) = payload.oauth_config { updated.oauth_config = Some(oc); }
+    if let Some(sp) = payload.ssrf_policy { updated.ssrf_policy = sp; }
+    if let Some(ea) = payload.egress_allowlist { updated.egress_allowlist = Some(ea); }
+    if let Some(st) = payload.sandbox_type { updated.sandbox_type = st; }
+    if let Some(mm) = payload.max_memory_mb { updated.max_memory_mb = mm; }
+    if let Some(ts) = payload.timeout_seconds { updated.timeout_seconds = ts; }
+    if let Some(de) = payload.dlp_enabled { updated.dlp_enabled = de; }
+    if let Some(dr) = payload.dlp_rules { updated.dlp_rules = dr; }
+    if let Some(rl) = payload.rate_limit_rpm { updated.rate_limit_rpm = rl; }
+    if let Some(drl) = payload.daily_request_limit { updated.daily_request_limit = drl; }
+    if let Some(kp) = payload.kms_provider { updated.kms_provider = kp; }
+    if let Some(kid) = payload.kms_key_id { updated.kms_key_id = Some(kid); }
     updated.updated_at = Utc::now();
 
     match state.repo.update_mcp_server(&updated).await {

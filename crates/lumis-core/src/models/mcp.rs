@@ -170,6 +170,17 @@ pub struct McpServerRecord {
     pub is_mandatory: bool,
     pub allowed_roles: Vec<String>,
     pub oauth_config: Option<McpOAuthConfig>,
+    pub ssrf_policy: String,
+    pub egress_allowlist: Option<Vec<String>>,
+    pub sandbox_type: String,
+    pub max_memory_mb: i32,
+    pub timeout_seconds: i32,
+    pub dlp_enabled: bool,
+    pub dlp_rules: Vec<String>,
+    pub rate_limit_rpm: i32,
+    pub daily_request_limit: i32,
+    pub kms_provider: String,
+    pub kms_key_id: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -192,6 +203,17 @@ pub struct McpServerCreateInput {
     pub is_mandatory: Option<bool>,
     pub allowed_roles: Option<Vec<String>>,
     pub oauth_config: Option<McpOAuthConfig>,
+    pub ssrf_policy: Option<String>,
+    pub egress_allowlist: Option<Vec<String>>,
+    pub sandbox_type: Option<String>,
+    pub max_memory_mb: Option<i32>,
+    pub timeout_seconds: Option<i32>,
+    pub dlp_enabled: Option<bool>,
+    pub dlp_rules: Option<Vec<String>>,
+    pub rate_limit_rpm: Option<i32>,
+    pub daily_request_limit: Option<i32>,
+    pub kms_provider: Option<String>,
+    pub kms_key_id: Option<String>,
 }
 
 /// Input payload to update an existing MCP server.
@@ -206,6 +228,17 @@ pub struct McpServerUpdateInput {
     pub is_mandatory: Option<bool>,
     pub allowed_roles: Option<Vec<String>>,
     pub oauth_config: Option<McpOAuthConfig>,
+    pub ssrf_policy: Option<String>,
+    pub egress_allowlist: Option<Vec<String>>,
+    pub sandbox_type: Option<String>,
+    pub max_memory_mb: Option<i32>,
+    pub timeout_seconds: Option<i32>,
+    pub dlp_enabled: Option<bool>,
+    pub dlp_rules: Option<Vec<String>>,
+    pub rate_limit_rpm: Option<i32>,
+    pub daily_request_limit: Option<i32>,
+    pub kms_provider: Option<String>,
+    pub kms_key_id: Option<String>,
 }
 
 /// Relational token record for User-level MCP OAuth 2.1 access.
@@ -219,6 +252,9 @@ pub struct UserMcpOAuthTokenRecord {
     pub token_type: String,
     pub scope: Option<String>,
     pub expires_at: Option<i64>,
+    pub is_revoked: bool,
+    pub revoked_at: Option<DateTime<Utc>>,
+    pub idp_session_id: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -256,5 +292,18 @@ pub struct McpToolInvocationRecord {
     pub status: String,
     pub execution_time_ms: u32,
     pub approval_token: Option<String>,
+    pub payload_redacted: bool,
+    pub redaction_summary: Option<String>,
     pub created_at: DateTime<Utc>,
+}
+
+/// Relational quota tracking record for rate limiting.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct McpUsageQuotaRecord {
+    pub id: String,
+    pub user_id: String,
+    pub server_id: String,
+    pub window_date: String,
+    pub request_count: i32,
+    pub updated_at: DateTime<Utc>,
 }

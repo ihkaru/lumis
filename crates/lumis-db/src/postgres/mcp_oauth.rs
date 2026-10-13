@@ -11,14 +11,18 @@ pub async fn save_user_mcp_oauth_token(
         r#"
         INSERT INTO user_mcp_oauth_tokens (
             id, user_id, server_id, access_token_encrypted, refresh_token_encrypted,
-            token_type, scope, expires_at, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            token_type, scope, expires_at, is_revoked, revoked_at, idp_session_id,
+            created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         ON CONFLICT (user_id, server_id) DO UPDATE SET
             access_token_encrypted = EXCLUDED.access_token_encrypted,
             refresh_token_encrypted = EXCLUDED.refresh_token_encrypted,
             token_type = EXCLUDED.token_type,
             scope = EXCLUDED.scope,
             expires_at = EXCLUDED.expires_at,
+            is_revoked = EXCLUDED.is_revoked,
+            revoked_at = EXCLUDED.revoked_at,
+            idp_session_id = EXCLUDED.idp_session_id,
             updated_at = EXCLUDED.updated_at
         "#,
     )
@@ -30,6 +34,9 @@ pub async fn save_user_mcp_oauth_token(
     .bind(&token.token_type)
     .bind(&token.scope)
     .bind(token.expires_at)
+    .bind(token.is_revoked)
+    .bind(token.revoked_at)
+    .bind(&token.idp_session_id)
     .bind(token.created_at)
     .bind(token.updated_at)
     .execute(pool)
@@ -47,7 +54,8 @@ pub async fn get_user_mcp_oauth_token(
     let row = sqlx::query(
         r#"
         SELECT id, user_id, server_id, access_token_encrypted, refresh_token_encrypted,
-               token_type, scope, expires_at, created_at, updated_at
+               token_type, scope, expires_at, is_revoked, revoked_at, idp_session_id,
+               created_at, updated_at
         FROM user_mcp_oauth_tokens
         WHERE user_id = $1 AND server_id = $2
         "#,
@@ -60,6 +68,8 @@ pub async fn get_user_mcp_oauth_token(
 
     let Some(r) = row else { return Ok(None); };
 
+    let is_revoked: bool = r.try_get("is_revoked").unwrap_or(false);
+    let revoked_at: Option<DateTime<Utc>> = r.try_get("revoked_at").unwrap_or(None);
     let created_at: DateTime<Utc> = r.try_get("created_at").map_err(|e| LumisError::Database(e.to_string()))?;
     let updated_at: DateTime<Utc> = r.try_get("updated_at").map_err(|e| LumisError::Database(e.to_string()))?;
 
@@ -72,9 +82,33 @@ pub async fn get_user_mcp_oauth_token(
         token_type: r.try_get("token_type").unwrap_or_else(|_| "Bearer".to_string()),
         scope: r.try_get("scope").unwrap_or(None),
         expires_at: r.try_get("expires_at").unwrap_or(None),
+        is_revoked,
+        revoked_at,
+        idp_session_id: r.try_get("idp_session_id").unwrap_or(None),
         created_at,
         updated_at,
     }))
+}
+
+pub async fn revoke_tokens_by_session_or_user(
+    pool: &PgPool,
+    user_id: &str,
+    idp_session_id: Option<&str>,
+) -> Result<u64> {
+    let now = Utc::now();
+    let query_str = if idp_session_id.is_some() {
+        "UPDATE user_mcp_oauth_tokens SET is_revoked = TRUE, revoked_at = $1 WHERE user_id = $2 OR idp_session_id = $3"
+    } else {
+        "UPDATE user_mcp_oauth_tokens SET is_revoked = TRUE, revoked_at = $1 WHERE user_id = $2"
+    };
+
+    let mut q = sqlx::query(query_str).bind(now).bind(user_id);
+    if let Some(sid) = idp_session_id {
+        q = q.bind(sid);
+    }
+
+    let res = q.execute(pool).await.map_err(|e| LumisError::Database(e.to_string()))?;
+    Ok(res.rows_affected())
 }
 
 pub async fn delete_user_mcp_oauth_token(

@@ -172,6 +172,9 @@
                       </Badge>
                     {/if}
                   {/if}
+                  <Badge variant="outline" class="text-purple-400 border-purple-800/40 text-[9px] px-1.5 py-0 font-mono">
+                    {srv.quota_used_today || 0}/{srv.daily_request_limit || 1000} req ({srv.rate_limit_rpm || 60} RPM)
+                  </Badge>
                 </div>
                 {#if srv.description}
                   <div class="text-[11px] text-muted-foreground [overflow-wrap:anywhere] break-words">{srv.description}</div>

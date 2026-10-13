@@ -89,6 +89,17 @@ async fn test_ciso_mandatory_mcp_cannot_be_disabled_by_user() {
         is_mandatory: Some(true),
         allowed_roles: Some(vec!["admin".to_string(), "member".to_string()]),
         oauth_config: None,
+        ssrf_policy: None,
+        egress_allowlist: None,
+        sandbox_type: None,
+        max_memory_mb: None,
+        timeout_seconds: None,
+        dlp_enabled: None,
+        dlp_rules: None,
+        rate_limit_rpm: None,
+        daily_request_limit: None,
+        kms_provider: None,
+        kms_key_id: None,
     };
 
     let req = Request::builder()
@@ -151,6 +162,17 @@ async fn test_mcp_oauth_pkce_handshake_and_token_vault_encryption() {
             resource_indicator: Some("https://jira.enterprise.com/mcp".to_string()),
             registration_mode: "pre_registered".to_string(),
         }),
+        ssrf_policy: None,
+        egress_allowlist: None,
+        sandbox_type: None,
+        max_memory_mb: None,
+        timeout_seconds: None,
+        dlp_enabled: None,
+        dlp_rules: None,
+        rate_limit_rpm: None,
+        daily_request_limit: None,
+        kms_provider: None,
+        kms_key_id: None,
     };
 
     let create_req = Request::builder()
@@ -235,6 +257,17 @@ async fn test_role_based_mcp_server_filtering_and_preferences() {
         is_mandatory: Some(false),
         allowed_roles: Some(vec!["tenant_admin".to_string(), "super_admin".to_string()]),
         oauth_config: None,
+        ssrf_policy: None,
+        egress_allowlist: None,
+        sandbox_type: None,
+        max_memory_mb: None,
+        timeout_seconds: None,
+        dlp_enabled: None,
+        dlp_rules: None,
+        rate_limit_rpm: None,
+        daily_request_limit: None,
+        kms_provider: None,
+        kms_key_id: None,
     };
 
     let create_req = Request::builder()

@@ -1,63 +1,29 @@
 #![deny(unsafe_code)]
 
-use std::collections::HashMap;
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use axum::Json;
 use chrono::Utc;
-use lumis_core::models::mcp::{
-    McpRiskTier, McpServerCreateInput, McpServerRecord,
-    McpTransportType, UserMcpOAuthTokenRecord,
-};
-use lumis_core::models::EnterpriseRole;
+use lumis_core::models::mcp::UserMcpOAuthTokenRecord;
 use lumis_core::oauth::{build_mcp_authorization_url, generate_pkce_pair};
-use lumis_core::security::{encrypt_mcp_secret, validate_mcp_endpoint_url};
-use serde::{Deserialize, Serialize};
+use lumis_core::security::encrypt_mcp_secret;
+use serde::Deserialize;
 use serde_json::json;
 use uuid::Uuid;
 
 use crate::state::AppState;
+
+pub use super::mcp_user_servers::{
+    create_user_mcp_server, delete_user_mcp_server, extract_tenant_and_user,
+    list_user_mcp_preferences, toggle_user_mcp_preference,
+};
 
 fn get_master_key() -> Vec<u8> {
     std::env::var("LUMIS_MCP_ENCRYPTION_KEY")
         .or_else(|_| std::env::var("LUMIS_SECRET_KEY"))
         .unwrap_or_else(|_| "lumis-default-master-key-32b-secret!".to_string())
         .into_bytes()
-}
-
-async fn extract_tenant_and_user(headers: &HeaderMap, state: &AppState) -> (String, String, EnterpriseRole) {
-    let mut header_map = HashMap::new();
-    for (k, v) in headers.iter() {
-        if let Ok(str_val) = v.to_str() {
-            header_map.insert(k.as_str().to_lowercase(), str_val.to_string());
-        }
-    }
-    if let Some(val) = headers.get(&state.trusted_header).and_then(|v| v.to_str().ok()) {
-        header_map.insert("x-forwarded-user".to_string(), val.to_string());
-    }
-
-    if let Ok(claims) = state.claim_translator.extract_claims(&header_map) {
-        let claim_role = if !claims.roles.is_empty() {
-            Some(state.claim_translator.resolve_effective_role(&claims))
-        } else {
-            None
-        };
-
-        let (user_id, role) = match state.repo.get_user_by_username(&claims.username).await {
-            Ok(Some(u)) => {
-                let r = claim_role.unwrap_or(u.role);
-                (u.id, r)
-            }
-            _ => {
-                let r = claim_role.unwrap_or(EnterpriseRole::Member);
-                (claims.username.clone(), r)
-            }
-        };
-        (claims.tenant_id.unwrap_or_else(|| "default".to_string()), user_id, role)
-    } else {
-        ("default".to_string(), "anonymous".to_string(), EnterpriseRole::Guest)
-    }
 }
 
 #[derive(Deserialize)]
@@ -100,15 +66,17 @@ pub async fn authorize_mcp_oauth(
 
     Json(json!({
         "authorization_url": auth_url,
-        "state": state_param,
         "code_verifier": pkce.code_verifier,
-        "code_challenge_method": pkce.code_challenge_method,
+        "state": state_param,
     })).into_response()
 }
 
 #[derive(Deserialize)]
 pub struct OAuthCallbackRequest {
-    pub access_token: String,
+    pub code: Option<String>,
+    pub code_verifier: Option<String>,
+    pub redirect_uri: Option<String>,
+    pub access_token: Option<String>,
     pub refresh_token: Option<String>,
     pub token_type: Option<String>,
     pub scope: Option<String>,
@@ -123,46 +91,102 @@ pub async fn callback_mcp_oauth(
     Json(payload): Json<OAuthCallbackRequest>,
 ) -> impl IntoResponse {
     let (tenant_id, user_id, _) = extract_tenant_and_user(&headers, &state).await;
-    if user_id == "anonymous" {
-        return (StatusCode::UNAUTHORIZED, Json(json!({ "error": "Authentication required" }))).into_response();
-    }
-
     let server = match state.repo.get_mcp_server(&id, &tenant_id).await {
         Ok(Some(s)) => s,
         _ => return (StatusCode::NOT_FOUND, Json(json!({ "error": "Server not found" }))).into_response(),
     };
 
+    let oauth_cfg = match server.oauth_config {
+        Some(cfg) => cfg,
+        None => return (StatusCode::BAD_REQUEST, Json(json!({ "error": "Server does not configure OAuth 2.1" }))).into_response(),
+    };
+
+    let (access_token, refresh_token, token_type, scope, expires_in) = if let Some(ref at) = payload.access_token {
+        (
+            at.clone(),
+            payload.refresh_token.clone(),
+            payload.token_type.clone().unwrap_or_else(|| "Bearer".to_string()),
+            payload.scope.clone(),
+            payload.expires_in,
+        )
+    } else if let (Some(code), Some(verifier), Some(redirect_uri)) = (&payload.code, &payload.code_verifier, &payload.redirect_uri) {
+        let client = reqwest::Client::new();
+        let mut params = std::collections::HashMap::new();
+        params.insert("grant_type", "authorization_code");
+        params.insert("client_id", &oauth_cfg.client_id);
+        params.insert("code", code.as_str());
+        params.insert("redirect_uri", redirect_uri.as_str());
+        params.insert("code_verifier", verifier.as_str());
+
+        let res = match client.post(&oauth_cfg.token_endpoint).form(&params).send().await {
+            Ok(r) => r,
+            Err(e) => return (StatusCode::BAD_GATEWAY, Json(json!({ "error": format!("Token request failed: {}", e) }))).into_response(),
+        };
+
+        if !res.status().is_success() {
+            let err_body = res.text().await.unwrap_or_default();
+            return (StatusCode::BAD_GATEWAY, Json(json!({ "error": format!("Token endpoint rejected: {}", err_body) }))).into_response();
+        }
+
+        let token_data: serde_json::Value = match res.json().await {
+            Ok(j) => j,
+            Err(e) => return (StatusCode::BAD_GATEWAY, Json(json!({ "error": format!("Invalid token response: {}", e) }))).into_response(),
+        };
+
+        let at = token_data.get("access_token").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let rt = token_data.get("refresh_token").and_then(|v| v.as_str()).map(|s| s.to_string());
+        let tt = token_data.get("token_type").and_then(|v| v.as_str()).unwrap_or("Bearer").to_string();
+        let sc = token_data.get("scope").and_then(|v| v.as_str()).map(|s| s.to_string());
+        let exp = token_data.get("expires_in").and_then(|v| v.as_i64());
+        (at, rt, tt, sc, exp)
+    } else {
+        return (StatusCode::BAD_REQUEST, Json(json!({ "error": "Missing code or access_token in callback" }))).into_response();
+    };
+
+    if access_token.is_empty() {
+        return (StatusCode::BAD_GATEWAY, Json(json!({ "error": "Empty access_token from IdP" }))).into_response();
+    }
+
     let master_key = get_master_key();
-    let enc_access = match encrypt_mcp_secret(&payload.access_token, &master_key) {
+    let access_encrypted = match encrypt_mcp_secret(&access_token, &master_key) {
         Ok(enc) => enc,
         Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))).into_response(),
     };
 
-    let enc_refresh = if let Some(ref r) = payload.refresh_token {
-        encrypt_mcp_secret(r, &master_key).ok()
+    let refresh_encrypted = if let Some(ref rf) = refresh_token {
+        encrypt_mcp_secret(rf, &master_key).ok()
     } else {
         None
     };
 
     let now = Utc::now();
-    let expires_at = payload.expires_in.map(|secs| now.timestamp() + secs);
+    let expires_at = expires_in.map(|sec| now.timestamp() + sec);
+
     let token_record = UserMcpOAuthTokenRecord {
         id: format!("mcp-tok-{}", Uuid::new_v4()),
         user_id,
         server_id: server.id,
-        access_token_encrypted: enc_access,
-        refresh_token_encrypted: enc_refresh,
-        token_type: payload.token_type.unwrap_or_else(|| "Bearer".to_string()),
-        scope: payload.scope,
+        access_token_encrypted: access_encrypted,
+        refresh_token_encrypted: refresh_encrypted,
+        token_type: token_type.to_string(),
+        scope: scope.map(|s| s.to_string()),
         expires_at,
+        is_revoked: false,
+        revoked_at: None,
+        idp_session_id: None,
         created_at: now,
         updated_at: now,
     };
 
-    match state.repo.save_user_mcp_oauth_token(&token_record).await {
-        Ok(_) => Json(json!({ "success": true, "connected": true })).into_response(),
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))).into_response(),
+    if let Err(e) = state.repo.save_user_mcp_oauth_token(&token_record).await {
+        return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))).into_response();
     }
+
+    Json(json!({
+        "success": true,
+        "token_type": token_type,
+        "expires_in": expires_in,
+    })).into_response()
 }
 
 /// DELETE /api/mcp/servers/{id}/oauth/token
@@ -173,167 +197,34 @@ pub async fn revoke_mcp_oauth_token(
 ) -> impl IntoResponse {
     let (_, user_id, _) = extract_tenant_and_user(&headers, &state).await;
     match state.repo.delete_user_mcp_oauth_token(&user_id, &id).await {
-        Ok(_) => Json(json!({ "success": true, "disconnected": true })).into_response(),
+        Ok(true) => Json(json!({ "success": true, "message": "OAuth token revoked" })).into_response(),
+        Ok(false) => (StatusCode::NOT_FOUND, Json(json!({ "error": "Token not found" }))).into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))).into_response(),
     }
-}
-
-#[derive(Serialize)]
-pub struct UserMcpServerStatus {
-    pub id: String,
-    pub name: String,
-    pub display_title: String,
-    pub description: Option<String>,
-    pub transport_type: String,
-    pub auth_type: String,
-    pub scope_type: String,
-    pub is_mandatory: bool,
-    pub is_enabled: bool,
-    pub is_oauth_connected: bool,
-    pub tools_count: usize,
-}
-
-/// GET /api/mcp/preferences
-pub async fn list_user_mcp_preferences(
-    State(state): State<AppState>,
-    headers: HeaderMap,
-) -> impl IntoResponse {
-    let (tenant_id, user_id, role) = extract_tenant_and_user(&headers, &state).await;
-    let servers = state.repo.list_mcp_servers_for_user(&tenant_id, &user_id, role.as_str()).await.unwrap_or_default();
-    let preferences = state.repo.list_user_mcp_preferences(&user_id).await.unwrap_or_default();
-
-    let mut pref_map = HashMap::new();
-    for p in preferences {
-        pref_map.insert(p.server_id, p.is_enabled);
-    }
-
-    let mut status_list = Vec::with_capacity(servers.len());
-    for s in servers {
-        let is_oauth_connected = state.repo.get_user_mcp_oauth_token(&user_id, &s.id).await.ok().flatten().is_some();
-        let tools = state.repo.list_mcp_tools(&s.id).await.unwrap_or_default();
-        
-        let is_enabled = if s.is_mandatory {
-            true // CISO Enforced: selalu aktif untuk server mandatory
-        } else {
-            pref_map.get(&s.id).copied().unwrap_or(s.is_enabled)
-        };
-
-        status_list.push(UserMcpServerStatus {
-            id: s.id,
-            name: s.name,
-            display_title: s.display_title,
-            description: s.description,
-            transport_type: s.transport_type.as_str().to_string(),
-            auth_type: s.auth_type.as_str().to_string(),
-            scope_type: s.scope_type,
-            is_mandatory: s.is_mandatory,
-            is_enabled,
-            is_oauth_connected,
-            tools_count: tools.len(),
-        });
-    }
-
-    Json(json!({ "servers": status_list })).into_response()
 }
 
 #[derive(Deserialize)]
-pub struct TogglePreferenceRequest {
-    pub is_enabled: bool,
+pub struct BackchannelLogoutRequest {
+    pub user_id: Option<String>,
+    pub session_id: Option<String>,
 }
 
-/// PUT /api/mcp/preferences/{server_id}
-pub async fn toggle_user_mcp_preference(
-    State(state): State<AppState>,
-    Path(server_id): Path<String>,
-    headers: HeaderMap,
-    Json(payload): Json<TogglePreferenceRequest>,
-) -> impl IntoResponse {
-    let (tenant_id, user_id, _) = extract_tenant_and_user(&headers, &state).await;
-    if let Ok(Some(server)) = state.repo.get_mcp_server(&server_id, &tenant_id).await {
-        // CISO Enforcement Rule: Server mandatory DILARANG dimatikan
-        if server.is_mandatory && !payload.is_enabled {
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(json!({ "error": "Server ini bersifat Mandatory (CISO Enforced) dan tidak dapat dinonaktifkan." })),
-            ).into_response();
-        }
-    }
-
-    match state.repo.set_user_mcp_preference(&user_id, &server_id, payload.is_enabled).await {
-        Ok(_) => Json(json!({ "success": true, "server_id": server_id, "is_enabled": payload.is_enabled })).into_response(),
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))).into_response(),
-    }
-}
-
-/// POST /api/mcp/servers/user
-pub async fn create_user_mcp_server(
+/// POST /api/mcp/oauth/backchannel-logout (RFC 7009 / OIDC Backchannel Logout)
+pub async fn backchannel_logout(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Json(payload): Json<McpServerCreateInput>,
+    Json(payload): Json<BackchannelLogoutRequest>,
 ) -> impl IntoResponse {
-    let (tenant_id, user_id, _) = extract_tenant_and_user(&headers, &state).await;
-    if user_id == "anonymous" {
-        return (StatusCode::UNAUTHORIZED, Json(json!({ "error": "Authentication required" }))).into_response();
-    }
+    let (_, req_user_id, role) = extract_tenant_and_user(&headers, &state).await;
+    let target_user = payload.user_id.unwrap_or(req_user_id);
 
-    let endpoint_url = payload.endpoint_url.clone().unwrap_or_default();
-    if payload.transport_type != McpTransportType::Stdio {
-        if let Err(e) = validate_mcp_endpoint_url(&endpoint_url, &[]) {
-            return (StatusCode::BAD_REQUEST, Json(json!({ "error": format!("Anti-SSRF: {}", e) }))).into_response();
-        }
-    }
-
-    let server_id = format!("mcp-usr-{}", Uuid::new_v4());
-    let now = Utc::now();
-    let record = McpServerRecord {
-        id: server_id.clone(),
-        tenant_id,
-        created_by: user_id.clone(),
-        name: payload.name.trim().to_string(),
-        display_title: payload.display_title.trim().to_string(),
-        description: payload.description,
-        transport_type: payload.transport_type,
-        endpoint_url: payload.endpoint_url,
-        command_bin: payload.command_bin,
-        command_args: payload.command_args,
-        auth_type: payload.auth_type,
-        encrypted_credentials: None,
-        is_enabled: true,
-        risk_tier: payload.risk_tier.unwrap_or(McpRiskTier::Safe),
-        scope_type: "user".to_string(),
-        owner_user_id: Some(user_id),
-        is_mandatory: false,
-        allowed_roles: vec!["admin".to_string(), "user".to_string(), "member".to_string()],
-        oauth_config: payload.oauth_config,
-        created_at: now,
-        updated_at: now,
-    };
-
-    match state.repo.create_mcp_server(&record).await {
-        Ok(res) => (StatusCode::CREATED, Json(json!({ "server": res }))).into_response(),
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))).into_response(),
-    }
-}
-
-/// DELETE /api/mcp/servers/user/{id}
-pub async fn delete_user_mcp_server(
-    State(state): State<AppState>,
-    Path(id): Path<String>,
-    headers: HeaderMap,
-) -> impl IntoResponse {
-    let (tenant_id, user_id, role) = extract_tenant_and_user(&headers, &state).await;
-    let existing = match state.repo.get_mcp_server(&id, &tenant_id).await {
-        Ok(Some(s)) => s,
-        _ => return (StatusCode::NOT_FOUND, Json(json!({ "error": "Server not found" }))).into_response(),
-    };
-
-    // User hanya boleh menghapus server miliknya sendiri, kecuali Admin
-    if existing.owner_user_id.as_deref() != Some(&user_id) && !role.is_at_least(EnterpriseRole::TenantAdmin) {
+    // Only Admin can revoke tokens on behalf of another user
+    if target_user != "anonymous" && !role.is_at_least(lumis_core::models::EnterpriseRole::TenantAdmin) {
         return (StatusCode::FORBIDDEN, Json(json!({ "error": "Forbidden" }))).into_response();
     }
 
-    match state.repo.delete_mcp_server(&id, &tenant_id).await {
-        Ok(true) => Json(json!({ "success": true })).into_response(),
-        _ => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "Failed to delete" }))).into_response(),
+    match state.repo.revoke_tokens_by_session_or_user(&target_user, payload.session_id.as_deref()).await {
+        Ok(count) => Json(json!({ "success": true, "revoked_tokens_count": count })).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))).into_response(),
     }
 }
