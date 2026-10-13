@@ -108,6 +108,7 @@ async fn test_multi_turn_context_assembly_order_and_system_prompt() {
         &user,
         &history,
         current_query,
+        &session.model_id,
         &user_memories,
         None,
     );
@@ -185,6 +186,7 @@ async fn test_sliding_window_context_truncation_budget() {
         &user,
         &history,
         "Pertanyaan terakhir",
+        &session.model_id,
         &[],
         Some(350),
     );

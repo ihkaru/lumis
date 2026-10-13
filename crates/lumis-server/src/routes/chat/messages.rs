@@ -171,7 +171,13 @@ pub async fn send_message(
     };
 
     match state.repo.get_session(&session_id).await {
-        Ok(Some(_)) => {}
+        Ok(Some(existing_sess)) => {
+            if let Some(ref m_id) = payload.model_id {
+                if m_id != &existing_sess.model_id {
+                    let _ = state.repo.update_session_model(&session_id, m_id).await;
+                }
+            }
+        }
         Ok(None) => {
             let auto_session = NewSession {
                 id: Some(session_id.clone()),

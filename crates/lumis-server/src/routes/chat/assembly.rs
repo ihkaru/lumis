@@ -9,20 +9,43 @@ pub const DEFAULT_MAX_CONTEXT_TOKENS: usize = 8192;
 /// 2. Sliding window history pruning with token budget enforcement
 /// 3. Tail dynamic context injection (temporal/spatial stamp cache-friendly)
 /// 4. Current user prompt
+/// Map internal model identifier to readable identity name
+pub fn format_model_identity(model_id: &str) -> &'static str {
+    match model_id {
+        "cbai/glm-5.2" => "GLM 5.2 (Zhipu AI Flagship)",
+        "cbai/glm-5v-turbo" => "GLM 5V Turbo (Multimodal Vision)",
+        "cbai/minimax-m3" => "MiniMax M3 (1M Long-Context)",
+        "cbai/kimi-k2.6" => "Kimi K2.6 (Moonshot AI)",
+        "cbai/kimi-k2.5" => "Kimi K2.5 (High Speed)",
+        "openrouter-free" => "Ling 3.1 Flash (OpenRouter)",
+        "my9model-free" | "my9model-smart" | "my9model-fast" => "NVIDIA Nemotron 3 Ultra (9Router Gateway)",
+        _ => "Enterprise AI Gateway",
+    }
+}
+
+/// Assemble the complete chat completion messages array for an inference turn.
+/// Enforces:
+/// 1. Stable prefix system prompt (base + session custom + persistent user memories + active engine)
+/// 2. Sliding window history pruning with token budget enforcement & duplicate prompt elimination
+/// 3. Tail dynamic context injection (temporal/spatial stamp cache-friendly)
+/// 4. Current user prompt
 pub fn assemble_chat_context(
     session: &Session,
     user: &User,
     history: &[Message],
     current_query: &str,
+    active_model: &str,
     user_memories: &[UserMemory],
     max_context_tokens: Option<usize>,
 ) -> Vec<ChatMessagePayload> {
     let budget = max_context_tokens.unwrap_or(DEFAULT_MAX_CONTEXT_TOKENS);
     let mut messages = Vec::new();
 
-    // 1. Build Base System Prompt + Custom Session Prompt + User Memories
-    let mut system_text = String::from(
-        "You are Lumis, an enterprise-grade AI assistant. Provide helpful, accurate, well-formatted markdown responses. Use LaTeX ($...$ or $$...$$) for formulas and mermaid for diagrams when helpful."
+    // 1. Build Base System Prompt + Model Identity + Custom Session Prompt + User Memories
+    let model_display = format_model_identity(active_model);
+    let mut system_text = format!(
+        "You are Lumis, an enterprise-grade AI assistant. Your current active inference engine is {}.\nProvide helpful, accurate, well-formatted markdown responses. Use LaTeX ($...$ or $$...$$) for formulas and mermaid for diagrams when helpful.\nIf asked about your identity or underlying model, accurately explain that you are Lumis powered by {}.",
+        model_display, model_display
     );
 
     if let Some(ref custom) = session.system_prompt {
@@ -52,12 +75,23 @@ pub fn assemble_chat_context(
     });
 
     // 2. Sliding-Window Budget Pruning on History
+    // Exclude the current query if it was already appended to history
+    let effective_history = if let Some(last) = history.last() {
+        if last.role == MessageRole::User && last.content == current_query {
+            &history[..history.len() - 1]
+        } else {
+            history
+        }
+    } else {
+        history
+    };
+
     let mut selected_history = Vec::new();
     let mut accumulated_tokens = 0;
     let mut pruned_any = false;
 
     // Traverse from newest to oldest
-    for msg in history.iter().rev() {
+    for msg in effective_history.iter().rev() {
         let role_str = match msg.role {
             MessageRole::User => "user",
             MessageRole::Assistant => "assistant",

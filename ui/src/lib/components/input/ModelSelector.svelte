@@ -74,17 +74,14 @@
         return (
           m.capabilities?.reasoning ||
           m.tier === "Reasoning" ||
-          m.id.includes("r1") ||
-          m.id.includes("smart") ||
-          m.id.includes("reasoning")
+          m.id.includes("5.2") ||
+          m.id.includes("r1")
         );
       }
       if (selectedCategory === "vision") {
         return (
           m.capabilities?.vision ||
           m.tier === "Advanced" ||
-          m.id.includes("vision") ||
-          m.id.includes("vl") ||
           m.id.includes("5v") ||
           m.id.includes("m3") ||
           m.id.includes("k2")
@@ -93,9 +90,9 @@
       if (selectedCategory === "combo") {
         return (
           m.owned_by === "combo" ||
+          m.owned_by === "openrouter" ||
           m.id.includes("free") ||
-          m.id.includes("fast") ||
-          m.id.includes("my9model")
+          m.id.includes("openrouter")
         );
       }
       return true;

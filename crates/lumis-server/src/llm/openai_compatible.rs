@@ -221,6 +221,9 @@ impl LlmProviderDriver for OpenAiCompatibleDriver {
         if let Some(data) = body["data"].as_array() {
             for item in data {
                 if let Some(id) = item["id"].as_str() {
+                    if !is_verified_model(id) {
+                        continue;
+                    }
                     let owned_by = item["owned_by"].as_str().map(|s| s.to_string());
 
                     let caps = if let Some(c) = item.get("capabilities").filter(|v| v.is_object()) {
@@ -232,8 +235,8 @@ impl LlmProviderDriver for OpenAiCompatibleDriver {
                             max_output: c["maxOutput"].as_u64().or_else(|| item["max_completion_tokens"].as_u64()),
                         })
                     } else {
-                        let is_reasoning = id.contains("r1") || id.contains("reasoning") || id.contains("o1") || id.contains("o3") || id.contains("smart");
-                        let is_vision = id.contains("vision") || id.contains("vl") || id.contains("5v");
+                        let is_reasoning = id.contains("r1") || id.contains("reasoning") || id.contains("5.2");
+                        let is_vision = id.contains("vision") || id.contains("5v") || id.contains("m3") || id.contains("k2");
                         Some(ModelCapabilities {
                             vision: is_vision,
                             tools: true,
@@ -250,7 +253,7 @@ impl LlmProviderDriver for OpenAiCompatibleDriver {
                         "Reasoning".to_string()
                     } else if is_vision {
                         "Advanced".to_string()
-                    } else if id.contains("free") || id.contains("mini") || id.contains("flash") || id.contains("fast") {
+                    } else if id.contains("free") {
                         "Basic".to_string()
                     } else {
                         "Standard".to_string()
@@ -278,37 +281,29 @@ impl LlmProviderDriver for OpenAiCompatibleDriver {
     }
 }
 
+fn is_verified_model(id: &str) -> bool {
+    matches!(
+        id,
+        "cbai/glm-5.2"
+            | "cbai/glm-5v-turbo"
+            | "cbai/minimax-m3"
+            | "cbai/kimi-k2.6"
+            | "cbai/kimi-k2.5"
+            | "openrouter-free"
+            | "my9model-free"
+    )
+}
+
 fn format_model_display_name(id: &str) -> String {
     match id {
-        "my9model-free" => "Standard Free (9Router)".to_string(),
-        "my9model-smart" => "Smart Reasoning (9Router)".to_string(),
-        "my9model-fast" => "Fast Turbo (9Router)".to_string(),
-        "my9model-cooldown" => "Cooldown Fallback (9Router)".to_string(),
-        "openrouter-free" => "OpenRouter Free Combo".to_string(),
-        "kilo-free" => "Kilo Free Gateway".to_string(),
-        "opencode-free" => "OpenCode Free Coding".to_string(),
+        "my9model-free" => "Nemotron 3 Ultra (Free Gateway)".to_string(),
+        "openrouter-free" => "Ling 3.1 Flash (OpenRouter)".to_string(),
         "cbai/glm-5.2" => "GLM 5.2 (Flagship Reasoning)".to_string(),
-        "cbai/glm-5.1" => "GLM 5.1 (CodeBuddy)".to_string(),
-        "cbai/glm-5.0" => "GLM 5.0 (Balanced)".to_string(),
-        "cbai/glm-5.0-turbo" => "GLM 5.0 Turbo (Fast)".to_string(),
         "cbai/glm-5v-turbo" => "GLM 5V Turbo (Vision)".to_string(),
-        "cbai/glm-4.7" => "GLM 4.7 (Legacy Stable)".to_string(),
         "cbai/minimax-m3" => "MiniMax M3 (1M Long-Context)".to_string(),
-        "cbai/minimax-m2.7" => "MiniMax M2.7 (Efficient)".to_string(),
-        "cbai/kimi-k2.7" => "Kimi K2.7 (Vision & Tools)".to_string(),
-        "cbai/kimi-k2.6" => "Kimi K2.6 (Long-Context)".to_string(),
+        "cbai/kimi-k2.6" => "Kimi K2.6 (Moonshot AI)".to_string(),
         "cbai/kimi-k2.5" => "Kimi K2.5 (High Speed)".to_string(),
-        "cbai/hy3-preview" => "Hunyuan 3 Preview".to_string(),
-        "cbai/deepseek-v4-pro" => "DeepSeek V4 Pro (Reasoning)".to_string(),
-        "cbai/deepseek-v4-flash" => "DeepSeek V4 Flash (Fast)".to_string(),
-        "cbai/deepseek-v3-2-volc" => "DeepSeek V3.2 Volc".to_string(),
-        other => {
-            if let Some(stripped) = other.strip_prefix("cbai/") {
-                format!("{} (CodeBuddy)", stripped.to_uppercase())
-            } else {
-                other.to_string()
-            }
-        }
+        other => other.to_string(),
     }
 }
 

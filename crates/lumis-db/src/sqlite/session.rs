@@ -149,3 +149,16 @@ pub async fn update_session_title(pool: &SqlitePool, id: &str, title: &str) -> R
     Ok(res.rows_affected() > 0)
 }
 
+pub async fn update_session_model(pool: &SqlitePool, id: &str, model_id: &str) -> Result<bool> {
+    let now = Utc::now();
+    let res = sqlx::query("UPDATE sessions SET model_id = ?, updated_at = ? WHERE id = ?")
+        .bind(model_id)
+        .bind(now.to_rfc3339())
+        .bind(id)
+        .execute(pool)
+        .await
+        .map_err(|e| LumisError::Database(e.to_string()))?;
+    Ok(res.rows_affected() > 0)
+}
+
+

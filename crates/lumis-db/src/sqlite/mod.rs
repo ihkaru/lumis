@@ -67,6 +67,10 @@ impl ChatRepository for SqliteRepository {
         session::update_session_title(&self.pool, session_id, title).await
     }
 
+    async fn update_session_model(&self, session_id: &str, model_id: &str) -> Result<bool> {
+        session::update_session_model(&self.pool, session_id, model_id).await
+    }
+
     async fn list_sessions(
         &self,
         user_id: &str,

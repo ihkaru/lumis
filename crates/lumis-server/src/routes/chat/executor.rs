@@ -52,6 +52,7 @@ pub fn spawn_chat_completion(
             &user,
             &past_messages,
             &prompt,
+            &model,
             &user_memories,
             None,
         );
@@ -75,6 +76,7 @@ pub fn spawn_chat_completion(
                                 "event": "chunk",
                                 "session_id": sess_id,
                                 "delta": chunk.content,
+                                "model_id": model,
                                 "is_done": chunk.is_done,
                             });
                             let _ = stream_tx.send(bytes::Bytes::from(chunk_event.to_string()));

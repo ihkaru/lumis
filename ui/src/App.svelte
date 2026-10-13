@@ -79,9 +79,12 @@
           const lastIdx = messages.length - 1;
           if (lastIdx >= 0 && messages[lastIdx].role === "assistant") {
             messages[lastIdx].content += data.delta;
+            if (data.model_id && !messages[lastIdx].model_id) {
+              messages[lastIdx].model_id = data.model_id;
+            }
             messages = [...messages];
           } else {
-            messages = [...messages, { id: "stream_" + Date.now(), session_id: activeSessionId || "", role: "assistant", content: data.delta, created_at: new Date().toISOString() }];
+            messages = [...messages, { id: "stream_" + Date.now(), session_id: activeSessionId || "", role: "assistant", content: data.delta, model_id: data.model_id, created_at: new Date().toISOString() }];
           }
           scrollToBottom();
           if (data.is_done) isGenerating = false;
@@ -131,6 +134,11 @@
     if (typeof window !== "undefined" && window.innerWidth < 768) isMobileDrawerOpen = false;
     errorMessage = null;
     router.navigate(`/chat/${id}`);
+
+    const sess = sessions.find((s) => s.id === id);
+    if (sess?.model_id) {
+      selectedModelId = sess.model_id;
+    }
 
     try {
       const page = await api.listMessages(id);
@@ -187,7 +195,7 @@
 
     try {
       await api.sendMessage(targetSessionId, text, modelId);
-      messages = [...messages, { id: "stream_" + Date.now(), session_id: targetSessionId, role: "assistant", content: "", created_at: new Date().toISOString() }];
+      messages = [...messages, { id: "stream_" + Date.now(), session_id: targetSessionId, role: "assistant", content: "", model_id: modelId, created_at: new Date().toISOString() }];
       scrollToBottom();
     } catch (err: unknown) {
       const errObj = err as { name?: string; message?: string };
@@ -308,6 +316,9 @@
               selectedModelId = m;
               if (typeof localStorage !== "undefined") {
                 localStorage.setItem("lumis_selected_model", m);
+              }
+              if (activeSessionId) {
+                sessions = sessions.map((s) => (s.id === activeSessionId ? { ...s, model_id: m } : s));
               }
             }}
             onModeChange={(md) => (chatMode = md)}

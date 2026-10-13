@@ -17,6 +17,7 @@ pub trait ChatRepository: Send + Sync {
     async fn create_session(&self, new_session: &NewSession) -> Result<Session>;
     async fn get_session(&self, id: &str) -> Result<Option<Session>>;
     async fn update_session_title(&self, session_id: &str, title: &str) -> Result<bool>;
+    async fn update_session_model(&self, session_id: &str, model_id: &str) -> Result<bool>;
     async fn list_sessions(
         &self,
         user_id: &str,

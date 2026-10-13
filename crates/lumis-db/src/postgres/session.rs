@@ -134,3 +134,15 @@ pub async fn update_session_title(pool: &PgPool, id: &str, title: &str) -> Resul
     Ok(res.rows_affected() > 0)
 }
 
+pub async fn update_session_model(pool: &PgPool, id: &str, model_id: &str) -> Result<bool> {
+    let now = chrono::Utc::now();
+    let res = sqlx::query("UPDATE sessions SET model_id = $1, updated_at = $2 WHERE id = $3")
+        .bind(model_id)
+        .bind(now)
+        .bind(id)
+        .execute(pool)
+        .await
+        .map_err(|e| LumisError::Database(e.to_string()))?;
+    Ok(res.rows_affected() > 0)
+}
+
