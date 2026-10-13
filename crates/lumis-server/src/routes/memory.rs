@@ -26,7 +26,10 @@ pub async fn list_memories(
     let (username, role) = resolve_claims_and_role(&state, &headers).await;
     let user = match ensure_user(&state, &username, role).await {
         Ok(u) => u,
-        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": e }))).into_response(),
+        Err(e) => {
+            let status = if e.contains("dinonaktifkan") { StatusCode::FORBIDDEN } else { StatusCode::INTERNAL_SERVER_ERROR };
+            return (status, Json(serde_json::json!({ "error": e }))).into_response();
+        }
     };
 
     match state.repo.list_user_memories(&user.id).await {
@@ -43,7 +46,10 @@ pub async fn create_memory(
     let (username, role) = resolve_claims_and_role(&state, &headers).await;
     let user = match ensure_user(&state, &username, role).await {
         Ok(u) => u,
-        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": e }))).into_response(),
+        Err(e) => {
+            let status = if e.contains("dinonaktifkan") { StatusCode::FORBIDDEN } else { StatusCode::INTERNAL_SERVER_ERROR };
+            return (status, Json(serde_json::json!({ "error": e }))).into_response();
+        }
     };
 
     if payload.content.trim().is_empty() {

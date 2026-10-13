@@ -19,6 +19,7 @@ pub struct ScimEmail {
 pub struct ScimUser {
     #[serde(default = "default_user_schemas")]
     pub schemas: Vec<String>,
+    #[serde(default = "default_scim_id")]
     pub id: String,
     pub user_name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -29,6 +30,10 @@ pub struct ScimUser {
     pub active: bool,
     #[serde(default)]
     pub roles: Vec<String>,
+}
+
+fn default_scim_id() -> String {
+    uuid::Uuid::new_v4().to_string()
 }
 
 fn default_user_schemas() -> Vec<String> {
@@ -51,6 +56,7 @@ pub struct ScimMemberRef {
 pub struct ScimGroup {
     #[serde(default = "default_group_schemas")]
     pub schemas: Vec<String>,
+    #[serde(default = "default_scim_id")]
     pub id: String,
     pub display_name: String,
     #[serde(default)]

@@ -162,8 +162,13 @@ pub async fn send_message(
     let current_user = match ensure_user(&state, &username, role).await {
         Ok(u) => u,
         Err(e) => {
+            let status = if e.contains("dinonaktifkan") {
+                StatusCode::FORBIDDEN
+            } else {
+                StatusCode::INTERNAL_SERVER_ERROR
+            };
             return (
-                StatusCode::INTERNAL_SERVER_ERROR,
+                status,
                 Json(ErrorResponse { error: e }),
             )
                 .into_response();

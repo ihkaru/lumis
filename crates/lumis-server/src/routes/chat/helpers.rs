@@ -48,13 +48,21 @@ pub async fn ensure_federated_user(
     // 1. Try finding by federated identity (Immutable Subject Mapping)
     if let Ok(Some(idty)) = state.repo.find_identity(provider, subject_id).await {
         if let Ok(Some(u)) = state.repo.get_user_by_id(&idty.user_id).await {
+            if !u.is_active {
+                return Err("Akun pengguna dinonaktifkan".to_string());
+            }
             return Ok(u);
         }
     }
 
     // 2. Try finding by username fallback
     let user = match state.repo.get_user_by_username(username).await {
-        Ok(Some(u)) => u,
+        Ok(Some(u)) => {
+            if !u.is_active {
+                return Err("Akun pengguna dinonaktifkan".to_string());
+            }
+            u
+        }
         Ok(None) => {
             let now = Utc::now();
             let new_user = User {

@@ -100,3 +100,56 @@ pub async fn update_user_role(
             .into_response(),
     }
 }
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateUserStatusRequest {
+    pub username: String,
+    pub is_active: bool,
+}
+
+pub async fn update_user_status(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(payload): Json<UpdateUserStatusRequest>,
+) -> impl IntoResponse {
+    let (_username, caller_role) = crate::routes::chat::helpers::resolve_claims_and_role(&state, &headers).await;
+    if !caller_role.is_at_least(EnterpriseRole::TenantAdmin) {
+        return (
+            StatusCode::FORBIDDEN,
+            Json(serde_json::json!({ "error": "Only TenantAdmin or SuperAdmin can update user status" })),
+        )
+            .into_response();
+    }
+
+    match state.repo.get_user_by_username(&payload.username).await {
+        Ok(Some(mut user)) => {
+            if user.role == EnterpriseRole::SuperAdmin && caller_role != EnterpriseRole::SuperAdmin {
+                return (
+                    StatusCode::FORBIDDEN,
+                    Json(serde_json::json!({ "error": "Only SuperAdmin can modify another SuperAdmin status" })),
+                )
+                    .into_response();
+            }
+            user.is_active = payload.is_active;
+            user.updated_at = chrono::Utc::now();
+            match state.repo.upsert_user(&user).await {
+                Ok(updated) => (StatusCode::OK, Json(updated)).into_response(),
+                Err(e) => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({ "error": e.to_string() })),
+                )
+                    .into_response(),
+            }
+        }
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({ "error": "User tidak ditemukan" })),
+        )
+            .into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({ "error": e.to_string() })),
+        )
+            .into_response(),
+    }
+}
