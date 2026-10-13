@@ -46,6 +46,7 @@ pub async fn upsert_user(pool: &PgPool, user: &User) -> Result<User> {
             email = EXCLUDED.email,
             role = EXCLUDED.role,
             preferences = EXCLUDED.preferences,
+            is_active = EXCLUDED.is_active,
             password_hash = COALESCE(EXCLUDED.password_hash, users.password_hash),
             updated_at = EXCLUDED.updated_at
         "#

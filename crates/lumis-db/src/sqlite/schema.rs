@@ -79,6 +79,40 @@ pub async fn run_sqlite_migrations(pool: &SqlitePool) -> Result<()> {
 
         CREATE INDEX IF NOT EXISTS idx_user_memories_user
             ON user_memories(user_id, created_at DESC);
+
+        CREATE TABLE IF NOT EXISTS user_identities (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            provider TEXT NOT NULL,
+            provider_subject_id TEXT NOT NULL,
+            credential_data TEXT,
+            last_login_at TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            CONSTRAINT uq_user_identity UNIQUE(provider, provider_subject_id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_user_identities_user_id
+            ON user_identities(user_id);
+
+        CREATE TABLE IF NOT EXISTS scim_users (
+            id TEXT PRIMARY KEY,
+            external_id TEXT,
+            username TEXT UNIQUE NOT NULL,
+            display_name TEXT,
+            active INTEGER NOT NULL DEFAULT 1,
+            emails TEXT NOT NULL DEFAULT '[]',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS scim_groups (
+            id TEXT PRIMARY KEY,
+            display_name TEXT UNIQUE NOT NULL,
+            members TEXT NOT NULL DEFAULT '[]',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
         "#,
     )
     .execute(pool)
@@ -87,6 +121,16 @@ pub async fn run_sqlite_migrations(pool: &SqlitePool) -> Result<()> {
 
     // Idempotent migration for existing SQLite databases
     let _ = sqlx::query("ALTER TABLE users ADD COLUMN password_hash TEXT;").execute(pool).await;
+
+    // Idempotent backfill from legacy users.password_hash into user_identities
+    let _ = sqlx::query(
+        r#"
+        INSERT OR IGNORE INTO user_identities (id, user_id, provider, provider_subject_id, credential_data, last_login_at, created_at, updated_at)
+        SELECT id, id, 'local', username, json_object('password_hash', password_hash), updated_at, created_at, updated_at
+        FROM users
+        WHERE password_hash IS NOT NULL;
+        "#
+    ).execute(pool).await;
 
     Ok(())
 }

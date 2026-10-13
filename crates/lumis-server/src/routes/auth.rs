@@ -111,9 +111,7 @@ pub async fn auth_me(State(state): State<AppState>, headers: HeaderMap) -> impl 
 
     let effective_role = user.role;
     let max_clearance = match effective_role {
-        EnterpriseRole::SuperAdmin | EnterpriseRole::TenantAdmin | EnterpriseRole::PowerUser => {
-            ModelClearanceTier::TierReasoning
-        }
+        EnterpriseRole::SuperAdmin | EnterpriseRole::TenantAdmin | EnterpriseRole::PowerUser => ModelClearanceTier::TierReasoning,
         EnterpriseRole::Member => ModelClearanceTier::TierStandard,
         EnterpriseRole::Guest => ModelClearanceTier::TierBasic,
     };
@@ -131,15 +129,9 @@ pub async fn auth_me(State(state): State<AppState>, headers: HeaderMap) -> impl 
     )
         .into_response();
 
-    if let Ok(val) = HeaderValue::from_str(effective_role.as_str()) {
-        response.headers_mut().insert("x-forwarded-role", val);
-    }
-    if let Ok(val) = HeaderValue::from_str(max_clearance.as_str()) {
-        response.headers_mut().insert("x-forwarded-tier", val);
-    }
-    if let Ok(val) = HeaderValue::from_str(&effective_role.level().to_string()) {
-        response.headers_mut().insert("x-user-role-level", val);
-    }
+    if let Ok(val) = HeaderValue::from_str(effective_role.as_str()) { response.headers_mut().insert("x-forwarded-role", val); }
+    if let Ok(val) = HeaderValue::from_str(max_clearance.as_str()) { response.headers_mut().insert("x-forwarded-tier", val); }
+    if let Ok(val) = HeaderValue::from_str(&effective_role.level().to_string()) { response.headers_mut().insert("x-user-role-level", val); }
 
     response
 }
@@ -192,6 +184,21 @@ pub async fn login(
                 u.updated_at = chrono::Utc::now();
                 let _ = state.repo.upsert_user(&u).await;
             }
+
+            // Sync/link local identity record
+            let now = chrono::Utc::now();
+            let identity = lumis_core::models::UserIdentity {
+                id: format!("idty-local-{}", u.id),
+                user_id: u.id.clone(),
+                provider: "local".to_string(),
+                provider_subject_id: clean_user.to_string(),
+                credential_data: u.password_hash.as_ref().map(|h| serde_json::json!({ "password_hash": h })),
+                last_login_at: Some(now),
+                created_at: u.created_at,
+                updated_at: now,
+            };
+            let _ = state.repo.link_identity(&identity).await;
+
             u
         }
         Ok(None) => {
@@ -216,10 +223,24 @@ pub async fn login(
                 created_at: now,
                 updated_at: now,
             };
-            match state.repo.upsert_user(&new_user).await {
+            let created = match state.repo.upsert_user(&new_user).await {
                 Ok(created) => created,
                 Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": e.to_string() }))).into_response(),
-            }
+            };
+
+            let identity = lumis_core::models::UserIdentity {
+                id: format!("idty-local-{}", created.id),
+                user_id: created.id.clone(),
+                provider: "local".to_string(),
+                provider_subject_id: clean_user.to_string(),
+                credential_data: created.password_hash.as_ref().map(|h| serde_json::json!({ "password_hash": h })),
+                last_login_at: Some(now),
+                created_at: now,
+                updated_at: now,
+            };
+            let _ = state.repo.link_identity(&identity).await;
+
+            created
         }
         Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": e.to_string() }))).into_response(),
     };
@@ -294,10 +315,24 @@ pub async fn change_password(
                     return (StatusCode::BAD_REQUEST, Json(serde_json::json!({ "error": "Kata sandi lama tidak sesuai" }))).into_response();
                 }
             }
+            let now = chrono::Utc::now();
             user.password_hash = Some(User::hash_password(clean_new));
-            user.updated_at = chrono::Utc::now();
+            user.updated_at = now;
             match state.repo.upsert_user(&user).await {
-                Ok(_) => (StatusCode::OK, Json(serde_json::json!({ "status": "password_updated" }))).into_response(),
+                Ok(_) => {
+                    let identity = lumis_core::models::UserIdentity {
+                        id: format!("idty-local-{}", user.id),
+                        user_id: user.id.clone(),
+                        provider: "local".to_string(),
+                        provider_subject_id: user.username.clone(),
+                        credential_data: user.password_hash.as_ref().map(|h| serde_json::json!({ "password_hash": h })),
+                        last_login_at: Some(now),
+                        created_at: user.created_at,
+                        updated_at: now,
+                    };
+                    let _ = state.repo.link_identity(&identity).await;
+                    (StatusCode::OK, Json(serde_json::json!({ "status": "password_updated" }))).into_response()
+                }
                 Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": e.to_string() }))).into_response(),
             }
         }

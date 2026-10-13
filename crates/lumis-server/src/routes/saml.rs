@@ -197,7 +197,7 @@ pub async fn saml_acs(
         EnterpriseRole::Member
     };
 
-    let user = match crate::routes::chat::helpers::ensure_user(&state, &subject, role).await {
+    let user = match crate::routes::chat::helpers::ensure_federated_user(&state, "saml", &subject, &subject, role, None).await {
         Ok(u) => u,
         Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": e }))).into_response(),
     };

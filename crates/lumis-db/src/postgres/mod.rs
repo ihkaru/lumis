@@ -1,7 +1,9 @@
 pub mod driver;
+pub mod identity;
 pub mod memory;
 pub mod message;
 pub mod schema;
+pub mod scim;
 pub mod session;
 pub mod user;
 
@@ -118,5 +120,57 @@ impl ChatRepository for PostgresRepository {
 
     async fn delete_user_memory(&self, id: &str, user_id: &str) -> Result<bool> {
         memory::delete_user_memory(&self.pool, id, user_id).await
+    }
+
+    async fn find_identity(&self, provider: &str, provider_subject_id: &str) -> Result<Option<lumis_core::models::UserIdentity>> {
+        identity::find_identity(&self.pool, provider, provider_subject_id).await
+    }
+
+    async fn link_identity(&self, idty: &lumis_core::models::UserIdentity) -> Result<lumis_core::models::UserIdentity> {
+        identity::link_identity(&self.pool, idty).await
+    }
+
+    async fn list_identities_by_user(&self, user_id: &str) -> Result<Vec<lumis_core::models::UserIdentity>> {
+        identity::list_identities_by_user(&self.pool, user_id).await
+    }
+
+    async fn unlink_identity(&self, user_id: &str, provider: &str) -> Result<bool> {
+        identity::unlink_identity(&self.pool, user_id, provider).await
+    }
+
+    async fn list_scim_users(&self) -> Result<Vec<lumis_core::models::scim::ScimUser>> {
+        scim::list_scim_users(&self.pool).await
+    }
+
+    async fn get_scim_user(&self, id: &str) -> Result<Option<lumis_core::models::scim::ScimUser>> {
+        scim::get_scim_user(&self.pool, id).await
+    }
+
+    async fn upsert_scim_user(&self, user: &lumis_core::models::scim::ScimUser) -> Result<lumis_core::models::scim::ScimUser> {
+        scim::upsert_scim_user(&self.pool, user).await
+    }
+
+    async fn update_scim_user_status(&self, id: &str, active: bool) -> Result<bool> {
+        scim::update_scim_user_status(&self.pool, id, active).await
+    }
+
+    async fn delete_scim_user(&self, id: &str) -> Result<bool> {
+        scim::delete_scim_user(&self.pool, id).await
+    }
+
+    async fn list_scim_groups(&self) -> Result<Vec<lumis_core::models::scim::ScimGroup>> {
+        scim::list_scim_groups(&self.pool).await
+    }
+
+    async fn get_scim_group(&self, id: &str) -> Result<Option<lumis_core::models::scim::ScimGroup>> {
+        scim::get_scim_group(&self.pool, id).await
+    }
+
+    async fn upsert_scim_group(&self, group: &lumis_core::models::scim::ScimGroup) -> Result<lumis_core::models::scim::ScimGroup> {
+        scim::upsert_scim_group(&self.pool, group).await
+    }
+
+    async fn delete_scim_group(&self, id: &str) -> Result<bool> {
+        scim::delete_scim_group(&self.pool, id).await
     }
 }

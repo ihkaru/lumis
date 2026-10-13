@@ -165,3 +165,16 @@ pub struct UserClaims {
     pub department: Option<String>,
     pub employee_id: Option<String>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserIdentity {
+    pub id: String,
+    pub user_id: String,
+    pub provider: String, // "local", "saml", "oidc", "proxy", "scim"
+    pub provider_subject_id: String, // immutable IdP ID (sub, NameID, NIP, or username)
+    pub credential_data: Option<serde_json::Value>,
+    pub last_login_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+

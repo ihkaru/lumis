@@ -56,6 +56,7 @@ pub async fn upsert_user(pool: &SqlitePool, user: &User) -> Result<User> {
             email = excluded.email,
             role = excluded.role,
             preferences = excluded.preferences,
+            is_active = excluded.is_active,
             password_hash = COALESCE(excluded.password_hash, users.password_hash),
             updated_at = excluded.updated_at
         "#

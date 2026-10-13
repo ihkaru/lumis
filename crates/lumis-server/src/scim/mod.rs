@@ -1,5 +1,8 @@
 #![deny(unsafe_code)]
 
+pub mod db_provisioner;
+pub use db_provisioner::DatabaseScimProvisioner;
+
 use std::collections::HashMap;
 use std::sync::RwLock;
 use async_trait::async_trait;

@@ -25,7 +25,7 @@ pub use llm::{OpenAiCompatibleDriver, ResilientLlmRouter};
 pub use mcp::{DatabaseAuditTool, InMemoryMcpRegistry, SystemInfoTool};
 pub use rag::{DenseEmbedder, HybridKnowledgeVault, TextChunker};
 pub use routes::create_router;
-pub use scim::InMemoryScimProvisioner;
+pub use scim::{DatabaseScimProvisioner, InMemoryScimProvisioner};
 pub use state::AppState;
 pub use telemetry::{CompositeTelemetryDispatcher, PrometheusExporter, SentryTelemetryExporter};
 

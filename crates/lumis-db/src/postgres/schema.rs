@@ -76,6 +76,40 @@ pub async fn run_pg_migrations(pool: &PgPool) -> Result<()> {
 
         CREATE INDEX IF NOT EXISTS idx_pg_user_memories_user
             ON user_memories(user_id, created_at DESC);
+
+        CREATE TABLE IF NOT EXISTS user_identities (
+            id VARCHAR(64) PRIMARY KEY,
+            user_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            provider VARCHAR(64) NOT NULL,
+            provider_subject_id VARCHAR(256) NOT NULL,
+            credential_data JSONB,
+            last_login_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL,
+            CONSTRAINT uq_pg_user_identity UNIQUE(provider, provider_subject_id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_pg_user_identities_user_id
+            ON user_identities(user_id);
+
+        CREATE TABLE IF NOT EXISTS scim_users (
+            id VARCHAR(64) PRIMARY KEY,
+            external_id VARCHAR(256),
+            username VARCHAR(256) UNIQUE NOT NULL,
+            display_name VARCHAR(256),
+            active BOOLEAN NOT NULL DEFAULT TRUE,
+            emails JSONB NOT NULL DEFAULT '[]',
+            created_at TIMESTAMPTZ NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS scim_groups (
+            id VARCHAR(64) PRIMARY KEY,
+            display_name VARCHAR(256) UNIQUE NOT NULL,
+            members JSONB NOT NULL DEFAULT '[]',
+            created_at TIMESTAMPTZ NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL
+        );
         "#,
     )
     .execute(pool)
@@ -84,6 +118,17 @@ pub async fn run_pg_migrations(pool: &PgPool) -> Result<()> {
 
     // Idempotent migration for existing PostgreSQL databases
     let _ = sqlx::query("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(256);").execute(pool).await;
+
+    // Idempotent backfill from legacy users.password_hash into user_identities
+    let _ = sqlx::query(
+        r#"
+        INSERT INTO user_identities (id, user_id, provider, provider_subject_id, credential_data, last_login_at, created_at, updated_at)
+        SELECT id, id, 'local', username, jsonb_build_object('password_hash', password_hash), updated_at, created_at, updated_at
+        FROM users
+        WHERE password_hash IS NOT NULL
+        ON CONFLICT (provider, provider_subject_id) DO NOTHING;
+        "#
+    ).execute(pool).await;
 
     Ok(())
 }

@@ -13,7 +13,6 @@ use crate::finops::{InMemoryQuotaEngine, PrometheusTelemetryCollector};
 use crate::idempotency::InMemoryIdempotencyStore;
 use crate::mcp::InMemoryMcpRegistry;
 use crate::rag::HybridKnowledgeVault;
-use crate::scim::InMemoryScimProvisioner;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -69,7 +68,7 @@ impl AppState {
         let (stream_tx, _) = broadcast::channel(1024);
         Self {
             driver,
-            repo,
+            repo: repo.clone(),
             guardrail,
             claim_translator,
             quota_engine,
@@ -78,7 +77,7 @@ impl AppState {
             mcp_registry,
             audit_logger,
             idempotency_store: Arc::new(InMemoryIdempotencyStore::default()),
-            scim_provisioner: Arc::new(InMemoryScimProvisioner::default()),
+            scim_provisioner: Arc::new(crate::scim::DatabaseScimProvisioner::new(repo)),
             approval_manager: Arc::new(InMemoryApprovalManager::default()),
             llm_router: None,
             stream_tx,

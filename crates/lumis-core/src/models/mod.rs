@@ -33,7 +33,7 @@ pub use prompt_cache::{IdempotencyRecord, IdempotencyState, McpCatalogRevision, 
 pub use scim::{ScimEmail, ScimErrorResponse, ScimGroup, ScimListResponse, ScimMemberRef, ScimUser};
 pub use session::{NewSession, Session};
 pub use telemetry::{QuotaCheckResult, TokenUsageRecord};
-pub use user::{EnterpriseRole, ModelClearanceTier, User, UserClaims};
+pub use user::{EnterpriseRole, ModelClearanceTier, User, UserClaims, UserIdentity};
 
 
 

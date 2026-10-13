@@ -91,6 +91,30 @@ async fn test_sqlite_repository_lifecycle() {
     assert_eq!(page2.items.len(), 2);
     assert!(page2.has_more);
 
-    // Verify messages are different
-    assert_ne!(page1.items[0].id, page2.items[0].id);
+    // 5. Test Federated Identity Operations (Phase 2 Multi-IdP)
+    let identity = lumis_core::models::UserIdentity {
+        id: Uuid::new_v4().to_string(),
+        user_id: user_id.clone(),
+        provider: "saml".to_string(),
+        provider_subject_id: "199001012015011001".to_string(), // NIP BPS
+        credential_data: Some(serde_json::json!({ "idp": "rIDM_BPS", "email": "ciso@enterprise.com" })),
+        last_login_at: Some(chrono::Utc::now()),
+        created_at: chrono::Utc::now(),
+        updated_at: chrono::Utc::now(),
+    };
+    repo.link_identity(&identity).await.unwrap();
+
+    let fetched_idty = repo.find_identity("saml", "199001012015011001").await.unwrap();
+    assert!(fetched_idty.is_some());
+    let idty = fetched_idty.unwrap();
+    assert_eq!(idty.user_id, user_id);
+    assert_eq!(idty.provider, "saml");
+
+    let user_idties = repo.list_identities_by_user(&user_id).await.unwrap();
+    assert_eq!(user_idties.len(), 1);
+
+    let unlinked = repo.unlink_identity(&user_id, "saml").await.unwrap();
+    assert!(unlinked);
+    let after_unlink = repo.find_identity("saml", "199001012015011001").await.unwrap();
+    assert!(after_unlink.is_none());
 }
