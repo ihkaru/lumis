@@ -5,6 +5,7 @@ import type {
   CursorPage,
   DriverHealth,
   Message,
+  ModelDescriptor,
   RoleHierarchyInfo,
   Session,
   User,
@@ -15,6 +16,12 @@ export const api = {
   async getBranding(): Promise<BrandingConfig> {
     const res = await fetch("/api/config/branding");
     if (!res.ok) throw new Error("Failed to fetch branding configuration");
+    return res.json();
+  },
+
+  async getModels(): Promise<ModelDescriptor[]> {
+    const res = await fetch("/api/models");
+    if (!res.ok) throw new Error("Failed to fetch models");
     return res.json();
   },
 

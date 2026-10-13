@@ -118,3 +118,42 @@ async fn test_idempotent_expand_and_contract_migration_safety() {
     let is_healthy = driver.health().await.unwrap().is_alive;
     assert!(is_healthy, "Driver must be healthy throughout all rolling migration cycles");
 }
+
+#[tokio::test]
+async fn test_dynamic_models_discovery_and_catalog() {
+    let app = test_app().await;
+
+    // Test GET /api/models returns valid model list with capabilities and clearance
+    let req = Request::builder()
+        .uri("/api/models")
+        .header("x-forwarded-user", "pegawai_bps")
+        .header("x-forwarded-roles", "member")
+        .body(Body::empty())
+        .unwrap();
+
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let bytes = to_bytes(res.into_body(), 1024 * 1024).await.unwrap();
+    let models: Value = serde_json::from_slice(&bytes).unwrap();
+    assert!(models.is_array());
+    let list = models.as_array().unwrap();
+    assert!(!list.is_empty(), "Must return at least default models");
+
+    // Check first model has required contract fields
+    let first = &list[0];
+    assert!(first["id"].is_string());
+    assert!(first["name"].is_string());
+    assert!(first["tier"].is_string());
+    assert!(first["provider"].is_string());
+    assert!(first["can_access"].is_boolean());
+
+    // Check alias route /api/v1/models works identically
+    let req2 = Request::builder()
+        .uri("/api/v1/models")
+        .body(Body::empty())
+        .unwrap();
+    let res2 = app.oneshot(req2).await.unwrap();
+    assert_eq!(res2.status(), StatusCode::OK);
+}
+

@@ -90,4 +90,24 @@ export interface ArtifactIpcResponse {
   error?: string;
 }
 
+export interface ModelCapabilities {
+  vision: boolean;
+  tools: boolean;
+  reasoning: boolean;
+  context_length?: number;
+  max_output?: number;
+}
+
+export interface ModelDescriptor {
+  id: string;
+  name: string;
+  provider: string;
+  owned_by?: string;
+  tier: string;
+  capabilities?: ModelCapabilities;
+  is_default: boolean;
+  can_access: boolean;
+}
+
+
 

@@ -9,6 +9,7 @@ pub mod knowledge;
 pub mod mcp;
 pub mod memory;
 pub mod metrics;
+pub mod models;
 pub mod saml;
 pub mod scim;
 pub mod spa;
@@ -25,6 +26,9 @@ pub fn create_router(state: AppState) -> Router {
         .route("/health", get(health::health_check))
         .route("/health/db", get(health::db_health))
         .route("/api/system/doctor", get(config::get_system_doctor))
+        // Dynamic Model Discovery & Gateway Catalog
+        .route("/api/models", get(models::list_models))
+        .route("/api/v1/models", get(models::list_models))
         // Runtime Branding & Zero-Fork Configuration
         .route("/api/config/branding", get(config::get_branding_config))
         // Prometheus Metrics & FinOps Telemetry

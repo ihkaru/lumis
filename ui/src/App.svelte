@@ -23,7 +23,8 @@
   import FileEdit from "lucide-svelte/icons/file-edit";
 
   let brandTitle = $state("Lumis"), user = $state<User | null>(null), sessions = $state<Session[]>([]), activeSessionId = $state<string | null>(null);
-  let messages = $state<Message[]>([]), promptText = $state(""), isGenerating = $state(false), selectedModelId = $state("my9model-free");
+  let messages = $state<Message[]>([]), promptText = $state(""), isGenerating = $state(false);
+  let selectedModelId = $state(typeof localStorage !== "undefined" ? localStorage.getItem("lumis_selected_model") || "my9model-free" : "my9model-free");
   let chatMode = $state<ChatMode>("normal"), errorMessage = $state<string | null>(null);
   let isMobileDrawerOpen = $state(typeof window !== "undefined" ? window.innerWidth >= 768 : true);
   let isSettingsOpen = $state(false), isDark = $state(true), themePalette = $state<ThemePalette>("llumen");
@@ -303,7 +304,12 @@
           <MessageInput
             bind:promptText {isGenerating} {selectedModelId} {chatMode}
             onSend={handleSend} onStop={handleStop}
-            onModelChange={(m) => (selectedModelId = m)}
+            onModelChange={(m) => {
+              selectedModelId = m;
+              if (typeof localStorage !== "undefined") {
+                localStorage.setItem("lumis_selected_model", m);
+              }
+            }}
             onModeChange={(md) => (chatMode = md)}
           />
         </footer>

@@ -22,7 +22,10 @@ pub use artifact::{
 };
 pub use audit::{AuditEventStatus, AuditLogEvent};
 pub use knowledge::{Document, DocumentChunk, KnowledgeQuery, KnowledgeQueryResult};
-pub use llm::{ChatChunk, ChatCompletionRequest, ChatMessagePayload, ProviderHealth, ProviderHealthStatus};
+pub use llm::{
+    ChatChunk, ChatCompletionRequest, ChatMessagePayload, ModelCapabilities, ModelDescriptor,
+    ProviderHealth, ProviderHealthStatus,
+};
 pub use mcp::{McpTaskState, McpTaskStatus, McpToolCallRequest, McpToolCallResult, McpToolDefinition};
 pub use message::{Message, MessageRole, NewMessage};
 pub use pagination::{CursorPage, CursorQuery};

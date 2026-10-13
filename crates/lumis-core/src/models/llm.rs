@@ -35,3 +35,25 @@ pub struct ProviderHealth {
     pub status: ProviderHealthStatus,
     pub latency_ms: u64,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ModelCapabilities {
+    pub vision: bool,
+    pub tools: bool,
+    pub reasoning: bool,
+    pub context_length: Option<u64>,
+    pub max_output: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ModelDescriptor {
+    pub id: String,
+    pub name: String,
+    pub provider: String,
+    pub owned_by: Option<String>,
+    pub tier: String,
+    pub capabilities: Option<ModelCapabilities>,
+    pub is_default: bool,
+    pub can_access: bool,
+}
+

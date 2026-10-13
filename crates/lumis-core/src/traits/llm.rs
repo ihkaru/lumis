@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use tokio::sync::mpsc;
 use crate::error::Result;
-use crate::models::{ChatChunk, ChatCompletionRequest, ProviderHealth};
+use crate::models::{ChatChunk, ChatCompletionRequest, ModelDescriptor, ProviderHealth};
 
 /// Pluggable LLM Provider Driver Contract.
 /// Eliminates vendor lock-in by providing a uniform streaming completion interface
@@ -19,4 +19,10 @@ pub trait LlmProviderDriver: Send + Sync {
         &self,
         request: &ChatCompletionRequest,
     ) -> Result<mpsc::Receiver<Result<ChatChunk>>>;
+
+    /// Discovers available inference models from this provider.
+    async fn list_models(&self) -> Result<Vec<ModelDescriptor>> {
+        Ok(Vec::new())
+    }
 }
+

@@ -3,7 +3,9 @@ use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 use async_trait::async_trait;
 use lumis_core::error::{LumisError, Result};
-use lumis_core::models::{ChatChunk, ChatCompletionRequest, ProviderHealth, ProviderHealthStatus};
+use lumis_core::models::{
+    ChatChunk, ChatCompletionRequest, ModelDescriptor, ProviderHealth, ProviderHealthStatus,
+};
 use lumis_core::traits::{LlmProviderDriver, TelemetryDiagnosticEvent, TelemetryExporter, TelemetrySeverity};
 use tokio::sync::mpsc;
 
@@ -152,5 +154,16 @@ impl LlmProviderDriver for ResilientLlmRouter {
         Err(last_err.unwrap_or_else(|| {
             LumisError::Internal("All configured LLM providers in resilient pool are currently unavailable".to_string())
         }))
+    }
+
+    async fn list_models(&self) -> Result<Vec<ModelDescriptor>> {
+        for provider in &self.providers {
+            if let Ok(models) = provider.list_models().await {
+                if !models.is_empty() {
+                    return Ok(models);
+                }
+            }
+        }
+        Ok(Vec::new())
     }
 }
