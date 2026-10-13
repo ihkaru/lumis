@@ -7,7 +7,25 @@ use serde_json::json;
 use crate::state::AppState;
 use super::assembly::{assemble_chat_context, extract_heuristic_title, format_mcp_tools_for_openai};
 
-const MAX_AGENTIC_TURNS: usize = 5;
+/// Maximum agentic turns for long-running workflows.
+/// Defaults to unbounded (usize::MAX) or configured via LUMIS_MAX_AGENT_TURNS (0 = infinite).
+fn get_max_agentic_turns() -> usize {
+    std::env::var("LUMIS_MAX_AGENT_TURNS")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .map(|n| if n == 0 { usize::MAX } else { n })
+        .unwrap_or(usize::MAX)
+}
+
+/// Compresses historical tool observations exceeding character limits to prevent context drift and bloat.
+fn compress_observation(text: &str, max_len: usize) -> String {
+    if text.len() <= max_len {
+        text.to_string()
+    } else {
+        let half = max_len / 2;
+        format!("{}... [truncated {} characters] ...{}", &text[..half], text.len() - max_len, &text[text.len() - half..])
+    }
+}
 
 fn parse_text_tool_calls(text: &str) -> Vec<(String, String, serde_json::Value)> {
     let mut results = Vec::new();
@@ -76,10 +94,15 @@ pub fn spawn_chat_completion(
             None,
         );
 
+        let max_turns = get_max_agentic_turns();
         let mut executed_tools = Vec::new();
         let mut final_text = String::new();
+        let mut turn = 0;
+        let mut last_call_sig = (String::new(), String::new());
+        let mut repeat_count = 0;
 
-        for _turn in 0..MAX_AGENTIC_TURNS {
+        while turn < max_turns {
+            turn += 1;
             let req = ChatCompletionRequest {
                 model: model.clone(),
                 messages: messages.clone(),
@@ -166,6 +189,29 @@ pub fn spawn_chat_completion(
                 break;
             }
 
+            // Anti-Stuck Loop Detector: Prevent runaway identical loops
+            if let Some((_, first_tool, first_args)) = detected_calls.first() {
+                let current_sig = (first_tool.clone(), first_args.to_string());
+                if current_sig == last_call_sig {
+                    repeat_count += 1;
+                } else {
+                    last_call_sig = current_sig;
+                    repeat_count = 1;
+                }
+
+                if repeat_count >= 3 {
+                    tracing::warn!("Anti-stuck circuit breaker: tool '{}' repeated {} times", first_tool, repeat_count);
+                    messages.push(ChatMessagePayload::new(
+                        "system",
+                        format!("[System Directive: Anti-Stuck Circuit Breaker - You executed '{}' with identical parameters {} times. Adjust your strategy or formulate your final answer based on available data.]", first_tool, repeat_count),
+                    ));
+                    if repeat_count >= 4 {
+                        final_text = format!("Model halted by Anti-Stuck Guard: Repeatedly called tool '{}' without progress.", first_tool);
+                        break;
+                    }
+                }
+            }
+
             for (cid, tool_name, args) in detected_calls {
                 let start_event = json!({
                     "event": "tool_call_start",
@@ -224,6 +270,13 @@ pub fn spawn_chat_completion(
                     tool_call_id: None,
                 });
 
+                // Compress older historical tool observations to prevent context window explosion in long-running jobs
+                for msg in messages.iter_mut() {
+                    if msg.role == "tool" && msg.content.len() > 2000 {
+                        msg.content = compress_observation(&msg.content, 1500);
+                    }
+                }
+
                 messages.push(ChatMessagePayload {
                     role: "tool".to_string(),
                     content: output_str.clone(),
@@ -233,7 +286,7 @@ pub fn spawn_chat_completion(
 
                 messages.push(ChatMessagePayload {
                     role: "user".to_string(),
-                    content: format!("[System Tool Output for '{}']: {}\nPlease answer the user's initial question using this data.", tool_name, output_str),
+                    content: format!("[System Tool Output for '{}']: {}\nPlease continue your multi-step task or formulate the final answer.", tool_name, output_str),
                     tool_calls: None,
                     tool_call_id: None,
                 });
