@@ -69,10 +69,19 @@ pub trait ChatRepository: Send + Sync {
     async fn create_mcp_server(&self, server: &crate::models::mcp::McpServerRecord) -> Result<crate::models::mcp::McpServerRecord>;
     async fn get_mcp_server(&self, id: &str, tenant_id: &str) -> Result<Option<crate::models::mcp::McpServerRecord>>;
     async fn list_mcp_servers(&self, tenant_id: &str) -> Result<Vec<crate::models::mcp::McpServerRecord>>;
+    async fn list_mcp_servers_for_user(&self, tenant_id: &str, user_id: &str, user_role: &str) -> Result<Vec<crate::models::mcp::McpServerRecord>>;
     async fn update_mcp_server(&self, server: &crate::models::mcp::McpServerRecord) -> Result<crate::models::mcp::McpServerRecord>;
     async fn delete_mcp_server(&self, id: &str, tenant_id: &str) -> Result<bool>;
     async fn sync_mcp_tools(&self, server_id: &str, tools: &[crate::models::mcp::McpToolRecord]) -> Result<()>;
     async fn list_mcp_tools(&self, server_id: &str) -> Result<Vec<crate::models::mcp::McpToolRecord>>;
     async fn log_mcp_invocation(&self, invocation: &crate::models::mcp::McpToolInvocationRecord) -> Result<()>;
+
+    // MCP 2.1 & OAuth 2.1 User Tokens and Preferences
+    async fn save_user_mcp_oauth_token(&self, token: &crate::models::mcp::UserMcpOAuthTokenRecord) -> Result<crate::models::mcp::UserMcpOAuthTokenRecord>;
+    async fn get_user_mcp_oauth_token(&self, user_id: &str, server_id: &str) -> Result<Option<crate::models::mcp::UserMcpOAuthTokenRecord>>;
+    async fn delete_user_mcp_oauth_token(&self, user_id: &str, server_id: &str) -> Result<bool>;
+    async fn get_user_mcp_preference(&self, user_id: &str, server_id: &str) -> Result<Option<bool>>;
+    async fn set_user_mcp_preference(&self, user_id: &str, server_id: &str, is_enabled: bool) -> Result<()>;
+    async fn list_user_mcp_preferences(&self, user_id: &str) -> Result<Vec<crate::models::mcp::UserMcpPreferenceRecord>>;
 }
 

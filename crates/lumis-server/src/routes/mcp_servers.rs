@@ -39,15 +39,23 @@ async fn extract_tenant_and_role(headers: &HeaderMap, state: &AppState) -> (Stri
     }
 
     if let Ok(claims) = state.claim_translator.extract_claims(&header_map) {
-        let role = if !claims.roles.is_empty() {
-            state.claim_translator.resolve_effective_role(&claims)
+        let claim_role = if !claims.roles.is_empty() {
+            Some(state.claim_translator.resolve_effective_role(&claims))
         } else {
-            match state.repo.get_user_by_username(&claims.username).await {
-                Ok(Some(u)) => u.role,
-                _ => EnterpriseRole::Member,
+            None
+        };
+
+        let (user_id, role) = match state.repo.get_user_by_username(&claims.username).await {
+            Ok(Some(u)) => {
+                let r = claim_role.unwrap_or(u.role);
+                (u.id, r)
+            }
+            _ => {
+                let r = claim_role.unwrap_or(EnterpriseRole::Member);
+                (claims.username.clone(), r)
             }
         };
-        (claims.tenant_id.unwrap_or_else(|| "default".to_string()), claims.username, role)
+        (claims.tenant_id.unwrap_or_else(|| "default".to_string()), user_id, role)
     } else {
         ("default".to_string(), "anonymous".to_string(), EnterpriseRole::Guest)
     }
@@ -132,6 +140,11 @@ pub async fn create_server(
         encrypted_credentials,
         is_enabled: true,
         risk_tier: payload.risk_tier.unwrap_or(McpRiskTier::Safe),
+        scope_type: payload.scope_type.unwrap_or_else(|| "system".to_string()),
+        owner_user_id: payload.owner_user_id,
+        is_mandatory: payload.is_mandatory.unwrap_or(false),
+        allowed_roles: payload.allowed_roles.unwrap_or_else(|| vec!["admin".to_string(), "user".to_string(), "auditor".to_string()]),
+        oauth_config: payload.oauth_config,
         created_at: now,
         updated_at: now,
     };
@@ -217,6 +230,9 @@ pub async fn update_server(
     }
     if let Some(en) = payload.is_enabled { updated.is_enabled = en; }
     if let Some(rt) = payload.risk_tier { updated.risk_tier = rt; }
+    if let Some(m) = payload.is_mandatory { updated.is_mandatory = m; }
+    if let Some(ar) = payload.allowed_roles { updated.allowed_roles = ar; }
+    if let Some(oc) = payload.oauth_config { updated.oauth_config = Some(oc); }
     updated.updated_at = Utc::now();
 
     match state.repo.update_mcp_server(&updated).await {

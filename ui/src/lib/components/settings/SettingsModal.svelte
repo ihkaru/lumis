@@ -4,6 +4,7 @@
   import Server from "lucide-svelte/icons/server";
   import ShieldCheck from "lucide-svelte/icons/shield-check";
   import Brain from "lucide-svelte/icons/brain";
+  import Wrench from "lucide-svelte/icons/wrench";
   import { Dialog, DialogOverlay, DialogContent, DialogTitle, DialogClose } from "$lib/components/ui/dialog";
   import { Tabs, TabsContent } from "$lib/components/ui/tabs";
   import AccountTab from "./AccountTab.svelte";
@@ -11,6 +12,7 @@
   import ProviderKeysTab from "./ProviderKeysTab.svelte";
   import MemoriesTab from "./MemoriesTab.svelte";
   import AdminTab from "./AdminTab.svelte";
+  import UserMcpSettings from "./mcp/UserMcpSettings.svelte";
   import type { User } from "$lib/types";
 
   interface Props {
@@ -44,6 +46,7 @@
     { id: "themes", label: "Tema & Warna", icon: Palette },
     { id: "memories", label: "Memori AI", icon: Brain },
     { id: "providers", label: "Provider AI", icon: Server },
+    { id: "mcp", label: "Tools & MCP", icon: Wrench },
     ...(isAdmin ? [{ id: "admin", label: "Administrasi", icon: ShieldCheck }] : []),
   ]);
 
@@ -105,6 +108,9 @@
           </TabsContent>
           <TabsContent value="providers">
             <ProviderKeysTab />
+          </TabsContent>
+          <TabsContent value="mcp">
+            <UserMcpSettings />
           </TabsContent>
           {#if isAdmin}
             <TabsContent value="admin">

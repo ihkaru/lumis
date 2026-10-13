@@ -13,6 +13,15 @@ fn map_mcp_server_row(r: sqlx::sqlite::SqliteRow) -> Result<McpServerRecord> {
     let command_args = cmd_args_raw.and_then(|s| serde_json::from_str(&s).ok());
     let is_enabled_int: i64 = r.try_get("is_enabled").unwrap_or(1);
     let risk_tier_int: i64 = r.try_get("risk_tier").unwrap_or(1);
+    let scope_type: String = r.try_get("scope_type").unwrap_or_else(|_| "system".to_string());
+    let owner_user_id: Option<String> = r.try_get("owner_user_id").unwrap_or(None);
+    let is_mandatory_int: i64 = r.try_get("is_mandatory").unwrap_or(0);
+    let allowed_roles_raw: Option<String> = r.try_get("allowed_roles").unwrap_or(None);
+    let allowed_roles: Vec<String> = allowed_roles_raw
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_else(|| vec!["admin".to_string(), "user".to_string(), "auditor".to_string()]);
+    let oauth_cfg_raw: Option<String> = r.try_get("oauth_config").unwrap_or(None);
+    let oauth_config = oauth_cfg_raw.and_then(|s| serde_json::from_str(&s).ok());
     let created_at_str: String = r.try_get("created_at").map_err(|e| LumisError::Database(e.to_string()))?;
     let updated_at_str: String = r.try_get("updated_at").map_err(|e| LumisError::Database(e.to_string()))?;
 
@@ -31,6 +40,11 @@ fn map_mcp_server_row(r: sqlx::sqlite::SqliteRow) -> Result<McpServerRecord> {
         encrypted_credentials: r.try_get("encrypted_credentials").unwrap_or(None),
         is_enabled: is_enabled_int != 0,
         risk_tier: McpRiskTier::from_i16(risk_tier_int as i16),
+        scope_type,
+        owner_user_id,
+        is_mandatory: is_mandatory_int != 0,
+        allowed_roles,
+        oauth_config,
         created_at: DateTime::parse_from_rfc3339(&created_at_str)
             .map(|dt| dt.with_timezone(&Utc))
             .unwrap_or_else(|_| Utc::now()),
@@ -42,7 +56,10 @@ fn map_mcp_server_row(r: sqlx::sqlite::SqliteRow) -> Result<McpServerRecord> {
 
 pub async fn create_mcp_server(pool: &SqlitePool, s: &McpServerRecord) -> Result<McpServerRecord> {
     let cmd_args_json = s.command_args.as_ref().map(|v| serde_json::to_string(v).unwrap_or_default());
+    let allowed_roles_json = serde_json::to_string(&s.allowed_roles).unwrap_or_else(|_| "[]".to_string());
+    let oauth_config_json = s.oauth_config.as_ref().map(|o| serde_json::to_string(o).unwrap_or_default());
     let is_enabled_int = if s.is_enabled { 1 } else { 0 };
+    let is_mandatory_int = if s.is_mandatory { 1 } else { 0 };
     let risk_tier_int = s.risk_tier.as_i16() as i64;
     let created_at_str = s.created_at.to_rfc3339();
     let updated_at_str = s.updated_at.to_rfc3339();
@@ -52,8 +69,9 @@ pub async fn create_mcp_server(pool: &SqlitePool, s: &McpServerRecord) -> Result
         INSERT INTO mcp_servers (
             id, tenant_id, created_by, name, display_title, description,
             transport_type, endpoint_url, command_bin, command_args, auth_type,
-            encrypted_credentials, is_enabled, risk_tier, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            encrypted_credentials, is_enabled, risk_tier, scope_type, owner_user_id,
+            is_mandatory, allowed_roles, oauth_config, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
     )
     .bind(&s.id)
@@ -70,6 +88,11 @@ pub async fn create_mcp_server(pool: &SqlitePool, s: &McpServerRecord) -> Result
     .bind(&s.encrypted_credentials)
     .bind(is_enabled_int)
     .bind(risk_tier_int)
+    .bind(&s.scope_type)
+    .bind(&s.owner_user_id)
+    .bind(is_mandatory_int)
+    .bind(allowed_roles_json)
+    .bind(oauth_config_json)
     .bind(created_at_str)
     .bind(updated_at_str)
     .execute(pool)
@@ -84,7 +107,8 @@ pub async fn get_mcp_server(pool: &SqlitePool, id: &str, tenant_id: &str) -> Res
         r#"
         SELECT id, tenant_id, created_by, name, display_title, description,
                transport_type, endpoint_url, command_bin, command_args, auth_type,
-               encrypted_credentials, is_enabled, risk_tier, created_at, updated_at
+               encrypted_credentials, is_enabled, risk_tier, scope_type, owner_user_id,
+               is_mandatory, allowed_roles, oauth_config, created_at, updated_at
         FROM mcp_servers
         WHERE (id = ? OR name = ?) AND tenant_id = ?
         "#,
@@ -104,7 +128,8 @@ pub async fn list_mcp_servers(pool: &SqlitePool, tenant_id: &str) -> Result<Vec<
         r#"
         SELECT id, tenant_id, created_by, name, display_title, description,
                transport_type, endpoint_url, command_bin, command_args, auth_type,
-               encrypted_credentials, is_enabled, risk_tier, created_at, updated_at
+               encrypted_credentials, is_enabled, risk_tier, scope_type, owner_user_id,
+               is_mandatory, allowed_roles, oauth_config, created_at, updated_at
         FROM mcp_servers
         WHERE tenant_id = ?
         ORDER BY created_at ASC
@@ -118,9 +143,45 @@ pub async fn list_mcp_servers(pool: &SqlitePool, tenant_id: &str) -> Result<Vec<
     rows.into_iter().map(map_mcp_server_row).collect()
 }
 
+pub async fn list_mcp_servers_for_user(
+    pool: &SqlitePool,
+    tenant_id: &str,
+    user_id: &str,
+    user_role: &str,
+) -> Result<Vec<McpServerRecord>> {
+    let role_pattern = format!("%\"{}\"%", user_role);
+    let rows = sqlx::query(
+        r#"
+        SELECT id, tenant_id, created_by, name, display_title, description,
+               transport_type, endpoint_url, command_bin, command_args, auth_type,
+               encrypted_credentials, is_enabled, risk_tier, scope_type, owner_user_id,
+               is_mandatory, allowed_roles, oauth_config, created_at, updated_at
+        FROM mcp_servers
+        WHERE tenant_id = ?
+          AND (
+            (scope_type = 'system' AND (is_mandatory = 1 OR allowed_roles LIKE ?))
+            OR
+            (scope_type = 'user' AND owner_user_id = ?)
+          )
+        ORDER BY is_mandatory DESC, created_at ASC
+        "#,
+    )
+    .bind(tenant_id)
+    .bind(role_pattern)
+    .bind(user_id)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| LumisError::Database(e.to_string()))?;
+
+    rows.into_iter().map(map_mcp_server_row).collect()
+}
+
 pub async fn update_mcp_server(pool: &SqlitePool, s: &McpServerRecord) -> Result<McpServerRecord> {
     let cmd_args_json = s.command_args.as_ref().map(|v| serde_json::to_string(v).unwrap_or_default());
+    let allowed_roles_json = serde_json::to_string(&s.allowed_roles).unwrap_or_else(|_| "[]".to_string());
+    let oauth_config_json = s.oauth_config.as_ref().map(|o| serde_json::to_string(o).unwrap_or_default());
     let is_enabled_int = if s.is_enabled { 1 } else { 0 };
+    let is_mandatory_int = if s.is_mandatory { 1 } else { 0 };
     let risk_tier_int = s.risk_tier.as_i16() as i64;
     let updated_at_str = s.updated_at.to_rfc3339();
 
@@ -129,7 +190,8 @@ pub async fn update_mcp_server(pool: &SqlitePool, s: &McpServerRecord) -> Result
         UPDATE mcp_servers
         SET display_title = ?, description = ?, transport_type = ?, endpoint_url = ?,
             command_bin = ?, command_args = ?, auth_type = ?, encrypted_credentials = ?,
-            is_enabled = ?, risk_tier = ?, updated_at = ?
+            is_enabled = ?, risk_tier = ?, is_mandatory = ?, allowed_roles = ?,
+            oauth_config = ?, updated_at = ?
         WHERE id = ? AND tenant_id = ?
         "#,
     )
@@ -143,6 +205,9 @@ pub async fn update_mcp_server(pool: &SqlitePool, s: &McpServerRecord) -> Result
     .bind(&s.encrypted_credentials)
     .bind(is_enabled_int)
     .bind(risk_tier_int)
+    .bind(is_mandatory_int)
+    .bind(allowed_roles_json)
+    .bind(oauth_config_json)
     .bind(updated_at_str)
     .bind(&s.id)
     .bind(&s.tenant_id)

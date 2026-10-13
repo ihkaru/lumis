@@ -136,6 +136,18 @@ impl McpRiskTier {
     }
 }
 
+/// Configuration for OAuth 2.1 (RFC 6749bis / MCP 2026 Authorization).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct McpOAuthConfig {
+    pub client_id: String,
+    pub client_secret_encrypted: Option<String>,
+    pub authorization_endpoint: String,
+    pub token_endpoint: String,
+    pub scopes: Vec<String>,
+    pub resource_indicator: Option<String>,
+    pub registration_mode: String, // "pre_registered", "cimd", "dcr"
+}
+
 /// Relational database record representing a registered MCP server.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpServerRecord {
@@ -153,6 +165,11 @@ pub struct McpServerRecord {
     pub encrypted_credentials: Option<String>,
     pub is_enabled: bool,
     pub risk_tier: McpRiskTier,
+    pub scope_type: String, // "system" or "user"
+    pub owner_user_id: Option<String>,
+    pub is_mandatory: bool,
+    pub allowed_roles: Vec<String>,
+    pub oauth_config: Option<McpOAuthConfig>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -170,6 +187,11 @@ pub struct McpServerCreateInput {
     pub auth_type: McpAuthType,
     pub raw_credentials: Option<String>,
     pub risk_tier: Option<McpRiskTier>,
+    pub scope_type: Option<String>,
+    pub owner_user_id: Option<String>,
+    pub is_mandatory: Option<bool>,
+    pub allowed_roles: Option<Vec<String>>,
+    pub oauth_config: Option<McpOAuthConfig>,
 }
 
 /// Input payload to update an existing MCP server.
@@ -181,6 +203,33 @@ pub struct McpServerUpdateInput {
     pub raw_credentials: Option<String>,
     pub is_enabled: Option<bool>,
     pub risk_tier: Option<McpRiskTier>,
+    pub is_mandatory: Option<bool>,
+    pub allowed_roles: Option<Vec<String>>,
+    pub oauth_config: Option<McpOAuthConfig>,
+}
+
+/// Relational token record for User-level MCP OAuth 2.1 access.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserMcpOAuthTokenRecord {
+    pub id: String,
+    pub user_id: String,
+    pub server_id: String,
+    pub access_token_encrypted: String,
+    pub refresh_token_encrypted: Option<String>,
+    pub token_type: String,
+    pub scope: Option<String>,
+    pub expires_at: Option<i64>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// Relational preference record for per-user MCP server enable/disable toggle.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserMcpPreferenceRecord {
+    pub user_id: String,
+    pub server_id: String,
+    pub is_enabled: bool,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Relational database record representing an individual MCP tool discovered from a server.

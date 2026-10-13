@@ -1,6 +1,7 @@
 pub mod driver;
 pub mod identity;
 pub mod mcp;
+pub mod mcp_oauth;
 pub mod memory;
 pub mod message;
 pub mod schema;
@@ -188,6 +189,10 @@ impl ChatRepository for SqliteRepository {
         mcp::list_mcp_servers(&self.pool, tenant_id).await
     }
 
+    async fn list_mcp_servers_for_user(&self, tenant_id: &str, user_id: &str, user_role: &str) -> Result<Vec<lumis_core::models::mcp::McpServerRecord>> {
+        mcp::list_mcp_servers_for_user(&self.pool, tenant_id, user_id, user_role).await
+    }
+
     async fn update_mcp_server(&self, server: &lumis_core::models::mcp::McpServerRecord) -> Result<lumis_core::models::mcp::McpServerRecord> {
         mcp::update_mcp_server(&self.pool, server).await
     }
@@ -206,5 +211,30 @@ impl ChatRepository for SqliteRepository {
 
     async fn log_mcp_invocation(&self, invocation: &lumis_core::models::mcp::McpToolInvocationRecord) -> Result<()> {
         mcp::log_mcp_invocation(&self.pool, invocation).await
+    }
+
+    // MCP 2.1 & OAuth 2.1 User Tokens and Preferences
+    async fn save_user_mcp_oauth_token(&self, token: &lumis_core::models::mcp::UserMcpOAuthTokenRecord) -> Result<lumis_core::models::mcp::UserMcpOAuthTokenRecord> {
+        mcp_oauth::save_user_mcp_oauth_token(&self.pool, token).await
+    }
+
+    async fn get_user_mcp_oauth_token(&self, user_id: &str, server_id: &str) -> Result<Option<lumis_core::models::mcp::UserMcpOAuthTokenRecord>> {
+        mcp_oauth::get_user_mcp_oauth_token(&self.pool, user_id, server_id).await
+    }
+
+    async fn delete_user_mcp_oauth_token(&self, user_id: &str, server_id: &str) -> Result<bool> {
+        mcp_oauth::delete_user_mcp_oauth_token(&self.pool, user_id, server_id).await
+    }
+
+    async fn get_user_mcp_preference(&self, user_id: &str, server_id: &str) -> Result<Option<bool>> {
+        mcp_oauth::get_user_mcp_preference(&self.pool, user_id, server_id).await
+    }
+
+    async fn set_user_mcp_preference(&self, user_id: &str, server_id: &str, is_enabled: bool) -> Result<()> {
+        mcp_oauth::set_user_mcp_preference(&self.pool, user_id, server_id, is_enabled).await
+    }
+
+    async fn list_user_mcp_preferences(&self, user_id: &str) -> Result<Vec<lumis_core::models::mcp::UserMcpPreferenceRecord>> {
+        mcp_oauth::list_user_mcp_preferences(&self.pool, user_id).await
     }
 }

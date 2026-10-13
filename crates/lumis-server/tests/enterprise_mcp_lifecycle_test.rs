@@ -73,6 +73,11 @@ async fn test_mcp_servers_anti_ssrf_blocking() {
         auth_type: McpAuthType::None,
         raw_credentials: None,
         risk_tier: Some(McpRiskTier::Destructive),
+        scope_type: Some("system".to_string()),
+        owner_user_id: None,
+        is_mandatory: Some(false),
+        allowed_roles: Some(vec!["admin".to_string()]),
+        oauth_config: None,
     };
 
     let req2 = Request::builder()
@@ -148,6 +153,11 @@ async fn test_mcp_servers_rbac_and_secret_redaction_lifecycle() {
         encrypted_credentials: Some("v1:U2VjcmV0Tm9uY2Ux:Q2lwaGVydGV4dERhdGE=".to_string()),
         is_enabled: true,
         risk_tier: McpRiskTier::Mutation,
+        scope_type: "system".to_string(),
+        owner_user_id: None,
+        is_mandatory: false,
+        allowed_roles: vec!["admin".to_string(), "member".to_string()],
+        oauth_config: None,
         created_at: now,
         updated_at: now,
     };

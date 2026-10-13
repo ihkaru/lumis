@@ -139,6 +139,15 @@ export interface PendingToolApproval {
   created_at: string;
 }
 
+export interface McpOAuthConfig {
+  client_id: string;
+  authorization_endpoint: string;
+  token_endpoint: string;
+  scopes: string[];
+  resource_indicator?: string;
+  registration_mode: string;
+}
+
 export interface McpServerItem {
   id: string;
   tenant_id: string;
@@ -150,8 +159,26 @@ export interface McpServerItem {
   auth_type: "none" | "bearer" | "basic" | "oauth2" | "obo";
   is_enabled: boolean;
   risk_tier: number;
+  scope_type: "system" | "user";
+  is_mandatory: boolean;
+  allowed_roles?: string[];
+  oauth_config?: McpOAuthConfig | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface McpUserPreferenceItem {
+  id: string;
+  name: string;
+  display_title: string;
+  description: string | null;
+  transport_type: string;
+  auth_type: string;
+  scope_type: "system" | "user";
+  is_mandatory: boolean;
+  is_enabled: boolean;
+  is_oauth_connected: boolean;
+  tools_count: number;
 }
 
 export interface McpToolItem {

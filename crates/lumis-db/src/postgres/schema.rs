@@ -126,6 +126,11 @@ pub async fn run_pg_migrations(pool: &PgPool) -> Result<()> {
             encrypted_credentials TEXT,
             is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
             risk_tier SMALLINT NOT NULL DEFAULT 1,
+            scope_type VARCHAR(24) NOT NULL DEFAULT 'system',
+            owner_user_id VARCHAR(64) REFERENCES users(id),
+            is_mandatory BOOLEAN NOT NULL DEFAULT FALSE,
+            allowed_roles TEXT NOT NULL DEFAULT '["admin","user","auditor"]',
+            oauth_config TEXT,
             created_at TIMESTAMPTZ NOT NULL,
             updated_at TIMESTAMPTZ NOT NULL,
             CONSTRAINT uq_pg_mcp_server_tenant_name UNIQUE (tenant_id, name)
@@ -157,6 +162,28 @@ pub async fn run_pg_migrations(pool: &PgPool) -> Result<()> {
 
         CREATE INDEX IF NOT EXISTS idx_pg_mcp_invocations_tenant_user
             ON mcp_tool_invocations (tenant_id, user_id, created_at DESC);
+
+        CREATE TABLE IF NOT EXISTS user_mcp_oauth_tokens (
+            id VARCHAR(64) PRIMARY KEY,
+            user_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            server_id VARCHAR(64) NOT NULL REFERENCES mcp_servers(id) ON DELETE CASCADE,
+            access_token_encrypted TEXT NOT NULL,
+            refresh_token_encrypted TEXT,
+            token_type VARCHAR(24) NOT NULL DEFAULT 'Bearer',
+            scope TEXT,
+            expires_at BIGINT,
+            created_at TIMESTAMPTZ NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL,
+            CONSTRAINT uq_pg_user_mcp_oauth UNIQUE (user_id, server_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS user_mcp_preferences (
+            user_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            server_id VARCHAR(64) NOT NULL REFERENCES mcp_servers(id) ON DELETE CASCADE,
+            is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+            updated_at TIMESTAMPTZ NOT NULL,
+            PRIMARY KEY (user_id, server_id)
+        );
         "#,
     )
     .execute(pool)
@@ -165,6 +192,11 @@ pub async fn run_pg_migrations(pool: &PgPool) -> Result<()> {
 
     // Idempotent migration for existing PostgreSQL databases
     let _ = sqlx::query("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(256);").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN IF NOT EXISTS scope_type VARCHAR(24) NOT NULL DEFAULT 'system';").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN IF NOT EXISTS owner_user_id VARCHAR(64) REFERENCES users(id);").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN IF NOT EXISTS is_mandatory BOOLEAN NOT NULL DEFAULT FALSE;").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN IF NOT EXISTS allowed_roles TEXT NOT NULL DEFAULT '[\"admin\",\"user\",\"auditor\"]';").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN IF NOT EXISTS oauth_config TEXT;").execute(pool).await;
 
     // Idempotent backfill from legacy users.password_hash into user_identities
     let _ = sqlx::query(

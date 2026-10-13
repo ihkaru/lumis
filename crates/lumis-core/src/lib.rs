@@ -6,6 +6,7 @@
 
 pub mod error;
 pub mod models;
+pub mod oauth;
 pub mod security;
 pub mod traits;
 

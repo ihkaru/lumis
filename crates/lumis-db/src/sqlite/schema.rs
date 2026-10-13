@@ -129,6 +129,11 @@ pub async fn run_sqlite_migrations(pool: &SqlitePool) -> Result<()> {
             encrypted_credentials TEXT,
             is_enabled INTEGER NOT NULL DEFAULT 1,
             risk_tier INTEGER NOT NULL DEFAULT 1,
+            scope_type TEXT NOT NULL DEFAULT 'system',
+            owner_user_id TEXT REFERENCES users(id),
+            is_mandatory INTEGER NOT NULL DEFAULT 0,
+            allowed_roles TEXT NOT NULL DEFAULT '["admin","user","auditor"]',
+            oauth_config TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             CONSTRAINT uq_mcp_server_tenant_name UNIQUE (tenant_id, name)
@@ -160,6 +165,28 @@ pub async fn run_sqlite_migrations(pool: &SqlitePool) -> Result<()> {
 
         CREATE INDEX IF NOT EXISTS idx_mcp_invocations_tenant_user
             ON mcp_tool_invocations (tenant_id, user_id, created_at DESC);
+
+        CREATE TABLE IF NOT EXISTS user_mcp_oauth_tokens (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            server_id TEXT NOT NULL REFERENCES mcp_servers(id) ON DELETE CASCADE,
+            access_token_encrypted TEXT NOT NULL,
+            refresh_token_encrypted TEXT,
+            token_type TEXT NOT NULL DEFAULT 'Bearer',
+            scope TEXT,
+            expires_at INTEGER,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            CONSTRAINT uq_user_mcp_oauth UNIQUE (user_id, server_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS user_mcp_preferences (
+            user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            server_id TEXT NOT NULL REFERENCES mcp_servers(id) ON DELETE CASCADE,
+            is_enabled INTEGER NOT NULL DEFAULT 1,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (user_id, server_id)
+        );
         "#,
     )
     .execute(pool)
@@ -168,6 +195,11 @@ pub async fn run_sqlite_migrations(pool: &SqlitePool) -> Result<()> {
 
     // Idempotent migration for existing SQLite databases
     let _ = sqlx::query("ALTER TABLE users ADD COLUMN password_hash TEXT;").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN scope_type TEXT NOT NULL DEFAULT 'system';").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN owner_user_id TEXT REFERENCES users(id);").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN is_mandatory INTEGER NOT NULL DEFAULT 0;").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN allowed_roles TEXT NOT NULL DEFAULT '[\"admin\",\"user\",\"auditor\"]';").execute(pool).await;
+    let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN oauth_config TEXT;").execute(pool).await;
 
     // Idempotent backfill from legacy users.password_hash into user_identities
     let _ = sqlx::query(

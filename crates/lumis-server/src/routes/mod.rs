@@ -9,6 +9,7 @@ pub mod health;
 pub mod knowledge;
 pub mod mcp;
 pub mod mcp_servers;
+pub mod mcp_user_oauth;
 pub mod memory;
 pub mod metrics;
 pub mod models;
@@ -96,6 +97,15 @@ pub fn create_router(state: AppState) -> Router {
         .route("/api/mcp/servers", get(mcp_servers::list_servers).post(mcp_servers::create_server))
         .route("/api/mcp/servers/{id}", get(mcp_servers::get_server).put(mcp_servers::update_server).delete(mcp_servers::delete_server))
         .route("/api/mcp/servers/test-endpoint", axum::routing::post(mcp_servers::test_endpoint))
+
+        // Enterprise MCP 2.1 OAuth & User Preferences (Phase 11)
+        .route("/api/mcp/preferences", get(mcp_user_oauth::list_user_mcp_preferences))
+        .route("/api/mcp/preferences/{server_id}", axum::routing::put(mcp_user_oauth::toggle_user_mcp_preference))
+        .route("/api/mcp/servers/{id}/oauth/authorize", axum::routing::post(mcp_user_oauth::authorize_mcp_oauth))
+        .route("/api/mcp/servers/{id}/oauth/callback", axum::routing::post(mcp_user_oauth::callback_mcp_oauth))
+        .route("/api/mcp/servers/{id}/oauth/token", axum::routing::delete(mcp_user_oauth::revoke_mcp_oauth_token))
+        .route("/api/mcp/servers/user", axum::routing::post(mcp_user_oauth::create_user_mcp_server))
+        .route("/api/mcp/servers/user/{id}", axum::routing::delete(mcp_user_oauth::delete_user_mcp_server))
 
         // Human-in-the-Loop Tool Execution Approvals (Phase 10)
         .route("/api/mcp/approvals/pending", get(approval::list_pending_approvals))
