@@ -65,7 +65,7 @@ export const api = {
     return res.json();
   },
 
-  async createSession(title: string, modelId = "default"): Promise<Session> {
+  async createSession(title: string, modelId = "my9model-free"): Promise<Session> {
     const res = await fetch("/api/sessions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

@@ -32,7 +32,7 @@ function parseLocation(): {
 
   const params: Record<string, string> = {};
   const chatMatch = pathname.match(/^\/chat\/([a-zA-Z0-9_-]+)$/);
-  if (chatMatch) {
+  if (chatMatch && chatMatch[1] !== "new") {
     params.id = chatMatch[1];
   }
 

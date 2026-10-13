@@ -87,6 +87,8 @@
         } else if (data.event === "error" && data.session_id === activeSessionId) {
           errorMessage = data.error;
           isGenerating = false;
+        } else if (data.event === "title_generated" && data.session_id) {
+          sessions = sessions.map((s) => (s.id === data.session_id ? { ...s, title: data.title } : s));
         }
       } catch {}
     });
@@ -96,7 +98,12 @@
 
   // Watch URL params for deep-link navigation
   $effect(() => {
-    if (router.params.id && router.params.id !== activeSessionId) {
+    if (router.path === "/chat/new") {
+      if (activeSessionId !== null && !isGenerating) {
+        activeSessionId = null;
+        messages = [];
+      }
+    } else if (router.params.id && router.params.id !== "new" && router.params.id !== activeSessionId) {
       selectSession(router.params.id);
     }
   });
@@ -111,6 +118,14 @@
   }
 
   async function selectSession(id: string) {
+    if (id === "new") {
+      activeSessionId = null;
+      messages = [];
+      router.navigate("/chat/new");
+      return;
+    }
+    if (activeSessionId === id && router.path === `/chat/${id}`) return;
+    if (isGenerating) handleStop();
     activeSessionId = id;
     if (typeof window !== "undefined" && window.innerWidth < 768) isMobileDrawerOpen = false;
     errorMessage = null;
@@ -125,14 +140,19 @@
     }
   }
 
-  async function handleCreateSession(customTitle?: string) {
+  async function handleCreateSession(customTitle?: string): Promise<Session | null> {
     try {
       const title = customTitle || `Chat ${sessions.length + 1}`;
       const newSess = await api.createSession(title, selectedModelId);
       sessions = [newSess, ...sessions];
-      selectSession(newSess.id);
-    } catch {
-      errorMessage = "Gagal membuat sesi baru.";
+      activeSessionId = newSess.id;
+      if (typeof window !== "undefined" && window.innerWidth < 768) isMobileDrawerOpen = false;
+      errorMessage = null;
+      router.navigate(`/chat/${newSess.id}`, true);
+      return newSess;
+    } catch (err: unknown) {
+      errorMessage = err instanceof Error ? err.message : "Gagal membuat sesi baru.";
+      return null;
     }
   }
 
@@ -146,26 +166,31 @@
       router.navigate(`/login?redirect=${encodeURIComponent(router.path)}`);
       return;
     }
-    if (!activeSessionId) {
-      await handleCreateSession(text.slice(0, 30));
+    if (isGenerating) return;
+
+    let targetSessionId = activeSessionId;
+    if (!targetSessionId || targetSessionId === "new") {
+      const newSess = await handleCreateSession(text.slice(0, 30));
+      if (!newSess) return;
+      targetSessionId = newSess.id;
     }
-    if (!activeSessionId || isGenerating) return;
 
     isGenerating = true;
     errorMessage = null;
     activeAbortController = new AbortController();
 
     // Optimistic UI append for User
-    const localUserMsg: Message = { id: "temp_" + Date.now(), session_id: activeSessionId, role: "user", content: text, created_at: new Date().toISOString() };
+    const localUserMsg: Message = { id: "temp_" + Date.now(), session_id: targetSessionId, role: "user", content: text, created_at: new Date().toISOString() };
     messages = [...messages, localUserMsg];
     scrollToBottom();
 
     try {
-      await api.sendMessage(activeSessionId, text, modelId);
-      messages = [...messages, { id: "stream_" + Date.now(), session_id: activeSessionId, role: "assistant", content: "", created_at: new Date().toISOString() }];
+      await api.sendMessage(targetSessionId, text, modelId);
+      messages = [...messages, { id: "stream_" + Date.now(), session_id: targetSessionId, role: "assistant", content: "", created_at: new Date().toISOString() }];
       scrollToBottom();
-    } catch (err: any) {
-      if (err.name !== "AbortError") errorMessage = err.message || "Gagal mengirimkan pesan.";
+    } catch (err: unknown) {
+      const errObj = err as { name?: string; message?: string };
+      if (errObj?.name !== "AbortError") errorMessage = errObj?.message || "Gagal mengirimkan pesan.";
       isGenerating = false;
     } finally {
       activeAbortController = null;
@@ -203,12 +228,11 @@
         onSelectSession={selectSession}
         onCreateSession={() => {
           if (typeof window !== "undefined" && window.innerWidth < 768) isMobileDrawerOpen = false;
-          router.navigate("/chat/new");
+          if (isGenerating) handleStop();
+          activeSessionId = null; messages = []; errorMessage = null; router.navigate("/chat/new");
         }}
         onCloseMobile={() => (isMobileDrawerOpen = false)}
-        onRenameSession={renameSession}
-        onDeleteSession={deleteSession}
-        onTogglePinSession={togglePin}
+        onRenameSession={renameSession} onDeleteSession={deleteSession} onTogglePinSession={togglePin}
         onOpenSettings={() => {
           if (typeof window !== "undefined" && window.innerWidth < 768) isMobileDrawerOpen = false;
           isSettingsOpen = true;
@@ -235,20 +259,11 @@
           </div>
 
           <div class="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onclick={() => router.navigate("/markdown")}
-              class="gap-1.5 text-xs text-muted-foreground hover:text-foreground hidden sm:flex"
-              title="Buka Markdown Scratchpad"
-            >
-              <FileEdit class="w-3.5 h-3.5 text-cyan-400" />
-              <span>Scratchpad</span>
+            <Button variant="ghost" size="sm" onclick={() => router.navigate("/markdown")} class="gap-1.5 text-xs text-muted-foreground hover:text-foreground hidden sm:flex" title="Buka Markdown Scratchpad">
+              <FileEdit class="w-3.5 h-3.5 text-cyan-400" /><span>Scratchpad</span>
             </Button>
-
             <Badge variant="outline" class="font-mono text-xs gap-1.5 py-1.5 px-3">
-              <Cpu class="w-3.5 h-3.5 text-cyan-400" />
-              <span class="text-foreground font-medium">{selectedModelId}</span>
+              <Cpu class="w-3.5 h-3.5 text-cyan-400" /><span class="text-foreground font-medium">{selectedModelId}</span>
             </Badge>
           </div>
         </header>
@@ -261,17 +276,9 @@
         {/if}
 
         <!-- Message Viewport -->
-        <div
-          bind:this={messageContainerEl}
-          class="flex-1 overflow-y-auto p-4 md:p-6 space-y-5 smooth-momentum-scroll"
-        >
-          {#if router.path === "/chat/new" || (!activeSessionId && messages.length === 0)}
-            <NewChatWelcome
-              {brandTitle}
-              onSelectPrompt={(text) => {
-                promptText = text;
-              }}
-            />
+        <div bind:this={messageContainerEl} class="flex-1 overflow-y-auto p-4 md:p-6 space-y-5 smooth-momentum-scroll">
+          {#if (!activeSessionId || router.path === "/chat/new") && messages.length === 0}
+            <NewChatWelcome {brandTitle} onSelectPrompt={(t) => (promptText = t)} />
           {:else}
             {#each messages as m (m.id)}
               {#if m.role === "user"}
@@ -294,12 +301,8 @@
         <!-- Input Bar Composer -->
         <footer class="p-3 md:p-4 border-t border-border bg-background shrink-0">
           <MessageInput
-            bind:promptText
-            {isGenerating}
-            {selectedModelId}
-            {chatMode}
-            onSend={handleSend}
-            onStop={handleStop}
+            bind:promptText {isGenerating} {selectedModelId} {chatMode}
+            onSend={handleSend} onStop={handleStop}
             onModelChange={(m) => (selectedModelId = m)}
             onModeChange={(md) => (chatMode = md)}
           />
@@ -309,11 +312,7 @@
       <!-- Artifact Split-Pane Canvas -->
       {#if activeArtifact}
         <div class="fixed md:static inset-0 md:inset-auto z-40 md:z-20 w-full md:w-[480px] lg:w-[560px] xl:w-[640px] h-full shrink-0">
-          <Canvas
-            artifact={activeArtifact}
-            sessionId={activeSessionId || undefined}
-            onClose={() => (activeArtifact = null)}
-          />
+          <Canvas artifact={activeArtifact} sessionId={activeSessionId || undefined} onClose={() => (activeArtifact = null)} />
         </div>
       {/if}
 
@@ -321,14 +320,8 @@
       <SettingsModal
         isOpen={isSettingsOpen} {user} {isDark} palette={themePalette}
         onClose={() => (isSettingsOpen = false)}
-        onLogout={async () => {
-          await api.logout().catch(() => {});
-          user = null;
-          isSettingsOpen = false;
-          router.navigate("/login");
-        }}
-        onToggleDark={(d) => (isDark = d)}
-        onSelectPalette={(p) => (themePalette = p)}
+        onLogout={async () => { await api.logout().catch(() => {}); user = null; isSettingsOpen = false; router.navigate("/login"); }}
+        onToggleDark={(d) => (isDark = d)} onSelectPalette={(p) => (themePalette = p)}
       />
     </div>
   {/if}
