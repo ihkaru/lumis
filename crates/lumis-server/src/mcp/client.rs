@@ -53,6 +53,39 @@ impl McpHttpClient {
         headers
     }
 
+    /// Automatically resolves SSE endpoint if URL ends with `/sse` or if SSE handshake announces endpoint.
+    pub async fn resolve_post_endpoint(&self, endpoint_url: &str, headers: &HeaderMap) -> String {
+        if !endpoint_url.ends_with("/sse") {
+            return endpoint_url.to_string();
+        }
+
+        let mut sse_headers = headers.clone();
+        sse_headers.insert(reqwest::header::ACCEPT, HeaderValue::from_static("text/event-stream"));
+
+        if let Ok(mut res) = self.client.get(endpoint_url).headers(sse_headers).send().await {
+            if let Ok(Some(chunk)) = res.chunk().await {
+                let text = String::from_utf8_lossy(&chunk);
+                for line in text.lines() {
+                    let trimmed = line.trim();
+                    if let Some(rest) = trimmed.strip_prefix("data:") {
+                        let path = rest.trim();
+                        if path.starts_with("http://") || path.starts_with("https://") {
+                            return path.to_string();
+                        } else if path.starts_with('/') {
+                            if let Ok(base) = reqwest::Url::parse(endpoint_url) {
+                                if let Ok(joined) = base.join(path) {
+                                    return joined.to_string();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        endpoint_url.trim_end_matches("/sse").to_string() + "/mcp"
+    }
+
     /// Performs pre-flight handshake (`initialize` and `tools/list`) to discover remote tools.
     pub async fn ping_and_discover(
         &self,
@@ -60,6 +93,7 @@ impl McpHttpClient {
         auth_header: Option<(&str, &str)>,
     ) -> Result<Vec<McpToolDefinition>> {
         let headers = Self::build_headers(auth_header);
+        let target_url = self.resolve_post_endpoint(endpoint_url, &headers).await;
 
         // 1. JSON-RPC initialize handshake
         let init_payload = json!({
@@ -80,7 +114,7 @@ impl McpHttpClient {
 
         let init_res = self
             .client
-            .post(endpoint_url)
+            .post(&target_url)
             .headers(headers.clone())
             .json(&init_payload)
             .send()
@@ -104,7 +138,7 @@ impl McpHttpClient {
 
         let list_res = self
             .client
-            .post(endpoint_url)
+            .post(&target_url)
             .headers(headers)
             .json(&list_payload)
             .send()
@@ -164,6 +198,7 @@ impl McpHttpClient {
         auth_header: Option<(&str, &str)>,
     ) -> Result<McpToolCallResult> {
         let headers = Self::build_headers(auth_header);
+        let target_url = self.resolve_post_endpoint(endpoint_url, &headers).await;
 
         let call_payload = json!({
             "jsonrpc": "2.0",
@@ -177,7 +212,7 @@ impl McpHttpClient {
 
         let res = self
             .client
-            .post(endpoint_url)
+            .post(&target_url)
             .headers(headers)
             .json(&call_payload)
             .send()
