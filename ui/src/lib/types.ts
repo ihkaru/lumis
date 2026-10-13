@@ -29,6 +29,15 @@ export interface CursorPage<T> {
   has_more: boolean;
 }
 
+export interface UserMemory {
+  id: string;
+  user_id: string;
+  category: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface User {
   id: string;
   username: string;

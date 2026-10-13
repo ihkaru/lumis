@@ -80,7 +80,7 @@
             messages[lastIdx].content += data.delta;
             messages = [...messages];
           } else {
-            messages = [...messages, { id: "stream_" + Date.now(), session_id: activeSessionId, role: "assistant", content: data.delta, created_at: new Date().toISOString() }];
+            messages = [...messages, { id: "stream_" + Date.now(), session_id: activeSessionId || "", role: "assistant", content: data.delta, created_at: new Date().toISOString() }];
           }
           scrollToBottom();
           if (data.is_done) isGenerating = false;

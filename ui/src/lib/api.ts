@@ -8,6 +8,7 @@ import type {
   RoleHierarchyInfo,
   Session,
   User,
+  UserMemory,
 } from "./types";
 
 export const api = {
@@ -142,5 +143,29 @@ export const api = {
       throw new Error(err.error || "Artifact IPC failed");
     }
     return res.json();
+  },
+
+  async listUserMemories(): Promise<UserMemory[]> {
+    const res = await fetch("/api/user/memories");
+    if (!res.ok) throw new Error("Failed to list user memories");
+    const data = await res.json();
+    return data.memories || [];
+  },
+
+  async createUserMemory(content: string, category = "preference"): Promise<UserMemory> {
+    const res = await fetch("/api/user/memories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content, category }),
+    });
+    if (!res.ok) throw new Error("Failed to create memory");
+    return res.json();
+  },
+
+  async deleteUserMemory(id: string): Promise<void> {
+    const res = await fetch(`/api/user/memories/${id}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) throw new Error("Failed to delete memory");
   },
 };

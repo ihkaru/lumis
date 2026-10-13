@@ -44,7 +44,8 @@
       if (rest.trim()) processMarkdownAndCode(rest, blocks);
     }
 
-    return blocks.length > 0 ? blocks : [{ type: "markdown", content: text }];
+    const fallback: Block[] = [{ type: "markdown", content: text }];
+    return blocks.length > 0 ? blocks : fallback;
   });
 
   function processMarkdownAndCode(raw: string, acc: Block[]) {
