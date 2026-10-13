@@ -30,6 +30,8 @@ pub fn create_router(state: AppState) -> Router {
         .route("/api/finops/summary", get(metrics::get_finops_summary))
         // Auth, Identity & Governance
         .route("/api/auth/me", get(auth::auth_me))
+        .route("/api/auth/login", axum::routing::post(auth::login))
+        .route("/api/auth/logout", axum::routing::post(auth::logout))
         .route("/api/admin/roles", get(auth::list_roles))
         // Chat & Keyset Pagination
         .route(

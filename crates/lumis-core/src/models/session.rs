@@ -15,6 +15,8 @@ pub struct Session {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NewSession {
+    #[serde(default)]
+    pub id: Option<String>,
     pub user_id: String,
     pub title: String,
     pub model_id: String,

@@ -5,7 +5,7 @@ use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
 pub async fn create_session(pool: &PgPool, new_session: &NewSession) -> Result<Session> {
-    let id = Uuid::new_v4().to_string();
+    let id = new_session.id.clone().unwrap_or_else(|| Uuid::new_v4().to_string());
     let now = Utc::now();
 
     sqlx::query(

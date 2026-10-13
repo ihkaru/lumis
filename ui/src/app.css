@@ -43,7 +43,6 @@
 @layer utilities {
   /* Hardware Accelerated GPU Compositing (120Hz/144Hz Native Refresh Rate) */
   .gpu-layer {
-    transform: translate3d(0, 0, 0);
     backface-visibility: hidden;
     perspective: 1000px;
   }

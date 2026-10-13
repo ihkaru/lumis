@@ -3,10 +3,10 @@ use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::response::IntoResponse;
 use axum::Json;
 use chrono::Utc;
-use lumis_core::models::{CursorQuery, MessageRole, NewMessage};
+use lumis_core::models::{CursorQuery, MessageRole, NewMessage, NewSession};
 
 use crate::state::AppState;
-use super::helpers::resolve_claims_and_role;
+use super::helpers::{ensure_user, resolve_claims_and_role};
 use super::types::{ErrorResponse, PaginationQuery, SendMessageRequest};
 
 pub async fn list_messages(
@@ -157,6 +157,48 @@ pub async fn send_message(
         }
         lumis_core::traits::GuardrailVerdict::Pass { sanitized_text } => sanitized_text,
     };
+
+    // 3.5. Ensure session exists or JIT auto-provision it to guarantee FOREIGN KEY integrity
+    match state.repo.get_session(&session_id).await {
+        Ok(Some(_)) => {}
+        Ok(None) => {
+            let user = match ensure_user(&state, &username, role).await {
+                Ok(u) => u,
+                Err(e) => {
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(ErrorResponse { error: e }),
+                    )
+                        .into_response();
+                }
+            };
+            let auto_session = NewSession {
+                id: Some(session_id.clone()),
+                user_id: user.id,
+                title: "Percakapan Baru".to_string(),
+                model_id: payload.model_id.clone().unwrap_or_else(|| "my9model-free".to_string()),
+                system_prompt: None,
+            };
+            if let Err(e) = state.repo.create_session(&auto_session).await {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse {
+                        error: format!("Gagal inisialisasi sesi otomatis: {}", e),
+                    }),
+                )
+                    .into_response();
+            }
+        }
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: format!("Database error saat memeriksa sesi: {}", e),
+                }),
+            )
+                .into_response();
+        }
+    }
 
     // 4. Append User Message
     let user_msg = NewMessage {

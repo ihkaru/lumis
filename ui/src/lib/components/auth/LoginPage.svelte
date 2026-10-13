@@ -8,6 +8,8 @@
   import KeyRound from "lucide-svelte/icons/key-round";
   import UserIcon from "lucide-svelte/icons/user";
 
+  import { api } from "$lib/api";
+
   interface Props {
     brandTitle?: string;
     onLoginSuccess?: (username: string) => void;
@@ -28,13 +30,14 @@
     errorMessage = null;
 
     try {
-      // In local mode / dev or SAML proxy, simulate / call session verification
-      // If server has trusted header or local credentials, verify via /api/auth/me
-      await new Promise((resolve) => setTimeout(resolve, 600));
-      if (onLoginSuccess) {
-        onLoginSuccess(username);
+      const authRes = await api.login(username.trim(), password || undefined);
+      if (onLoginSuccess && authRes.user) {
+        onLoginSuccess(authRes.user.username);
       }
-      router.navigate("/chat/new");
+      const redirectTarget = router.query.redirect
+        ? decodeURIComponent(router.query.redirect)
+        : "/chat/new";
+      router.navigate(redirectTarget);
     } catch (err: any) {
       errorMessage = err.message || "Autentikasi gagal. Periksa username dan password.";
     } finally {

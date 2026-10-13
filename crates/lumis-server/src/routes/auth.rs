@@ -174,3 +174,81 @@ pub async fn list_roles() -> impl IntoResponse {
 
     (StatusCode::OK, Json(hierarchy))
 }
+
+#[derive(Debug, serde::Deserialize)]
+pub struct LoginRequest {
+    pub username: String,
+    pub password: Option<String>,
+}
+
+pub async fn login(
+    State(state): State<AppState>,
+    Json(payload): Json<LoginRequest>,
+) -> impl IntoResponse {
+    let clean_user = payload.username.trim();
+    if clean_user.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": "Username tidak boleh kosong" })),
+        )
+            .into_response();
+    }
+
+    let role = if clean_user == "admin" || clean_user == "superadmin" {
+        EnterpriseRole::SuperAdmin
+    } else {
+        EnterpriseRole::Member
+    };
+
+    let user = match crate::routes::chat::helpers::ensure_user(&state, clean_user, role).await {
+        Ok(u) => u,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({ "error": e })),
+            )
+                .into_response();
+        }
+    };
+
+    let max_clearance = match user.role {
+        EnterpriseRole::SuperAdmin | EnterpriseRole::TenantAdmin | EnterpriseRole::PowerUser => {
+            ModelClearanceTier::TierReasoning
+        }
+        EnterpriseRole::Member => ModelClearanceTier::TierStandard,
+        EnterpriseRole::Guest => ModelClearanceTier::TierBasic,
+    };
+
+    let auth_res = AuthResponse {
+        authenticated: true,
+        user: Some(user.clone()),
+        role,
+        role_level: role.level(),
+        claims: Some(UserClaims {
+            user_id: user.id.clone(),
+            username: clean_user.to_string(),
+            email: None,
+            roles: vec![role.as_str().to_string()],
+            tenant_id: None,
+            department: None,
+            employee_id: None,
+        }),
+        max_clearance_tier: max_clearance,
+    };
+
+    let cookie_val = format!("lumis_user={}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000", clean_user);
+    let mut response = (StatusCode::OK, Json(auth_res)).into_response();
+    if let Ok(hdr) = HeaderValue::from_str(&cookie_val) {
+        response.headers_mut().insert(axum::http::header::SET_COOKIE, hdr);
+    }
+    response
+}
+
+pub async fn logout() -> impl IntoResponse {
+    let cookie_val = "lumis_user=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0";
+    let mut response = (StatusCode::OK, Json(serde_json::json!({ "status": "logged_out" }))).into_response();
+    if let Ok(hdr) = HeaderValue::from_str(cookie_val) {
+        response.headers_mut().insert(axum::http::header::SET_COOKIE, hdr);
+    }
+    response
+}

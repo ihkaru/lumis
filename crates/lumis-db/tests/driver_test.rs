@@ -53,6 +53,7 @@ async fn test_relational_driver_sqlite_in_memory() {
 
     let session = repo
         .create_session(&NewSession {
+            id: None,
             user_id: created_user.id.clone(),
             title: "Driver Test Session".to_string(),
             model_id: "deepseek-r1".to_string(),

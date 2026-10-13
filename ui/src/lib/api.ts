@@ -23,6 +23,23 @@ export const api = {
     return res.json();
   },
 
+  async login(username: string, password?: string): Promise<{ authenticated: boolean; user?: User; role: string; role_level: number; max_clearance_tier: string }> {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: "Autentikasi gagal" }));
+      throw new Error(err.error || "Autentikasi gagal");
+    }
+    return res.json();
+  },
+
+  async logout(): Promise<void> {
+    await fetch("/api/auth/logout", { method: "POST" });
+  },
+
   async getDbHealth(): Promise<DriverHealth> {
     const res = await fetch("/health/db");
     if (!res.ok) throw new Error("Failed to fetch database health");

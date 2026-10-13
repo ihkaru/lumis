@@ -22,72 +22,73 @@
   import Cpu from "lucide-svelte/icons/cpu";
   import FileEdit from "lucide-svelte/icons/file-edit";
 
-  let brandTitle = $state("Lumis");
-  let user = $state<User | null>(null);
-  let sessions = $state<Session[]>([]);
-  let activeSessionId = $state<string | null>(null);
-  let messages = $state<Message[]>([]);
-  let promptText = $state("");
-  let isGenerating = $state(false);
-  let selectedModelId = $state("my9model-free");
-  let chatMode = $state<ChatMode>("normal");
-  let errorMessage = $state<string | null>(null);
+  let brandTitle = $state("Lumis"), user = $state<User | null>(null), sessions = $state<Session[]>([]), activeSessionId = $state<string | null>(null);
+  let messages = $state<Message[]>([]), promptText = $state(""), isGenerating = $state(false), selectedModelId = $state("my9model-free");
+  let chatMode = $state<ChatMode>("normal"), errorMessage = $state<string | null>(null);
   let isMobileDrawerOpen = $state(typeof window !== "undefined" ? window.innerWidth >= 768 : true);
-  let isSettingsOpen = $state(false);
-  let isDark = $state(true);
-  let themePalette = $state<ThemePalette>("llumen");
-  let activeArtifact = $state<ArtifactSpecification | null>(null);
-  let activeAbortController: AbortController | null = null;
-  let eventSource: EventSource | null = null;
-  let messageContainerEl = $state<HTMLDivElement | null>(null);
+  let isSettingsOpen = $state(false), isDark = $state(true), themePalette = $state<ThemePalette>("llumen");
+  let activeArtifact = $state<ArtifactSpecification | null>(null), messageContainerEl = $state<HTMLDivElement | null>(null);
+  let activeAbortController: AbortController | null = null, eventSource: EventSource | null = null, isAuthChecking = $state(true);
 
-  let activeSession = $derived(
-    sessions.find((s) => s.id === activeSessionId) || null
-  );
+  let activeSession = $derived(sessions.find((s) => s.id === activeSessionId) || null);
 
   onMount(async () => {
+    // 1. Enterprise Route Guard (Svelte 5 Runes Navigation Pipeline)
+    router.beforeEach(async (to) => {
+      if (isAuthChecking) return true;
+      const isPublic = to === "/login" || to === "/markdown";
+      if (!user && !isPublic) return `/login?redirect=${encodeURIComponent(to)}`;
+      if (user && to === "/login") return "/chat/new";
+      return true;
+    });
+
     try {
       const brand = await api.getBranding().catch(() => null);
       if (brand?.app_title) {
         brandTitle = brand.app_title;
         document.title = `${brand.app_title} — Enterprise AI`;
       }
-      const auth = await api.getMe().catch(() => ({ authenticated: false }));
-      if (auth.authenticated && auth.user) {
-        user = auth.user;
-      }
-      await loadSessions();
+      const auth = await api.getMe().catch(() => ({ authenticated: false, user: undefined }));
+      user = auth.authenticated && auth.user ? auth.user : null;
+    } catch {
+      user = null;
+    } finally {
+      isAuthChecking = false;
+    }
 
-      // Route synchronization on initial load
+    if (!user) {
+      if (router.path !== "/login" && router.path !== "/markdown") {
+        router.navigate(`/login?redirect=${encodeURIComponent(router.path)}`, true);
+      }
+    } else {
+      await loadSessions();
       if (router.params.id) {
         selectSession(router.params.id);
       } else if (router.path === "/" && sessions.length > 0) {
         selectSession(sessions[0].id);
       }
-
-      // 9router Real-Time Zero-Copy SSE Stream listener
-      eventSource = api.connectStream((raw) => {
-        try {
-          const data = JSON.parse(raw);
-          if (data.event === "chunk" && data.session_id === activeSessionId) {
-            const lastIdx = messages.length - 1;
-            if (lastIdx >= 0 && messages[lastIdx].role === "assistant") {
-              messages[lastIdx].content += data.delta;
-              messages = [...messages];
-            } else {
-              messages = [...messages, { id: "stream_" + Date.now(), session_id: activeSessionId, role: "assistant", content: data.delta, created_at: new Date().toISOString() }];
-            }
-            scrollToBottom();
-            if (data.is_done) isGenerating = false;
-          } else if (data.event === "error" && data.session_id === activeSessionId) {
-            errorMessage = data.error;
-            isGenerating = false;
-          }
-        } catch {}
-      });
-    } catch (e) {
-      console.error("Init error:", e);
     }
+
+    // 9router Real-Time Zero-Copy SSE Stream listener
+    eventSource = api.connectStream((raw) => {
+      try {
+        const data = JSON.parse(raw);
+        if (data.event === "chunk" && data.session_id === activeSessionId) {
+          const lastIdx = messages.length - 1;
+          if (lastIdx >= 0 && messages[lastIdx].role === "assistant") {
+            messages[lastIdx].content += data.delta;
+            messages = [...messages];
+          } else {
+            messages = [...messages, { id: "stream_" + Date.now(), session_id: activeSessionId, role: "assistant", content: data.delta, created_at: new Date().toISOString() }];
+          }
+          scrollToBottom();
+          if (data.is_done) isGenerating = false;
+        } else if (data.event === "error" && data.session_id === activeSessionId) {
+          errorMessage = data.error;
+          isGenerating = false;
+        }
+      } catch {}
+    });
   });
 
   onDestroy(() => { eventSource?.close(); });
@@ -119,7 +120,7 @@
       messages = page.items.reverse();
       scrollToBottom();
     } catch {
-      errorMessage = "Gagal memuat pesan.";
+      messages = [];
     }
   }
 
@@ -140,6 +141,10 @@
     mode: ChatMode,
     modelId: string
   ) {
+    if (!user) {
+      router.navigate(`/login?redirect=${encodeURIComponent(router.path)}`);
+      return;
+    }
     if (!activeSessionId) {
       await handleCreateSession(text.slice(0, 30));
     }
@@ -178,9 +183,10 @@
   {#if router.path === "/login"}
     <LoginPage
       {brandTitle}
-      onLoginSuccess={(uname) => {
-        user = { id: uname, username: uname, role: "member" };
-        router.navigate("/chat/new");
+      onLoginSuccess={async (uname) => {
+        const auth = await api.getMe().catch(() => null);
+        user = auth?.authenticated && auth.user ? auth.user : { id: uname, username: uname, role: "member" };
+        await loadSessions();
       }}
     />
   <!-- Route: Standalone Markdown Preview -->
@@ -191,10 +197,7 @@
     <div class="flex h-screen w-screen bg-background text-foreground antialiased font-sans overflow-hidden {isDark ? 'dark' : ''}">
       <!-- Sidebar -->
       <Sidebar
-        {brandTitle}
-        {sessions}
-        {activeSessionId}
-        {user}
+        {brandTitle} {sessions} {activeSessionId} {user}
         isOpenMobile={isMobileDrawerOpen}
         onSelectSession={selectSession}
         onCreateSession={() => {
@@ -315,12 +318,10 @@
 
       <!-- Settings Modal -->
       <SettingsModal
-        isOpen={isSettingsOpen}
-        {user}
-        {isDark}
-        palette={themePalette}
+        isOpen={isSettingsOpen} {user} {isDark} palette={themePalette}
         onClose={() => (isSettingsOpen = false)}
-        onLogout={() => {
+        onLogout={async () => {
+          await api.logout().catch(() => {});
           user = null;
           isSettingsOpen = false;
           router.navigate("/login");

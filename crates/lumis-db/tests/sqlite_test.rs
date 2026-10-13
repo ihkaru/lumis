@@ -31,6 +31,7 @@ async fn test_sqlite_repository_lifecycle() {
     // 2. Create Session
     let session = repo
         .create_session(&NewSession {
+            id: None,
             user_id: user_id.clone(),
             title: "Security Review".to_string(),
             model_id: "deepseek-r1".to_string(),

@@ -72,6 +72,7 @@ pub async fn create_session(
     };
 
     let new_session = NewSession {
+        id: None,
         user_id: user.id,
         title: payload.title,
         model_id: payload.model_id,

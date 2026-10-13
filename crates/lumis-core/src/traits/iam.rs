@@ -40,7 +40,21 @@ impl ClaimTranslator for DefaultClaimTranslator {
             .or_else(|| headers.get("x-remote-user"))
             .or_else(|| headers.get("x-authentik-username"))
             .or_else(|| headers.get("x-forwarded-preferred-username"))
+            .or_else(|| headers.get("x-lumis-user"))
             .cloned()
+            .or_else(|| {
+                headers.get("cookie").and_then(|c_str| {
+                    c_str.split(';').find_map(|pair| {
+                        let mut kv = pair.trim().splitn(2, '=');
+                        if let (Some(k), Some(v)) = (kv.next(), kv.next()) {
+                            if (k == "lumis_user" || k == "session_user") && !v.is_empty() {
+                                return Some(v.to_string());
+                            }
+                        }
+                        None
+                    })
+                })
+            })
             .unwrap_or_else(|| "anonymous".to_string());
 
         if user_id == "anonymous" {

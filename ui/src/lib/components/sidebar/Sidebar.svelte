@@ -88,12 +88,13 @@
     type="button"
     class="fixed inset-0 z-40 bg-black/75 backdrop-blur-xs md:hidden border-0 p-0 w-full h-full cursor-default select-none transition-opacity duration-200"
     onclick={onCloseMobile}
+    ontouchend={onCloseMobile}
     aria-label="Tutup Menu Navigasi"
   ></button>
 {/if}
 
 <aside
-  class="fixed md:static inset-y-0 left-0 z-50 w-72 sm:w-80 bg-card border-r border-border flex flex-col justify-between gpu-layer transform-gpu will-change-transform ease-spring-120fps transition-all duration-300 shadow-2xl md:shadow-none {isOpenMobile ? 'translate-x-0 md:ml-0' : '-translate-x-full md:-ml-72 sm:md:-ml-80'} select-none font-sans shrink-0 overflow-hidden"
+  class="fixed md:static inset-y-0 left-0 z-50 w-72 sm:w-80 bg-card border-r border-border flex flex-col justify-between gpu-layer transform-gpu will-change-transform ease-spring-120fps transition-all duration-300 shadow-2xl md:shadow-none {isOpenMobile ? 'translate-x-0 md:ml-0' : '-translate-x-full md:-ml-80'} select-none font-sans shrink-0 overflow-hidden"
   ontouchstart={handleTouchStart}
   ontouchend={handleTouchEnd}
   aria-label="Sidebar Navigasi"
@@ -129,8 +130,16 @@
       <!-- Prominent Universal Close Button (Desktop & Mobile) -->
       <button
         type="button"
-        onclick={onCloseMobile}
-        class="min-h-[44px] min-w-[44px] h-11 w-11 flex items-center justify-center rounded-xl bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer border border-border/40 touch-manipulation"
+        onclick={(e) => {
+          e.stopPropagation();
+          onCloseMobile();
+        }}
+        ontouchstart={(e) => e.stopPropagation()}
+        ontouchend={(e) => {
+          e.stopPropagation();
+          onCloseMobile();
+        }}
+        class="min-h-[44px] min-w-[44px] h-11 w-11 flex items-center justify-center rounded-xl bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer border border-border/40 touch-manipulation pointer-events-auto relative z-10"
         aria-label="Tutup Menu Navigasi"
         title="Tutup Menu Navigasi"
       >
