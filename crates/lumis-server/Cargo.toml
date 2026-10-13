@@ -36,4 +36,6 @@ aho-corasick.workspace = true
 uuid.workspace = true
 chrono.workspace = true
 reqwest = { workspace = true }
+base64.workspace = true
+flate2.workspace = true
 

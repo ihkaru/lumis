@@ -8,6 +8,7 @@ pub mod health;
 pub mod knowledge;
 pub mod mcp;
 pub mod metrics;
+pub mod saml;
 pub mod scim;
 pub mod spa;
 pub mod stream;
@@ -33,6 +34,13 @@ pub fn create_router(state: AppState) -> Router {
         .route("/api/auth/login", axum::routing::post(auth::login))
         .route("/api/auth/logout", axum::routing::post(auth::logout))
         .route("/api/admin/roles", get(auth::list_roles))
+        // Enterprise SAML 2.0 / rIDM BPS Identity Federation
+        .route("/api/auth/sso", get(saml::saml_login))
+        .route("/api/auth/saml/login", get(saml::saml_login))
+        .route("/api/auth/saml/config", get(saml::saml_config))
+        .route("/api/auth/saml/metadata", get(saml::saml_metadata))
+        .route("/saml/metadata", get(saml::saml_metadata))
+        .route("/api/auth/saml/acs", axum::routing::post(saml::saml_acs).get(saml::saml_acs))
         // Chat & Keyset Pagination
         .route(
             "/api/sessions",
