@@ -17,6 +17,9 @@ Lumis provides three fundamental guarantees to downstream consumers:
 3. **Runtime Configuration Separation**:
    - Agency branding, model mappings, and theme preferences live outside source code (via `.env`, volume mounts, or admin APIs).
 
+> [!NOTE]
+> For comprehensive scenario-by-scenario instructions (Docker, Coolify, Git Fork with custom branches, MCP Tool Extenders, UI Whitelabeling, Air-Gapped enclaves), refer to [**docs/DOWNSTREAM_UPDATE_GUIDE.md**](docs/DOWNSTREAM_UPDATE_GUIDE.md).
+
 ---
 
 ## 📦 Upgrading to v1.0.0 (Baseline Release)

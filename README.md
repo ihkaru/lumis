@@ -128,6 +128,16 @@ Lumis menerapkan doktrin *high-assurance engineering*:
 
 ---
 
+## 🔄 Pembaruan Hilir & Ekosistem Developer (Downstream Upgrades)
+
+Lumis menerapkan kontrak kompatibilitas **Zero-Breakage SemVer 2.0.0** (dimodelkan berdasarkan standar Laravel & Supabase). Pengembang dan instansi pengadopsi dapat memperbarui versi secara bebas tanpa risiko *merge conflicts*:
+
+- 📖 **Panduan Lengkap Pembaruan Hilir**: Pelajari langkah pembaruan multi-skenario (Docker, Coolify, Git Fork, MCP, Air-Gapped) di [**docs/DOWNSTREAM_UPDATE_GUIDE.md**](docs/DOWNSTREAM_UPDATE_GUIDE.md).
+- 📜 **Catatan Rilis & Changelog**: Pantau riwayat perubahan di [**CHANGELOG.md**](CHANGELOG.md).
+- 🛠️ **Kontrak Kompatibilitas Upgrade**: Ringkasan garansi database expand-and-contract di [**UPGRADE.md**](UPGRADE.md).
+
+---
+
 ## 📄 Lisensi
 
 Dilisensikan secara terbuka dan bebas di bawah [MIT License](LICENSE).
