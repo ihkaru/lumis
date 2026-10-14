@@ -7,7 +7,8 @@ use serde_json::json;
 use crate::state::AppState;
 use super::assembly::{assemble_chat_context, extract_heuristic_title, format_mcp_tools_for_openai};
 use super::executor_helpers::{
-    check_plan_convergence, compress_observation, get_max_agentic_turns, parse_text_tool_calls,
+    check_plan_convergence, compress_observation, get_max_agentic_turns, heal_or_infer_tool_name,
+    parse_text_tool_calls,
 };
 
 pub fn spawn_chat_completion(
@@ -94,7 +95,12 @@ pub fn spawn_chat_completion(
                             for tc in tcs {
                                 let entry = native_tcs.entry(tc.index).or_insert((None, None, String::new()));
                                 if tc.id.is_some() { entry.0 = tc.id; }
-                                if tc.name.is_some() { entry.1 = tc.name; }
+                                if let Some(ref n) = tc.name {
+                                    if !n.is_empty() {
+                                        let name_str = entry.1.get_or_insert_with(String::new);
+                                        name_str.push_str(n);
+                                    }
+                                }
                                 if let Some(arg_delta) = tc.arguments { entry.2.push_str(&arg_delta); }
                             }
                         }
@@ -126,14 +132,17 @@ pub fn spawn_chat_completion(
                 sorted_indices.sort();
                 for idx in sorted_indices {
                     if let Some((id_opt, name_opt, arg_str)) = native_tcs.get(&idx) {
-                        if let Some(name) = name_opt {
+                        let raw_name = name_opt.as_deref().unwrap_or("");
+                        let args_val = serde_json::from_str(arg_str).unwrap_or(json!({}));
+                        let resolved_name = heal_or_infer_tool_name(raw_name, &args_val);
+                        if !resolved_name.is_empty() {
                             let cid = id_opt.clone().unwrap_or_else(|| format!("call_{}", uuid::Uuid::new_v4().simple()));
-                            let args_val = serde_json::from_str(arg_str).unwrap_or(json!({}));
-                            detected_calls.push((cid, name.clone(), args_val));
+                            detected_calls.push((cid, resolved_name, args_val));
                         }
                     }
                 }
-            } else if turn_text.contains("<tool_call>") {
+            }
+            if detected_calls.is_empty() && turn_text.contains("<tool_call>") {
                 detected_calls = parse_text_tool_calls(&turn_text);
             }
 

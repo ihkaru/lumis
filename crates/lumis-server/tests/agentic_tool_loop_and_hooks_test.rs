@@ -104,3 +104,49 @@ fn test_format_mcp_tools_for_openai_schema() {
     assert_eq!(openai_tools[0]["function"]["parameters"]["properties"]["query"]["type"], "string");
     assert_eq!(openai_tools[1]["function"]["name"], "query_db");
 }
+
+#[test]
+fn test_format_mcp_tools_sanitizes_slashes_and_colons_for_openai_models() {
+    let complex_tools = vec![
+        McpToolDefinition {
+            name: "plan_task_create/update/delete/list".to_string(),
+            description: "Task manager".to_string(),
+            input_schema: json!({}),
+            min_role: EnterpriseRole::Member,
+        },
+        McpToolDefinition {
+            name: "propylon::execute_code".to_string(),
+            description: "Hermetic sandbox".to_string(),
+            input_schema: json!({ "properties": { "code": { "type": "string" } } }),
+            min_role: EnterpriseRole::Member,
+        },
+    ];
+
+    let formatted = format_mcp_tools_for_openai(&complex_tools);
+    assert_eq!(formatted[0]["function"]["name"], "plan_task_create_update_delete_list");
+    assert_eq!(formatted[0]["function"]["parameters"]["type"], "object");
+    assert_eq!(formatted[1]["function"]["name"], "propylon__execute_code");
+    assert_eq!(formatted[1]["function"]["parameters"]["type"], "object");
+}
+
+#[test]
+fn test_heal_or_infer_tool_name_and_text_parsing() {
+    use lumis_server::routes::chat::executor_helpers::{heal_or_infer_tool_name, parse_text_tool_calls};
+
+    // 1. Raw name present
+    assert_eq!(heal_or_infer_tool_name("execute_code", &json!({})), "execute_code");
+
+    // 2. Empty raw name healed by argument inspection
+    let code_args = json!({ "code": "print(123)", "language": "python" });
+    assert_eq!(heal_or_infer_tool_name("", &code_args), "execute_code");
+
+    let query_args = json!({ "query": "inflasi pontianak" });
+    assert_eq!(heal_or_infer_tool_name("", &query_args), "gateway_search_tools");
+
+    // 3. Parse flat text tool call without explicit name
+    let text_with_tool = "Here is the code:\n<tool_call>\n{\"code\": \"print(5 * 3)\", \"language\": \"python\"}\n</tool_call>";
+    let parsed = parse_text_tool_calls(text_with_tool);
+    assert_eq!(parsed.len(), 1);
+    assert_eq!(parsed[0].1, "execute_code");
+    assert_eq!(parsed[0].2["code"], "print(5 * 3)");
+}

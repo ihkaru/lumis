@@ -6,16 +6,28 @@ use lumis_core::models::{
 pub const DEFAULT_MAX_CONTEXT_TOKENS: usize = 8192;
 
 /// Format active MCP tool definitions into standard OpenAI JSON schema format.
+/// Enforces OpenAI function naming regex: ^[a-zA-Z0-9_-]{1,64}$ to prevent upstream rejection (e.g. MiniMax code 11133).
 pub fn format_mcp_tools_for_openai(tools: &[McpToolDefinition]) -> Vec<serde_json::Value> {
     tools
         .iter()
         .map(|t| {
+            let sanitized_name: String = t.name
+                .chars()
+                .map(|c| if c.is_ascii_alphanumeric() || c == '_' || c == '-' { c } else { '_' })
+                .collect();
+            let mut schema = t.input_schema.clone();
+            if !schema.is_object() || schema.get("type").is_none() {
+                schema = serde_json::json!({
+                    "type": "object",
+                    "properties": {}
+                });
+            }
             serde_json::json!({
                 "type": "function",
                 "function": {
-                    "name": t.name,
+                    "name": sanitized_name,
                     "description": t.description,
-                    "parameters": t.input_schema,
+                    "parameters": schema,
                 }
             })
         })
