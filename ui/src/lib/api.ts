@@ -12,6 +12,7 @@ import type {
   PendingToolApproval,
   RoleHierarchyInfo,
   Session,
+  SessionTask,
   SiemAuditEvent,
   User,
   UserMemory,
@@ -95,6 +96,12 @@ export const api = {
 
     const res = await fetch(`/api/sessions/${sessionId}/messages?${params.toString()}`);
     if (!res.ok) throw new Error("Failed to list messages");
+    return res.json();
+  },
+
+  async listSessionTasks(sessionId: string): Promise<SessionTask[]> {
+    const res = await fetch(`/api/sessions/${sessionId}/tasks`);
+    if (!res.ok) return [];
     return res.json();
   },
 

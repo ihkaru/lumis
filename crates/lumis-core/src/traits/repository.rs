@@ -88,5 +88,13 @@ pub trait ChatRepository: Send + Sync {
     // MCP Quota and Rate Limiting
     async fn check_and_increment_mcp_quota(&self, user_id: &str, server_id: &str, daily_limit: i32) -> Result<bool>;
     async fn get_mcp_quota_usage(&self, user_id: &str, server_id: &str) -> Result<i32>;
+
+    // Dynamic Task Planning & Goal State Machine Operations (Coding Agent Pattern)
+    async fn create_session_task(&self, task: &crate::models::CreateTaskInput) -> Result<crate::models::SessionTask>;
+    async fn get_session_task(&self, task_id: &str) -> Result<Option<crate::models::SessionTask>>;
+    async fn update_session_task(&self, task_id: &str, update: &crate::models::UpdateTaskInput) -> Result<Option<crate::models::SessionTask>>;
+    async fn list_session_tasks(&self, session_id: &str) -> Result<Vec<crate::models::SessionTask>>;
+    async fn delete_session_task(&self, task_id: &str) -> Result<bool>;
+    async fn clear_session_tasks(&self, session_id: &str) -> Result<u64>;
 }
 

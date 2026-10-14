@@ -9,6 +9,7 @@ pub mod message;
 pub mod schema;
 pub mod scim;
 pub mod session;
+pub mod task;
 pub mod user;
 
 pub use driver::PostgresDriver;
@@ -250,5 +251,29 @@ impl ChatRepository for PostgresRepository {
 
     async fn get_mcp_quota_usage(&self, user_id: &str, server_id: &str) -> Result<i32> {
         mcp_quota::get_mcp_quota_usage(&self.pool, user_id, server_id).await
+    }
+
+    async fn create_session_task(&self, task: &lumis_core::models::CreateTaskInput) -> Result<lumis_core::models::SessionTask> {
+        task::create_session_task(&self.pool, task).await
+    }
+
+    async fn get_session_task(&self, task_id: &str) -> Result<Option<lumis_core::models::SessionTask>> {
+        task::get_session_task(&self.pool, task_id).await
+    }
+
+    async fn update_session_task(&self, task_id: &str, update: &lumis_core::models::UpdateTaskInput) -> Result<Option<lumis_core::models::SessionTask>> {
+        task::update_session_task(&self.pool, task_id, update).await
+    }
+
+    async fn list_session_tasks(&self, session_id: &str) -> Result<Vec<lumis_core::models::SessionTask>> {
+        task::list_session_tasks(&self.pool, session_id).await
+    }
+
+    async fn delete_session_task(&self, task_id: &str) -> Result<bool> {
+        task::delete_session_task(&self.pool, task_id).await
+    }
+
+    async fn clear_session_tasks(&self, session_id: &str) -> Result<u64> {
+        task::clear_session_tasks(&self.pool, session_id).await
     }
 }

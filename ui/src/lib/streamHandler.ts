@@ -1,4 +1,4 @@
-import type { Message, Session } from "./types";
+import type { Message, Session, SessionTask } from "./types";
 
 export interface StreamState {
   activeSessionId: string | null;
@@ -6,6 +6,7 @@ export interface StreamState {
   isGenerating: boolean;
   sessions: Session[];
   errorMessage: string | null;
+  tasks?: SessionTask[];
 }
 
 export function processStreamEvent(raw: string, state: StreamState): {
@@ -13,12 +14,14 @@ export function processStreamEvent(raw: string, state: StreamState): {
   isGenerating: boolean;
   sessions: Session[];
   errorMessage: string | null;
+  tasks: SessionTask[];
   shouldScroll: boolean;
 } {
   let messages = [...state.messages];
   let isGenerating = state.isGenerating;
   let sessions = [...state.sessions];
   let errorMessage = state.errorMessage;
+  let tasks = [...(state.tasks || [])];
   let shouldScroll = false;
 
   try {
@@ -83,6 +86,21 @@ export function processStreamEvent(raw: string, state: StreamState): {
         };
       }
       shouldScroll = true;
+    } else if (data.event === "task_created" && data.session_id === state.activeSessionId && data.task) {
+      const existingIdx = tasks.findIndex((t) => t.id === data.task.id);
+      if (existingIdx >= 0) {
+        tasks[existingIdx] = data.task;
+      } else {
+        tasks.push(data.task);
+      }
+      tasks.sort((a, b) => a.order_index - b.order_index);
+      shouldScroll = true;
+    } else if (data.event === "task_updated" && data.session_id === state.activeSessionId && data.task) {
+      tasks = tasks.map((t) => (t.id === data.task.id ? data.task : t));
+      tasks.sort((a, b) => a.order_index - b.order_index);
+      shouldScroll = true;
+    } else if (data.event === "task_deleted" && data.session_id === state.activeSessionId && data.task_id) {
+      tasks = tasks.filter((t) => t.id !== data.task_id);
     } else if (data.event === "error" && data.session_id === state.activeSessionId) {
       errorMessage = data.error;
       isGenerating = false;
@@ -91,5 +109,5 @@ export function processStreamEvent(raw: string, state: StreamState): {
     }
   } catch {}
 
-  return { messages, isGenerating, sessions, errorMessage, shouldScroll };
+  return { messages, isGenerating, sessions, errorMessage, tasks, shouldScroll };
 }

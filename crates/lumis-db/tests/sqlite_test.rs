@@ -118,3 +118,117 @@ async fn test_sqlite_repository_lifecycle() {
     let after_unlink = repo.find_identity("saml", "199001012015011001").await.unwrap();
     assert!(after_unlink.is_none());
 }
+
+#[tokio::test]
+async fn test_sqlite_session_task_state_machine() {
+    let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
+    let repo = SqliteRepository::new(pool).await.unwrap();
+
+    let user_id = Uuid::new_v4().to_string();
+    let user = User {
+        id: user_id.clone(),
+        username: "developer_agent".to_string(),
+        email: Some("agent@enterprise.com".to_string()),
+        role: EnterpriseRole::Member,
+        tenant_id: Some("dev-cluster".to_string()),
+        preferences: serde_json::json!({}),
+        is_active: true,
+        password_hash: None,
+        created_at: chrono::Utc::now(),
+        updated_at: chrono::Utc::now(),
+    };
+    repo.upsert_user(&user).await.unwrap();
+
+    let session = repo
+        .create_session(&NewSession {
+            id: None,
+            user_id: user_id.clone(),
+            title: "Autonomous Coding Plan".to_string(),
+            model_id: "deepseek-coder".to_string(),
+            system_prompt: None,
+        })
+        .await
+        .unwrap();
+
+    // 1. Create baseline plan tasks
+    let t1 = repo
+        .create_session_task(&lumis_core::models::CreateTaskInput {
+            id: Some("task-explore".to_string()),
+            session_id: session.id.clone(),
+            parent_task_id: None,
+            title: "Inspect codebase architecture".to_string(),
+            description: Some("Run code-graph and check module dependencies".to_string()),
+            status: lumis_core::models::TaskStatus::Pending,
+            order_index: Some(1),
+        })
+        .await
+        .unwrap();
+    assert_eq!(t1.id, "task-explore");
+    assert_eq!(t1.status, lumis_core::models::TaskStatus::Pending);
+
+    let _t2 = repo
+        .create_session_task(&lumis_core::models::CreateTaskInput {
+            id: Some("task-implement".to_string()),
+            session_id: session.id.clone(),
+            parent_task_id: None,
+            title: "Implement core algorithm".to_string(),
+            description: None,
+            status: lumis_core::models::TaskStatus::Pending,
+            order_index: Some(2),
+        })
+        .await
+        .unwrap();
+
+    // 2. Add dynamic subtask discovered during execution
+    let t1_sub = repo
+        .create_session_task(&lumis_core::models::CreateTaskInput {
+            id: Some("task-explore-sub1".to_string()),
+            session_id: session.id.clone(),
+            parent_task_id: Some(t1.id.clone()),
+            title: "Parse AST tree nodes".to_string(),
+            description: Some("Subtask for AST traversal".to_string()),
+            status: lumis_core::models::TaskStatus::InProgress,
+            order_index: Some(3),
+        })
+        .await
+        .unwrap();
+    assert_eq!(t1_sub.parent_task_id.as_deref(), Some("task-explore"));
+
+    // 3. List tasks and verify ordering
+    let tasks = repo.list_session_tasks(&session.id).await.unwrap();
+    assert_eq!(tasks.len(), 3);
+    assert_eq!(tasks[0].id, "task-explore");
+    assert_eq!(tasks[1].id, "task-implement");
+    assert_eq!(tasks[2].id, "task-explore-sub1");
+
+    // 4. Update task status with empirical verification evidence
+    let updated = repo
+        .update_session_task(
+            "task-explore-sub1",
+            &lumis_core::models::UpdateTaskInput {
+                title: None,
+                description: None,
+                status: Some(lumis_core::models::TaskStatus::Completed),
+                order_index: None,
+                result_summary: Some("AST nodes verified: 42 symbols indexed".to_string()),
+            },
+        )
+        .await
+        .unwrap();
+    assert!(updated.is_some());
+    let u = updated.unwrap();
+    assert_eq!(u.status, lumis_core::models::TaskStatus::Completed);
+    assert_eq!(u.result_summary.as_deref(), Some("AST nodes verified: 42 symbols indexed"));
+
+    // 5. Delete single task
+    let deleted = repo.delete_session_task("task-explore-sub1").await.unwrap();
+    assert!(deleted);
+    let tasks_after_del = repo.list_session_tasks(&session.id).await.unwrap();
+    assert_eq!(tasks_after_del.len(), 2);
+
+    // 6. Clear all tasks
+    let cleared = repo.clear_session_tasks(&session.id).await.unwrap();
+    assert_eq!(cleared, 2);
+    let tasks_empty = repo.list_session_tasks(&session.id).await.unwrap();
+    assert_eq!(tasks_empty.len(), 0);
+}

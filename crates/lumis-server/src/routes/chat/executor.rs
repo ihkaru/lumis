@@ -6,48 +6,9 @@ use lumis_core::models::{
 use serde_json::json;
 use crate::state::AppState;
 use super::assembly::{assemble_chat_context, extract_heuristic_title, format_mcp_tools_for_openai};
-
-/// Maximum agentic turns for long-running workflows.
-/// Defaults to unbounded (usize::MAX) or configured via LUMIS_MAX_AGENT_TURNS (0 = infinite).
-fn get_max_agentic_turns() -> usize {
-    std::env::var("LUMIS_MAX_AGENT_TURNS")
-        .ok()
-        .and_then(|v| v.parse::<usize>().ok())
-        .map(|n| if n == 0 { usize::MAX } else { n })
-        .unwrap_or(usize::MAX)
-}
-
-/// Compresses historical tool observations exceeding character limits to prevent context drift and bloat.
-fn compress_observation(text: &str, max_len: usize) -> String {
-    if text.len() <= max_len {
-        text.to_string()
-    } else {
-        let half = max_len / 2;
-        format!("{}... [truncated {} characters] ...{}", &text[..half], text.len() - max_len, &text[text.len() - half..])
-    }
-}
-
-fn parse_text_tool_calls(text: &str) -> Vec<(String, String, serde_json::Value)> {
-    let mut results = Vec::new();
-    let mut cursor = text;
-    while let Some(start_idx) = cursor.find("<tool_call>") {
-        let after_start = &cursor[start_idx + 11..];
-        if let Some(end_idx) = after_start.find("</tool_call>") {
-            let json_str = after_start[..end_idx].trim();
-            if let Ok(val) = serde_json::from_str::<serde_json::Value>(json_str) {
-                if let Some(name) = val["name"].as_str() {
-                    let args = val.get("arguments").cloned().unwrap_or(json!({}));
-                    let call_id = format!("call_{}", uuid::Uuid::new_v4().simple());
-                    results.push((call_id, name.to_string(), args));
-                }
-            }
-            cursor = &after_start[end_idx + 12..];
-        } else {
-            break;
-        }
-    }
-    results
-}
+use super::executor_helpers::{
+    check_plan_convergence, compress_observation, get_max_agentic_turns, parse_text_tool_calls,
+};
 
 pub fn spawn_chat_completion(
     state: AppState,
@@ -177,7 +138,27 @@ pub fn spawn_chat_completion(
             }
 
             if detected_calls.is_empty() {
+                let existing_tasks = repo.list_session_tasks(&sess_id).await.unwrap_or_default();
+                let has_unconverged_tasks = !existing_tasks.is_empty() && !existing_tasks.iter().all(|t| t.status.is_terminal());
+
+                if has_unconverged_tasks && turn < 15 {
+                    messages.push(ChatMessagePayload::new(
+                        "system",
+                        "[System Directive: Dynamic Plan Convergence - You still have pending or in-progress tasks in your plan. Continue executing until all tasks are completed or cancelled via plan_task_update.]",
+                    ));
+                    continue;
+                }
+
                 final_text = turn_text;
+                if !existing_tasks.is_empty() && check_plan_convergence(&repo, &sess_id).await {
+                    let conv_event = json!({
+                        "event": "plan_converged",
+                        "session_id": sess_id,
+                        "total_tasks": existing_tasks.len(),
+                    });
+                    let _ = stream_tx.send(bytes::Bytes::from(conv_event.to_string()));
+                }
+
                 let done_event = json!({
                     "event": "chunk",
                     "session_id": sess_id,
@@ -270,7 +251,7 @@ pub fn spawn_chat_completion(
                     tool_call_id: None,
                 });
 
-                // Compress older historical tool observations to prevent context window explosion in long-running jobs
+                // Compress older historical observations to prevent context window explosion
                 for msg in messages.iter_mut() {
                     if msg.role == "tool" && msg.content.len() > 2000 {
                         msg.content = compress_observation(&msg.content, 1500);

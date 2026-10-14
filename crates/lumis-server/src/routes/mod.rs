@@ -64,6 +64,15 @@ pub fn create_router(state: AppState) -> Router {
             "/api/sessions/{session_id}/messages",
             get(chat::list_messages).post(chat::send_message),
         )
+        // Dynamic Task Planning & Goal State Machine Operations (Coding Agent Pattern)
+        .route(
+            "/api/sessions/{session_id}/tasks",
+            get(chat::list_session_tasks).post(chat::create_session_task),
+        )
+        .route(
+            "/api/tasks/{task_id}",
+            axum::routing::patch(chat::update_session_task).delete(chat::delete_session_task),
+        )
         // Durable User Memory System (Long-Term Semantic & Entity Memory)
         .route(
             "/api/user/memories",

@@ -206,6 +206,21 @@ export interface McpToolItem {
   updated_at: string;
 }
 
+export type TaskStatus = "pending" | "in_progress" | "completed" | "cancelled";
+
+export interface SessionTask {
+  id: string;
+  session_id: string;
+  parent_task_id: string | null;
+  title: string;
+  description: string | null;
+  status: TaskStatus;
+  order_index: number;
+  result_summary: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 
 
 

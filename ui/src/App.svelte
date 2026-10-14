@@ -3,7 +3,7 @@
   import { api } from "./lib/api";
   import { router } from "./lib/router.svelte";
   import { processStreamEvent } from "./lib/streamHandler";
-  import type { ArtifactSpecification, Message, Session, User } from "./lib/types";
+  import type { ArtifactSpecification, Message, Session, SessionTask, User } from "./lib/types";
   import ErrorBoundary from "./lib/components/common/ErrorBoundary.svelte";
   import LoginPage from "./lib/components/auth/LoginPage.svelte";
   import MarkdownScratchpad from "./lib/components/chat/MarkdownScratchpad.svelte";
@@ -11,6 +11,7 @@
   import Sidebar from "./lib/components/sidebar/Sidebar.svelte";
   import UserBubble from "./lib/components/message/UserBubble.svelte";
   import AssistantBubble from "./lib/components/message/AssistantBubble.svelte";
+  import TaskProgressTree from "./lib/components/task/TaskProgressTree.svelte";
   import MessageInput from "./lib/components/input/MessageInput.svelte";
   import type { ChatMode } from "./lib/components/input/ModeSelector.svelte";
   import type { AttachedFile } from "./lib/components/input/FileDropzone.svelte";
@@ -24,7 +25,7 @@
   import FileEdit from "lucide-svelte/icons/file-edit";
 
   let brandTitle = $state("Lumis"), user = $state<User | null>(null), sessions = $state<Session[]>([]), activeSessionId = $state<string | null>(null);
-  let messages = $state<Message[]>([]), promptText = $state(""), isGenerating = $state(false);
+  let messages = $state<Message[]>([]), sessionTasks = $state<SessionTask[]>([]), promptText = $state(""), isGenerating = $state(false);
   let selectedModelId = $state(typeof localStorage !== "undefined" ? localStorage.getItem("lumis_selected_model") || "my9model-free" : "my9model-free");
   let chatMode = $state<ChatMode>("normal"), errorMessage = $state<string | null>(null);
   let isMobileDrawerOpen = $state(typeof window !== "undefined" ? window.innerWidth >= 768 : true);
@@ -74,11 +75,12 @@
 
     // 9router Real-Time Zero-Copy SSE Stream listener
     eventSource = api.connectStream((raw) => {
-      const res = processStreamEvent(raw, { activeSessionId, messages, isGenerating, sessions, errorMessage });
+      const res = processStreamEvent(raw, { activeSessionId, messages, isGenerating, sessions, errorMessage, tasks: sessionTasks });
       messages = res.messages;
       isGenerating = res.isGenerating;
       sessions = res.sessions;
       errorMessage = res.errorMessage;
+      sessionTasks = res.tasks;
       if (res.shouldScroll) scrollToBottom();
     });
   });
@@ -91,6 +93,7 @@
       if (activeSessionId !== null && !isGenerating) {
         activeSessionId = null;
         messages = [];
+        sessionTasks = [];
       }
     } else if (router.params.id && router.params.id !== "new" && router.params.id !== activeSessionId) {
       selectSession(router.params.id);
@@ -110,6 +113,7 @@
     if (id === "new") {
       activeSessionId = null;
       messages = [];
+      sessionTasks = [];
       router.navigate("/chat/new");
       return;
     }
@@ -126,11 +130,16 @@
     }
 
     try {
-      const page = await api.listMessages(id);
+      const [page, tasks] = await Promise.all([
+        api.listMessages(id),
+        api.listSessionTasks(id).catch(() => []),
+      ]);
       messages = page.items.reverse();
+      sessionTasks = tasks;
       scrollToBottom();
     } catch {
       messages = [];
+      sessionTasks = [];
     }
   }
 
@@ -274,6 +283,10 @@
           {#if (!activeSessionId || router.path === "/chat/new") && messages.length === 0}
             <NewChatWelcome {brandTitle} onSelectPrompt={(t) => (promptText = t)} />
           {:else}
+            {#if sessionTasks.length > 0}
+              <TaskProgressTree tasks={sessionTasks} {isGenerating} />
+            {/if}
+
             {#each messages as m (m.id)}
               {#if m.role === "user"}
                 <UserBubble message={m} onEditPrompt={(t) => (promptText = t)} />

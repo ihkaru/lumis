@@ -10,10 +10,12 @@ pub mod pagination;
 pub mod prompt_cache;
 pub mod scim;
 pub mod session;
+pub mod task;
 pub mod telemetry;
 pub mod user;
 
 pub use memory::{NewUserMemory, UserMemory};
+pub use task::{CreateTaskInput, SessionTask, TaskStatus, UpdateTaskInput};
 
 pub use approval::{ApprovalStatus, ToolApprovalPolicy, ToolApprovalRequest};
 pub use artifact::{

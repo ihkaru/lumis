@@ -74,6 +74,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tracing::info!("Synchronized {} database MCP tools into active runtime registry", synced_tools);
     }
 
+    // Register Dynamic Task Planning Tools (Coding Agent Pattern)
+    if let Err(e) = lumis_server::mcp::register_planner_tools(state.mcp_registry.as_ref(), state.repo.clone(), state.stream_tx.clone()).await {
+        tracing::error!("Failed to register dynamic planner tools: {}", e);
+    }
+
     // 6. Optional: Initialize Resilient Multi-Provider LLM Router
     let primary_llm_url = std::env::var("LLM_API_BASE")
         .or_else(|_| std::env::var("OPENAI_BASE_URL"))
