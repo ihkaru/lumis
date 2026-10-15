@@ -75,75 +75,7 @@
   }
 </script>
 
-<div class="relative w-full my-3 group">
-  <!-- Minimalist Floating Zoom & Copy Pill -->
-  <div
-    class="absolute top-1 right-2 z-10 flex items-center gap-0.5 rounded-full bg-background/85 dark:bg-card/90 backdrop-blur-md border border-border/80 shadow-xs px-1.5 py-0.5 text-xs select-none opacity-60 hover:opacity-100 group-hover:opacity-100 transition-opacity pointer-events-auto"
-  >
-    <!-- 1-Click Copy for Excel / Google Sheets -->
-    <button
-      type="button"
-      onclick={copyTableToClipboard}
-      class="flex items-center gap-1 px-1.5 py-0.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors touch-manipulation text-[11px]"
-      title="Salin tabel untuk Excel / Google Sheets"
-      aria-label="Salin tabel ke Excel"
-    >
-      {#if isCopied}
-        <Check class="size-3 text-emerald-400" />
-        <span class="text-emerald-400 font-medium">Tersalin</span>
-      {:else}
-        <Copy class="size-3" />
-        <span>Salin</span>
-      {/if}
-    </button>
-
-    <div class="h-3 w-px bg-border/60 mx-0.5" aria-hidden="true"></div>
-
-    <button
-      type="button"
-      onclick={zoomOut}
-      disabled={zoomLevel <= 30}
-      class="p-1 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors touch-manipulation"
-      title="Zoom Out Table (-15%)"
-      aria-label="Zoom Out Table"
-    >
-      <ZoomOut class="size-3" />
-    </button>
-
-    <button
-      type="button"
-      onclick={resetZoom}
-      class="px-1.5 py-0.5 rounded-full hover:bg-muted text-[11px] font-mono text-muted-foreground hover:text-foreground transition-colors touch-manipulation"
-      title="Reset Zoom (100%)"
-      aria-label="Reset Table Zoom to 100%"
-    >
-      {zoomLevel}%
-    </button>
-
-    <button
-      type="button"
-      onclick={zoomIn}
-      disabled={zoomLevel >= 150}
-      class="p-1 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors touch-manipulation"
-      title="Zoom In Table (+15%)"
-      aria-label="Zoom In Table"
-    >
-      <ZoomIn class="size-3" />
-    </button>
-
-    {#if zoomLevel !== 100}
-      <button
-        type="button"
-        onclick={resetZoom}
-        class="p-1 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors touch-manipulation"
-        title="Reset Zoom"
-        aria-label="Reset Zoom"
-      >
-        <RotateCcw class="size-2.5" />
-      </button>
-    {/if}
-  </div>
-
+<div class="relative w-full my-3">
   <!-- Horizontal Scroll Viewport -->
   <div class="w-full overflow-x-auto smooth-momentum-scroll">
     <div
@@ -153,6 +85,66 @@
       <div class="table-content min-w-full">
         {@html html}
       </div>
+    </div>
+  </div>
+
+  <!-- Bottom-Right Controls Bar (Outside Table, Below Scrollbar X) -->
+  <div class="flex justify-end mt-1.5">
+    <div
+      class="inline-flex items-center gap-0.5 rounded-full bg-background/85 dark:bg-card/90 backdrop-blur-md border border-border/80 shadow-xs px-1.5 py-0.5 text-xs select-none opacity-70 hover:opacity-100 transition-opacity"
+    >
+      <!-- 1-Click Copy for Excel / Google Sheets -->
+      <button
+        type="button"
+        onclick={copyTableToClipboard}
+        class="flex items-center gap-1 px-1.5 py-0.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors touch-manipulation text-[11px]"
+        title="Salin tabel untuk Excel / Google Sheets"
+        aria-label="Salin tabel ke Excel"
+      >
+        {#if isCopied}
+          <Check class="size-3 text-emerald-400" />
+          <span class="text-emerald-400 font-medium">Tersalin</span>
+        {:else}
+          <Copy class="size-3" />
+          <span>Salin</span>
+        {/if}
+      </button>
+
+      <div class="h-3 w-px bg-border/60 mx-0.5" aria-hidden="true"></div>
+
+      <button
+        type="button"
+        onclick={zoomOut}
+        disabled={zoomLevel <= 30}
+        class="p-1 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors touch-manipulation"
+        title="Zoom Out Tabel"
+        aria-label="Zoom Out Tabel"
+      >
+        <ZoomOut class="size-3" />
+      </button>
+
+      <button
+        type="button"
+        onclick={zoomIn}
+        disabled={zoomLevel >= 150}
+        class="p-1 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors touch-manipulation"
+        title="Zoom In Tabel"
+        aria-label="Zoom In Tabel"
+      >
+        <ZoomIn class="size-3" />
+      </button>
+
+      {#if zoomLevel !== 100}
+        <button
+          type="button"
+          onclick={resetZoom}
+          class="p-1 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors touch-manipulation"
+          title="Reset Zoom"
+          aria-label="Reset Zoom"
+        >
+          <RotateCcw class="size-2.5" />
+        </button>
+      {/if}
     </div>
   </div>
 </div>

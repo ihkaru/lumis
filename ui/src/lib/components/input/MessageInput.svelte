@@ -135,7 +135,7 @@
 </script>
 
 <div
-  class="relative max-w-4xl mx-auto w-full rounded-2xl sm:rounded-3xl border border-border/70 bg-card/90 backdrop-blur-xl shadow-xl hover:shadow-2xl transition-all duration-200 focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/20 focus-within:shadow-2xl font-sans"
+  class="relative max-w-4xl mx-auto w-full rounded-2xl sm:rounded-3xl border-0 bg-card/90 dark:bg-card/95 backdrop-blur-xl shadow-xl hover:shadow-2xl transition-all duration-200 focus-within:ring-0 focus-within:outline-none focus:outline-none font-sans"
   ondragover={handleDragOver}
   ondragleave={handleDragLeave}
   ondrop={handleDrop}
@@ -206,7 +206,7 @@
       }}
       placeholder="Tanyakan apa saja atau ketik prompt... (Enter kirim, Shift+Enter baris baru)"
       rows={1}
-      class="w-full resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden max-h-44 min-h-[44px] leading-relaxed [overflow-wrap:anywhere]"
+      class="w-full resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 focus:border-0 outline-none border-0 max-h-44 min-h-[44px] leading-relaxed [overflow-wrap:anywhere]"
     ></textarea>
   </div>
 

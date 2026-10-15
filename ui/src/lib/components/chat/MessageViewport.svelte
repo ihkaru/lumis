@@ -97,7 +97,7 @@
 <div
   bind:this={messageContainerEl}
   onscroll={handleContainerScroll}
-  class="flex-1 overflow-y-auto p-4 md:p-6 space-y-5 smooth-momentum-scroll"
+  class="flex-1 overflow-y-auto px-5 py-4 sm:px-8 sm:py-5 md:px-10 md:py-6 lg:px-12 space-y-6 smooth-momentum-scroll"
 >
   {#if (!activeSessionId || isNewChatRoute) && messages.length === 0}
     <NewChatWelcome {brandTitle} {onSelectPrompt} />

@@ -297,7 +297,7 @@
         />
 
         <!-- Input Bar Composer (Floating FAB Style) -->
-        <footer class="px-2.5 pb-2.5 pt-0 sm:px-5 sm:pb-3 md:px-6 md:pb-4 bg-transparent shrink-0">
+        <footer class="px-5 pb-3 pt-0 sm:px-8 sm:pb-4 md:px-10 md:pb-5 lg:px-12 bg-transparent shrink-0">
           <MessageInput
             bind:promptText {isGenerating} {selectedModelId} {chatMode}
             onSend={handleSend} onStop={handleStop}

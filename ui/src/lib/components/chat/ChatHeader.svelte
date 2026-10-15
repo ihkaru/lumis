@@ -20,7 +20,7 @@
   }: Props = $props();
 </script>
 
-<header class="h-16 border-b border-border px-4 md:px-6 flex items-center justify-between shrink-0 bg-background/80 backdrop-blur-md select-none font-sans">
+<header class="h-16 border-b border-border px-5 sm:px-8 md:px-10 lg:px-12 flex items-center justify-between shrink-0 bg-background/80 backdrop-blur-md select-none font-sans">
   <div class="flex items-center gap-3 min-w-0">
     <Button
       variant="ghost"
