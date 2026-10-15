@@ -127,6 +127,86 @@
 </div>
 
 <style>
+  :global(.markdown-body p) {
+    margin-top: 0.625rem;
+    margin-bottom: 0.625rem;
+    line-height: 1.65;
+    color: var(--foreground, #e2e8f0);
+  }
+  :global(.markdown-body p:first-child) {
+    margin-top: 0;
+  }
+  :global(.markdown-body p:last-child) {
+    margin-bottom: 0;
+  }
+  :global(.markdown-body h1) {
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    margin-top: 1.25rem;
+    margin-bottom: 0.5rem;
+    color: var(--foreground, #ffffff);
+  }
+  :global(.markdown-body h2) {
+    font-size: 1.125rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin-top: 1rem;
+    margin-bottom: 0.375rem;
+    color: var(--foreground, #ffffff);
+  }
+  :global(.markdown-body h3) {
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    margin-top: 0.75rem;
+    margin-bottom: 0.25rem;
+    color: var(--foreground, #ffffff);
+  }
+  :global(.markdown-body ul) {
+    list-style-type: disc !important;
+    padding-left: 1.25rem !important;
+    margin-top: 0.375rem;
+    margin-bottom: 0.375rem;
+  }
+  :global(.markdown-body ol) {
+    list-style-type: decimal !important;
+    padding-left: 1.25rem !important;
+    margin-top: 0.375rem;
+    margin-bottom: 0.375rem;
+  }
+  :global(.markdown-body li) {
+    margin-top: 0.2rem;
+    margin-bottom: 0.2rem;
+    line-height: 1.6;
+  }
+  :global(.markdown-body li > p) {
+    margin-top: 0;
+    margin-bottom: 0;
+    display: inline;
+  }
+  :global(.markdown-body ul ul) {
+    list-style-type: circle !important;
+    padding-left: 1.25rem !important;
+    margin-top: 0.25rem;
+    margin-bottom: 0.25rem;
+  }
+  :global(.markdown-body ol ol) {
+    list-style-type: lower-alpha !important;
+    padding-left: 1.25rem !important;
+    margin-top: 0.25rem;
+    margin-bottom: 0.25rem;
+  }
+  :global(.markdown-body ul ol),
+  :global(.markdown-body ol ul) {
+    padding-left: 1.25rem !important;
+    margin-top: 0.25rem;
+    margin-bottom: 0.25rem;
+  }
+  :global(.markdown-body strong) {
+    font-weight: 600;
+    color: var(--foreground, #ffffff);
+  }
   :global(.markdown-body table) {
     width: 100%;
     margin-top: 0.75rem;

@@ -116,7 +116,10 @@
       {/if}
     {/each}
     {#if messages.length > 0}
-      <div class="h-[45vh] shrink-0 pointer-events-none transition-all duration-300" aria-hidden="true"></div>
+      <div
+        class="{isGenerating ? 'h-[25vh]' : 'h-6'} shrink-0 pointer-events-none transition-all duration-500 ease-out"
+        aria-hidden="true"
+      ></div>
     {/if}
   {/if}
 </div>
