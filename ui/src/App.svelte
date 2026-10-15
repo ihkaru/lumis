@@ -7,21 +7,15 @@
   import ErrorBoundary from "./lib/components/common/ErrorBoundary.svelte";
   import LoginPage from "./lib/components/auth/LoginPage.svelte";
   import MarkdownScratchpad from "./lib/components/chat/MarkdownScratchpad.svelte";
-  import NewChatWelcome from "./lib/components/chat/NewChatWelcome.svelte";
   import Sidebar from "./lib/components/sidebar/Sidebar.svelte";
-  import UserBubble from "./lib/components/message/UserBubble.svelte";
-  import AssistantBubble from "./lib/components/message/AssistantBubble.svelte";
+  import ChatHeader from "./lib/components/chat/ChatHeader.svelte";
+  import MessageViewport from "./lib/components/chat/MessageViewport.svelte";
   import MessageInput from "./lib/components/input/MessageInput.svelte";
   import type { ChatMode } from "./lib/components/input/ModeSelector.svelte";
   import type { AttachedFile } from "./lib/components/input/FileDropzone.svelte";
   import SettingsModal from "./lib/components/settings/SettingsModal.svelte";
   import type { ThemePalette } from "./lib/components/settings/ThemesTab.svelte";
   import { Canvas } from "$lib/components/ui/canvas";
-  import { Button } from "$lib/components/ui/button";
-  import { Badge } from "$lib/components/ui/badge";
-  import Menu from "lucide-svelte/icons/menu";
-  import Cpu from "lucide-svelte/icons/cpu";
-  import FileEdit from "lucide-svelte/icons/file-edit";
 
   let brandTitle = $state("Lumis"), user = $state<User | null>(null), sessions = $state<Session[]>([]), activeSessionId = $state<string | null>(null);
   let messages = $state<Message[]>([]), sessionTasks = $state<SessionTask[]>([]), promptText = $state(""), isGenerating = $state(false);
@@ -29,7 +23,8 @@
   let chatMode = $state<ChatMode>("normal"), errorMessage = $state<string | null>(null);
   let isMobileDrawerOpen = $state(typeof window !== "undefined" ? window.innerWidth >= 768 : true);
   let isSettingsOpen = $state(false), isDark = $state(true), themePalette = $state<ThemePalette>("llumen");
-  let activeArtifact = $state<ArtifactSpecification | null>(null), messageContainerEl = $state<HTMLDivElement | null>(null);
+  let activeArtifact = $state<ArtifactSpecification | null>(null);
+  let messageViewport = $state<ReturnType<typeof MessageViewport> | null>(null);
   let activeAbortController: AbortController | null = null, eventSource: EventSource | null = null, isAuthChecking = $state(true);
 
   let activeSession = $derived(sessions.find((s) => s.id === activeSessionId) || null);
@@ -77,7 +72,7 @@
       const res = processStreamEvent(raw, { activeSessionId, messages, isGenerating, sessions, errorMessage, tasks: sessionTasks });
       messages = res.messages; isGenerating = res.isGenerating; sessions = res.sessions;
       errorMessage = res.errorMessage; sessionTasks = res.tasks;
-      if (res.shouldScroll) autoScrollDuringStream();
+      if (res.shouldScroll) messageViewport?.autoScrollDuringStream();
     });
   });
 
@@ -127,7 +122,7 @@
 
     try {
       const [page, tasks] = await Promise.all([api.listMessages(id), api.listSessionTasks(id).catch(() => [])]);
-      messages = page.items.reverse(); sessionTasks = tasks; scrollToBottom();
+      messages = page.items.reverse(); sessionTasks = tasks; messageViewport?.scrollToBottom();
     } catch {
       messages = []; sessionTasks = [];
     }
@@ -156,13 +151,13 @@
       targetSessionId = newSess.id;
     }
 
-    isGenerating = true; errorMessage = null; isUserScrolledUp = false;
+    isGenerating = true; errorMessage = null;
     activeAbortController = new AbortController();
 
     // Optimistic UI append for User
     const localUserMsg: Message = { id: "temp_" + Date.now(), session_id: targetSessionId, role: "user", content: text, created_at: new Date().toISOString() };
     messages = [...messages, localUserMsg];
-    scrollUserMessageToTop(localUserMsg.id);
+    messageViewport?.scrollUserMessageToTop(localUserMsg.id);
 
     try {
       await api.sendMessage(targetSessionId, text, modelId);
@@ -176,53 +171,7 @@
     }
   }
 
-  let isUserScrolledUp = $state(false), lastScrollTop = 0;
-
-  function handleContainerScroll() {
-    if (!messageContainerEl) return;
-    const current = messageContainerEl.scrollTop;
-    if (isGenerating) {
-      if (current < lastScrollTop - 15) {
-        isUserScrolledUp = true;
-      } else {
-        const last = messageContainerEl.querySelector<HTMLElement>('[data-role="assistant"]:last-of-type');
-        if (last && last.getBoundingClientRect().bottom <= messageContainerEl.getBoundingClientRect().bottom + 60) isUserScrolledUp = false;
-      }
-    }
-    lastScrollTop = current;
-  }
-
-  function scrollUserMessageToTop(msgId: string) {
-    requestAnimationFrame(() => setTimeout(() => {
-      if (!messageContainerEl) return;
-      const el = messageContainerEl.querySelector<HTMLElement>(`[data-message-id="${msgId}"]`);
-      if (el) {
-        const cRect = messageContainerEl.getBoundingClientRect(), tRect = el.getBoundingClientRect();
-        messageContainerEl.scrollTo({ top: Math.max(0, messageContainerEl.scrollTop + (tRect.top - cRect.top) - 16), behavior: "smooth" });
-        isUserScrolledUp = false;
-      }
-    }, 40));
-  }
-
-  function autoScrollDuringStream() {
-    if (isUserScrolledUp || !messageContainerEl) return;
-    const last = messageContainerEl.querySelector<HTMLElement>('[data-role="assistant"]:last-of-type');
-    if (!last) return;
-    const cRect = messageContainerEl.getBoundingClientRect(), bRect = last.getBoundingClientRect();
-    if (bRect.bottom > cRect.bottom - 48) {
-      messageContainerEl.scrollTo({ top: messageContainerEl.scrollTop + (bRect.bottom - cRect.bottom + 48), behavior: "smooth" });
-    }
-  }
-
-  function handleStop() { activeAbortController?.abort(); activeAbortController = null; isGenerating = false; isUserScrolledUp = false; }
-  function scrollToBottom() {
-    setTimeout(() => {
-      if (!messageContainerEl) return;
-      const last = messageContainerEl.querySelector<HTMLElement>('[data-role="assistant"]:last-of-type, [data-role="user"]:last-of-type');
-      if (last) last.scrollIntoView({ behavior: "instant", block: "end" });
-      else messageContainerEl.scrollTop = messageContainerEl.scrollHeight;
-    }, 50);
-  }
+  function handleStop() { activeAbortController?.abort(); activeAbortController = null; isGenerating = false; messageViewport?.resetScrollState(); }
   function renameSession(id: string, newTitle: string) { sessions = sessions.map((s) => (s.id === id ? { ...s, title: newTitle } : s)); }
   function deleteSession(id: string) { sessions = sessions.filter((s) => s.id !== id); if (activeSessionId === id) { activeSessionId = null; messages = []; router.navigate("/chat/new"); } }
   function togglePin(target: Session) { sessions = sessions.map((s) => (s.id === target.id ? { ...s, is_pinned: !s.is_pinned } : s)); }
@@ -260,23 +209,13 @@
 
       <!-- Main Chat Area -->
       <main class="flex-1 flex flex-col justify-between bg-background overflow-hidden">
-        <!-- Chat Header -->
-        <header class="h-16 border-b border-border px-4 md:px-6 flex items-center justify-between shrink-0 bg-background/80 backdrop-blur-md select-none">
-          <div class="flex items-center gap-3 min-w-0">
-            <Button variant="outline" size="icon" onclick={() => (isMobileDrawerOpen = !isMobileDrawerOpen)} class="{isMobileDrawerOpen ? 'md:hidden' : ''} min-h-[44px] min-w-[44px] sm:min-h-9 sm:min-w-9" aria-label="Buka Menu">
-              <Menu class="w-5 h-5" />
-            </Button>
-            <div class="font-medium text-foreground truncate max-w-xs md:max-w-md">{activeSession ? activeSession.title : "Percakapan Baru"}</div>
-          </div>
-          <div class="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onclick={() => router.navigate("/markdown")} class="gap-1.5 text-xs text-muted-foreground hover:text-foreground hidden sm:flex" title="Buka Markdown Scratchpad">
-              <FileEdit class="w-3.5 h-3.5 text-cyan-400" /><span>Scratchpad</span>
-            </Button>
-            <Badge variant="outline" class="font-mono text-xs gap-1.5 py-1.5 px-3">
-              <Cpu class="w-3.5 h-3.5 text-cyan-400" /><span class="text-foreground font-medium">{selectedModelId}</span>
-            </Badge>
-          </div>
-        </header>
+        <ChatHeader
+          title={activeSession ? activeSession.title : "Percakapan Baru"}
+          {selectedModelId}
+          {isMobileDrawerOpen}
+          onToggleMobileDrawer={() => (isMobileDrawerOpen = !isMobileDrawerOpen)}
+          onOpenScratchpad={() => router.navigate("/markdown")}
+        />
 
         <!-- Error Notification Banner -->
         {#if errorMessage}
@@ -284,31 +223,22 @@
         {/if}
 
         <!-- Message Viewport -->
-        <div bind:this={messageContainerEl} onscroll={handleContainerScroll} class="flex-1 overflow-y-auto p-4 md:p-6 space-y-5 smooth-momentum-scroll">
-          {#if (!activeSessionId || router.path === "/chat/new") && messages.length === 0}
-            <NewChatWelcome {brandTitle} onSelectPrompt={(t) => (promptText = t)} />
-          {:else}
-            {#each messages as m, idx (m.id)}
-              {#if m.role === "user"}
-                <UserBubble message={m} onEditPrompt={(t) => (promptText = t)} />
-              {:else}
-                <AssistantBubble
-                  message={m}
-                  isStreaming={isGenerating && m.id === messages[messages.length - 1]?.id}
-                  tasks={idx === messages.length - 1 ? sessionTasks : []}
-                  onOpenArtifact={(art) => (activeArtifact = art)}
-                  onRegenerate={() => {
-                    const lastUserMsg = [...messages].reverse().find((x) => x.role === "user");
-                    if (lastUserMsg) handleSend(lastUserMsg.content, [], chatMode, selectedModelId);
-                  }}
-                />
-              {/if}
-            {/each}
-            {#if messages.length > 0}
-              <div class="h-[45vh] shrink-0 pointer-events-none transition-all duration-300" aria-hidden="true"></div>
-            {/if}
-          {/if}
-        </div>
+        <MessageViewport
+          bind:this={messageViewport}
+          {messages}
+          {sessionTasks}
+          {activeSessionId}
+          {isGenerating}
+          {brandTitle}
+          isNewChatRoute={router.path === "/chat/new"}
+          onSelectPrompt={(t) => (promptText = t)}
+          onEditPrompt={(t) => (promptText = t)}
+          onOpenArtifact={(art) => (activeArtifact = art)}
+          onRegenerate={() => {
+            const lastUserMsg = [...messages].reverse().find((x) => x.role === "user");
+            if (lastUserMsg) handleSend(lastUserMsg.content, [], chatMode, selectedModelId);
+          }}
+        />
 
         <!-- Input Bar Composer -->
         <footer class="p-3 md:p-4 border-t border-border bg-background shrink-0">
