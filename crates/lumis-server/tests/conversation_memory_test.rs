@@ -118,6 +118,9 @@ async fn test_multi_turn_context_assembly_order_and_system_prompt() {
     // Assert system prompt at index 0 contains base, custom session instructions, and user memories
     assert_eq!(assembled[0].role, "system");
     assert!(assembled[0].content.contains("You are Lumis"));
+    assert!(assembled[0].content.contains("<epistemic_directives>"));
+    assert!(assembled[0].content.contains("Dynamic State & Freshness Invariant"));
+    assert!(assembled[0].content.contains("Anti-Sycophancy & Objectivity"));
     assert!(assembled[0].content.contains("Fokus pada data statistik wilayah Kalimantan Barat."));
     assert!(assembled[0].content.contains("<user_memories>"));
     assert!(assembled[0].content.contains("Statistisi Ahli Muda di BPS Mempawah"));
@@ -183,7 +186,7 @@ async fn test_sliding_window_context_truncation_budget() {
         });
     }
 
-    // Set a very tight budget (e.g. 350 tokens)
+    // Set a tight budget (650 tokens, fitting system prompt ~400 tokens + 1-2 recent messages)
     let assembled = assemble_chat_context(
         &session,
         &user,
@@ -192,7 +195,7 @@ async fn test_sliding_window_context_truncation_budget() {
         &session.model_id,
         &[],
         None,
-        Some(350),
+        Some(650),
     );
 
     // Oldest messages should be pruned
