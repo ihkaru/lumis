@@ -1,5 +1,4 @@
 <script lang="ts">
-  import Wrench from "lucide-svelte/icons/wrench";
   import ChevronDown from "lucide-svelte/icons/chevron-down";
   import CheckCircle2 from "lucide-svelte/icons/check-circle-2";
   import XCircle from "lucide-svelte/icons/x-circle";
@@ -62,47 +61,38 @@
   }
 </script>
 
-<div class="my-1.5 overflow-hidden rounded-lg border border-border/50 bg-muted/15 font-sans text-xs">
+<div class="my-1 overflow-hidden rounded-lg bg-muted/20 hover:bg-muted/30 transition-colors font-sans text-xs border-0">
   <button
     type="button"
     onclick={() => (isOpen = !isOpen)}
-    class="flex w-full items-center justify-between px-3 py-1.5 text-left hover:bg-muted/30 transition-colors select-none cursor-pointer"
+    class="flex w-full items-center justify-between px-2.5 py-1.5 text-left transition-colors select-none cursor-pointer"
     aria-expanded={isOpen}
   >
-    <div class="flex items-center gap-2 min-w-0">
-      <Wrench class="h-3.5 w-3.5 text-cyan-400 shrink-0" />
+    <div class="flex items-center gap-1.5 min-w-0">
+      {#if isRunning}
+        <Loader2 class="h-3 w-3 animate-spin text-amber-400 shrink-0" />
+      {:else if error}
+        <XCircle class="h-3 w-3 text-red-400 shrink-0" />
+      {:else if result !== undefined}
+        <CheckCircle2 class="h-3 w-3 text-emerald-400 shrink-0" />
+      {:else}
+        <span class="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 shrink-0"></span>
+      {/if}
 
       {#if parsedInfo.server}
         <span class="font-mono text-[11px] text-muted-foreground truncate">{parsedInfo.server}/</span>
       {/if}
 
-      <span class="font-mono text-[11px] font-semibold text-foreground truncate">
+      <span class="font-mono text-[11px] font-medium text-foreground truncate">
         {parsedInfo.tool}
       </span>
-
-      {#if isRunning}
-        <span class="inline-flex items-center gap-1 text-[11px] text-amber-400 font-medium shrink-0 ml-1">
-          <Loader2 class="h-3 w-3 animate-spin" />
-          <span>Running...</span>
-        </span>
-      {:else if error}
-        <span class="inline-flex items-center gap-1 text-[11px] text-red-400 font-medium shrink-0 ml-1">
-          <XCircle class="h-3 w-3" />
-          <span>Failed</span>
-        </span>
-      {:else if result !== undefined}
-        <span class="inline-flex items-center gap-1 text-[11px] text-emerald-400 font-medium shrink-0 ml-1">
-          <CheckCircle2 class="h-3 w-3" />
-          <span>Completed</span>
-        </span>
-      {/if}
     </div>
 
     <ChevronDown class="h-3.5 w-3.5 text-muted-foreground transition-transform duration-150 shrink-0 ml-2 {isOpen ? 'rotate-180' : ''}" />
   </button>
 
   {#if isOpen}
-    <div class="border-t border-border/40 p-2.5 space-y-2.5 bg-background/50 font-mono text-[11px]">
+    <div class="p-2.5 space-y-2.5 bg-background/50 font-mono text-[11px] border-0">
       {#if args}
         <div class="space-y-1">
           <div class="flex items-center justify-between">

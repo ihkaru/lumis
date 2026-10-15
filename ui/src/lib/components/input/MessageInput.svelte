@@ -135,7 +135,7 @@
 </script>
 
 <div
-  class="relative max-w-4xl mx-auto w-full rounded-2xl border border-border bg-card shadow-lg font-sans transition-all focus-within:border-cyan-500/50 focus-within:ring-1 focus-within:ring-cyan-500/20"
+  class="relative max-w-4xl mx-auto w-full rounded-2xl sm:rounded-3xl border border-border/70 bg-card/90 backdrop-blur-xl shadow-xl hover:shadow-2xl transition-all duration-200 focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/20 focus-within:shadow-2xl font-sans"
   ondragover={handleDragOver}
   ondragleave={handleDragLeave}
   ondrop={handleDrop}
@@ -211,7 +211,7 @@
   </div>
 
   <!-- Composer Toolbar Bottom -->
-  <div class="relative flex flex-wrap items-center justify-between gap-2 px-3 pb-3 pt-1 border-t border-border/40 select-none">
+  <div class="relative flex items-center justify-between gap-1.5 px-2.5 pb-2.5 pt-1 border-t border-border/30 select-none">
     <!-- Fast Action Menu Popover -->
     <ComposerActionMenu
       open={isActionMenuOpen}
@@ -225,12 +225,13 @@
       }}
     />
 
-    <div class="flex items-center gap-1.5 flex-wrap">
+    <!-- Left Controls (Dense, horizontally fluid without awkward line breaks) -->
+    <div class="flex items-center gap-1 min-w-0 overflow-x-auto no-scrollbar py-0.5">
       <!-- Fast Actions Trigger Button (+) -->
       <Button
         variant="ghost"
         size="icon"
-        class="h-8 w-8 text-muted-foreground hover:text-cyan-400 hover:bg-muted cursor-pointer"
+        class="h-7 w-7 sm:h-8 sm:w-8 shrink-0 text-muted-foreground hover:text-cyan-400 hover:bg-muted cursor-pointer rounded-lg"
         onclick={() => (isActionMenuOpen = !isActionMenuOpen)}
         title="Aksi Cepat (+)"
         aria-label="Aksi Cepat"
@@ -238,43 +239,49 @@
         <Plus class="h-4 w-4" />
       </Button>
 
-      <ModelSelector {selectedModelId} onSelectModel={onModelChange} />
-      <ModeSelector activeMode={chatMode} onSelectMode={onModeChange} />
-      
+      <div class="shrink-0">
+        <ModelSelector {selectedModelId} onSelectModel={onModelChange} />
+      </div>
+
+      <div class="shrink-0">
+        <ModeSelector activeMode={chatMode} onSelectMode={onModeChange} />
+      </div>
+
       <Button
         variant="ghost"
         size="icon"
-        class="h-8 w-8 text-muted-foreground hover:text-cyan-400 hover:bg-muted cursor-pointer"
+        class="h-7 w-7 sm:h-8 sm:w-8 shrink-0 text-muted-foreground hover:text-cyan-400 hover:bg-muted cursor-pointer rounded-lg"
         onclick={() => fileInputRef?.click()}
         title="Lampirkan Dokumen atau Gambar"
         aria-label="Lampirkan Dokumen atau Gambar"
       >
-        <Paperclip class="h-4 w-4" />
+        <Paperclip class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
       </Button>
 
       <Button
         variant="ghost"
         size="icon"
-        class="h-8 w-8 text-muted-foreground hover:text-cyan-400 hover:bg-muted cursor-pointer"
+        class="h-7 w-7 sm:h-8 sm:w-8 shrink-0 text-muted-foreground hover:text-cyan-400 hover:bg-muted cursor-pointer rounded-lg"
         onclick={() => (isAudioModalOpen = true)}
         title="Rekam Suara"
         aria-label="Rekam Suara"
       >
-        <Mic class="h-4 w-4" />
+        <Mic class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
       </Button>
     </div>
 
-    <div class="flex items-center gap-1.5">
+    <!-- Right Action Button (Send / Stop) -->
+    <div class="flex items-center shrink-0 ml-1">
       {#if isGenerating}
         <Button
           variant="destructive"
           size="touch"
           onclick={onStop}
-          class="h-9 px-4 gap-1.5 font-semibold text-xs shadow-md animate-pulse cursor-pointer"
+          class="h-8 px-2.5 sm:px-3.5 gap-1.5 font-semibold text-xs shadow-md animate-pulse cursor-pointer rounded-xl"
           aria-label="Stop Generation"
         >
           <Square class="h-3.5 w-3.5 fill-current" />
-          <span>Stop</span>
+          <span class="hidden sm:inline">Stop</span>
         </Button>
       {:else}
         <Button
@@ -282,7 +289,7 @@
           size="touch"
           onclick={handleSubmit}
           disabled={!promptText.trim() && attachedFiles.length === 0}
-          class="h-9 px-4 gap-1.5 font-semibold text-xs shadow-md cursor-pointer"
+          class="h-8 w-8 sm:w-auto sm:px-3.5 p-0 sm:py-1 gap-1.5 font-semibold text-xs shadow-md cursor-pointer rounded-xl flex items-center justify-center"
           aria-label="Kirim Pesan"
         >
           <Send class="h-3.5 w-3.5" />

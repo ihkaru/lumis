@@ -122,12 +122,12 @@
   <button
     type="button"
     onclick={() => (isOpen = !isOpen)}
-    class="flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-border bg-card/80 hover:bg-muted text-xs text-foreground transition-colors cursor-pointer touch-manipulation min-h-[36px] sm:min-h-[32px]"
+    class="flex items-center gap-1 h-7 sm:h-8 px-2 rounded-lg border border-border/70 bg-card/80 hover:bg-muted text-[11px] sm:text-xs text-foreground transition-colors cursor-pointer touch-manipulation"
     aria-expanded={isOpen}
     title="Pilih Model AI Gateway (9Router)"
   >
-    <Cpu class="h-3.5 w-3.5 text-primary" />
-    <span class="font-medium max-w-[110px] sm:max-w-[150px] md:max-w-[180px] truncate">
+    <Cpu class="h-3 w-3 sm:h-3.5 sm:w-3.5 text-primary" />
+    <span class="font-medium max-w-[80px] sm:max-w-[140px] md:max-w-[180px] truncate">
       {activeModel.name}
     </span>
     {#if activeModel.capabilities?.reasoning || activeModel.tier === "Reasoning"}

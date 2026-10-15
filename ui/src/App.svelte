@@ -22,7 +22,40 @@
   let selectedModelId = $state(typeof localStorage !== "undefined" ? localStorage.getItem("lumis_selected_model") || "my9model-free" : "my9model-free");
   let chatMode = $state<ChatMode>("normal"), errorMessage = $state<string | null>(null);
   let isMobileDrawerOpen = $state(typeof window !== "undefined" ? window.innerWidth >= 768 : true);
-  let isSettingsOpen = $state(false), isDark = $state(true), themePalette = $state<ThemePalette>("llumen");
+  let isSettingsOpen = $state(false);
+  let isDark = $state(
+    typeof localStorage !== "undefined"
+      ? localStorage.getItem("lumis_theme_mode") !== "light"
+      : true
+  );
+  let themePalette = $state<ThemePalette>(
+    typeof localStorage !== "undefined"
+      ? (localStorage.getItem("lumis_theme_palette") as ThemePalette) || "llumen"
+      : "llumen"
+  );
+
+  $effect(() => {
+    if (typeof document !== "undefined") {
+      document.documentElement.classList.toggle("dark", isDark);
+      document.documentElement.classList.toggle("light", !isDark);
+      document.documentElement.setAttribute("data-palette", themePalette);
+    }
+  });
+
+  function applyThemeMode(dark: boolean) {
+    isDark = dark;
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("lumis_theme_mode", dark ? "dark" : "light");
+    }
+  }
+
+  function applyThemePalette(p: ThemePalette) {
+    themePalette = p;
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("lumis_theme_palette", p);
+    }
+  }
+
   let activeArtifact = $state<ArtifactSpecification | null>(null);
   let messageViewport = $state<ReturnType<typeof MessageViewport> | null>(null);
   let activeAbortController: AbortController | null = null, eventSource: EventSource | null = null, isAuthChecking = $state(true);
@@ -211,7 +244,7 @@
     <MarkdownScratchpad />
   <!-- Main Application Layout -->
   {:else}
-    <div class="flex h-[100dvh] max-h-[100dvh] w-screen bg-background text-foreground antialiased font-sans overflow-hidden {isDark ? 'dark' : ''}" style="height: var(--app-height, 100dvh); max-height: var(--app-height, 100dvh);">
+    <div class="flex h-[100dvh] max-h-[100dvh] w-screen bg-background text-foreground antialiased font-sans overflow-hidden {isDark ? 'dark' : 'light'}" style="height: var(--app-height, 100dvh); max-height: var(--app-height, 100dvh);">
       <!-- Sidebar -->
       <Sidebar
         {brandTitle} {sessions} {activeSessionId} {user} isOpenMobile={isMobileDrawerOpen} onSelectSession={selectSession}
@@ -258,8 +291,8 @@
           }}
         />
 
-        <!-- Input Bar Composer -->
-        <footer class="p-3 md:p-4 border-t border-border bg-background shrink-0">
+        <!-- Input Bar Composer (Floating FAB Style) -->
+        <footer class="px-2.5 pb-2.5 pt-0 sm:px-5 sm:pb-3 md:px-6 md:pb-4 bg-transparent shrink-0">
           <MessageInput
             bind:promptText {isGenerating} {selectedModelId} {chatMode}
             onSend={handleSend} onStop={handleStop}
@@ -285,7 +318,7 @@
         isOpen={isSettingsOpen} {user} {isDark} palette={themePalette}
         onClose={() => (isSettingsOpen = false)}
         onLogout={async () => { await api.logout().catch(() => {}); user = null; isSettingsOpen = false; router.navigate("/login"); }}
-        onToggleDark={(d) => (isDark = d)} onSelectPalette={(p) => (themePalette = p)}
+        onToggleDark={applyThemeMode} onSelectPalette={applyThemePalette}
       />
     </div>
   {/if}

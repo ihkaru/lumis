@@ -1,13 +1,11 @@
 <script lang="ts">
   import { Button } from "$lib/components/ui/button";
-  import { Badge } from "$lib/components/ui/badge";
   import Menu from "lucide-svelte/icons/menu";
-  import Cpu from "lucide-svelte/icons/cpu";
   import FileEdit from "lucide-svelte/icons/file-edit";
 
   interface Props {
     title: string;
-    selectedModelId: string;
+    selectedModelId?: string;
     isMobileDrawerOpen: boolean;
     onToggleMobileDrawer: () => void;
     onOpenScratchpad: () => void;
@@ -25,10 +23,10 @@
 <header class="h-16 border-b border-border px-4 md:px-6 flex items-center justify-between shrink-0 bg-background/80 backdrop-blur-md select-none font-sans">
   <div class="flex items-center gap-3 min-w-0">
     <Button
-      variant="outline"
+      variant="ghost"
       size="icon"
       onclick={onToggleMobileDrawer}
-      class="{isMobileDrawerOpen ? 'md:hidden' : ''} min-h-[44px] min-w-[44px] sm:min-h-9 sm:min-w-9"
+      class="{isMobileDrawerOpen ? 'md:hidden' : ''} min-h-[44px] min-w-[44px] sm:min-h-9 sm:min-w-9 text-muted-foreground hover:text-foreground"
       aria-label="Buka Menu"
     >
       <Menu class="w-5 h-5" />
@@ -48,9 +46,5 @@
       <FileEdit class="w-3.5 h-3.5 text-cyan-400" />
       <span>Scratchpad</span>
     </Button>
-    <Badge variant="outline" class="font-mono text-xs gap-1.5 py-1.5 px-3">
-      <Cpu class="w-3.5 h-3.5 text-cyan-400" />
-      <span class="text-foreground font-medium">{selectedModelId}</span>
-    </Badge>
   </div>
 </header>

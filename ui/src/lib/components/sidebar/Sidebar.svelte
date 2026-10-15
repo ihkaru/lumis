@@ -1,5 +1,4 @@
 <script lang="ts">
-  import Zap from "lucide-svelte/icons/zap";
   import Plus from "lucide-svelte/icons/plus";
   import X from "lucide-svelte/icons/x";
   import Settings from "lucide-svelte/icons/settings";
@@ -102,32 +101,13 @@
   <!-- Sidebar Header -->
   <div class="h-16 px-4 border-b border-border flex items-center justify-between shrink-0">
     <div class="flex items-center gap-2 min-w-0 pr-2">
-      <div class="p-1.5 rounded-lg bg-cyan-950/60 border border-cyan-800/40 text-cyan-400 shrink-0">
-        <Zap class="w-5 h-5" />
-      </div>
       <span class="font-bold text-base tracking-tight bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent truncate">
         {brandTitle}
       </span>
     </div>
 
-    <!-- Header Actions (New Chat & Universal Close Button) -->
+    <!-- Header Actions (Universal Close Button) -->
     <div class="flex items-center gap-1.5 shrink-0">
-      <Button
-        variant="cyan"
-        size="sm"
-        onclick={() => {
-          onCreateSession();
-          if (isOpenMobile) onCloseMobile();
-        }}
-        class="h-9 px-2.5 gap-1 text-xs font-medium cursor-pointer"
-        title="Buat Percakapan Baru"
-        aria-label="Buat Percakapan Baru"
-      >
-        <Plus class="w-4 h-4" />
-        <span class="hidden sm:inline">Baru</span>
-      </Button>
-
-      <!-- Prominent Universal Close Button (Desktop & Mobile) -->
       <button
         type="button"
         onclick={(e) => {
@@ -139,13 +119,29 @@
           e.stopPropagation();
           onCloseMobile();
         }}
-        class="min-h-[44px] min-w-[44px] h-11 w-11 flex items-center justify-center rounded-xl bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer border border-border/40 touch-manipulation pointer-events-auto relative z-10"
+        class="min-h-[44px] min-w-[44px] h-10 w-10 flex items-center justify-center rounded-xl bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer border border-border/40 touch-manipulation pointer-events-auto relative z-10"
         aria-label="Tutup Menu Navigasi"
         title="Tutup Menu Navigasi"
       >
         <X class="w-5 h-5" />
       </button>
     </div>
+  </div>
+
+  <!-- Dedicated New Chat Button Above Search -->
+  <div class="px-3 pt-3 pb-1">
+    <button
+      type="button"
+      onclick={() => {
+        onCreateSession();
+        if (isOpenMobile) onCloseMobile();
+      }}
+      class="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary font-medium text-xs transition-colors cursor-pointer border border-primary/25 touch-manipulation min-h-[42px]"
+      aria-label="New Chat"
+    >
+      <Plus class="w-4 h-4 shrink-0" />
+      <span class="font-semibold text-xs tracking-wide">New Chat</span>
+    </button>
   </div>
 
   <!-- Search Input Bar -->
