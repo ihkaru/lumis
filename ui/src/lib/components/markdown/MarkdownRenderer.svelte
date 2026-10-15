@@ -3,6 +3,7 @@
   import CodeBlock from "./CodeBlock.svelte";
   import LatexRenderer from "./LatexRenderer.svelte";
   import ReasoningBox from "../message/ReasoningBox.svelte";
+  import TableBlock from "./TableBlock.svelte";
 
   interface Props {
     content: string;
@@ -97,6 +98,38 @@
     }
   }
 
+  interface HtmlSegment {
+    type: "html" | "table";
+    content: string;
+  }
+
+  function splitHtmlTables(html: string): HtmlSegment[] {
+    const tableRegex = /<table[\s\S]*?<\/table>/gi;
+    const segments: HtmlSegment[] = [];
+    let lastIdx = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = tableRegex.exec(html)) !== null) {
+      if (match.index > lastIdx) {
+        const text = html.slice(lastIdx, match.index);
+        if (text.trim()) {
+          segments.push({ type: "html", content: text });
+        }
+      }
+      segments.push({ type: "table", content: match[0] });
+      lastIdx = match.index + match[0].length;
+    }
+
+    if (lastIdx < html.length) {
+      const rest = html.slice(lastIdx);
+      if (rest.trim()) {
+        segments.push({ type: "html", content: rest });
+      }
+    }
+
+    return segments.length > 0 ? segments : [{ type: "html", content: html }];
+  }
+
   function renderMarkdownHtml(mdText: string): string {
     try {
       return marked.parse(mdText, {
@@ -119,9 +152,15 @@
     {:else if block.type === "math_block"}
       <LatexRenderer math={block.content} displayMode={true} />
     {:else}
-      <div class="markdown-body">
-        {@html renderMarkdownHtml(block.content)}
-      </div>
+      {#each splitHtmlTables(renderMarkdownHtml(block.content)) as segment}
+        {#if segment.type === "table"}
+          <TableBlock html={segment.content} />
+        {:else}
+          <div class="markdown-body">
+            {@html segment.content}
+          </div>
+        {/if}
+      {/each}
     {/if}
   {/each}
 </div>
