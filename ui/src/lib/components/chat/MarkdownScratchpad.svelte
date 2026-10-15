@@ -32,7 +32,7 @@ fn calculate_entropy(data: &[u8]) -> f64 {
 `);
 </script>
 
-<div class="flex h-screen w-screen flex-col bg-background text-foreground font-sans select-none">
+<div class="flex h-[100dvh] max-h-[100dvh] w-screen flex-col bg-background text-foreground font-sans select-none">
   <!-- Top Navigation -->
   <header class="flex h-14 items-center justify-between border-b border-border px-4 shrink-0 bg-card">
     <div class="flex items-center gap-3">

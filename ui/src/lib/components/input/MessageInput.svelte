@@ -199,6 +199,11 @@
       onkeydown={handleKeyDown}
       oninput={autoResizeTextarea}
       onpaste={handlePaste}
+      onfocus={() => {
+        setTimeout(() => {
+          textareaRef?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        }, 120);
+      }}
       placeholder="Tanyakan apa saja atau ketik prompt... (Enter kirim, Shift+Enter baris baru)"
       rows={1}
       class="w-full resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden max-h-44 min-h-[44px] leading-relaxed [overflow-wrap:anywhere]"

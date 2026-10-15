@@ -25,7 +25,7 @@
 </script>
 
 {#if hasError}
-  <div class="flex h-screen w-screen flex-col items-center justify-center bg-background p-6 text-foreground font-sans">
+  <div class="flex h-[100dvh] max-h-[100dvh] w-screen flex-col items-center justify-center bg-background p-6 text-foreground font-sans">
     <div class="max-w-md w-full rounded-2xl border border-destructive/40 bg-card p-6 shadow-2xl space-y-4">
       <div class="flex items-center gap-3 text-destructive">
         <AlertTriangle class="h-6 w-6" />

@@ -74,9 +74,27 @@
       errorMessage = res.errorMessage; sessionTasks = res.tasks;
       if (res.shouldScroll) messageViewport?.autoScrollDuringStream();
     });
+
+    if (typeof window !== "undefined" && window.visualViewport) {
+      window.visualViewport.addEventListener("resize", updateAppHeight);
+      window.visualViewport.addEventListener("scroll", updateAppHeight);
+      updateAppHeight();
+    }
   });
 
-  onDestroy(() => { eventSource?.close(); });
+  onDestroy(() => {
+    eventSource?.close();
+    if (typeof window !== "undefined" && window.visualViewport) {
+      window.visualViewport.removeEventListener("resize", updateAppHeight);
+      window.visualViewport.removeEventListener("scroll", updateAppHeight);
+    }
+  });
+
+  function updateAppHeight() {
+    if (typeof window !== "undefined" && window.visualViewport) {
+      document.documentElement.style.setProperty("--app-height", `${window.visualViewport.height}px`);
+    }
+  }
 
   // Watch URL params for deep-link navigation
   $effect(() => {
@@ -193,7 +211,7 @@
     <MarkdownScratchpad />
   <!-- Main Application Layout -->
   {:else}
-    <div class="flex h-screen w-screen bg-background text-foreground antialiased font-sans overflow-hidden {isDark ? 'dark' : ''}">
+    <div class="flex h-[100dvh] max-h-[100dvh] w-screen bg-background text-foreground antialiased font-sans overflow-hidden {isDark ? 'dark' : ''}" style="height: var(--app-height, 100dvh); max-height: var(--app-height, 100dvh);">
       <!-- Sidebar -->
       <Sidebar
         {brandTitle} {sessions} {activeSessionId} {user} isOpenMobile={isMobileDrawerOpen} onSelectSession={selectSession}

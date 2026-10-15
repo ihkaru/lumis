@@ -50,7 +50,7 @@
   }
 </script>
 
-<div class="flex h-screen w-screen items-center justify-center bg-background px-4 font-sans select-none">
+<div class="flex h-[100dvh] max-h-[100dvh] w-screen items-center justify-center bg-background px-4 font-sans select-none">
   <div class="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-2xl space-y-6">
     <div class="text-center space-y-2">
       <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-950/60 border border-cyan-800/40 text-cyan-400">
