@@ -39,7 +39,7 @@
       <span class="font-medium text-foreground">Anda</span>
     </div>
 
-    <div class="px-4 py-3 rounded-2xl rounded-tr-none bg-primary text-primary-foreground text-sm leading-relaxed shadow-sm break-words whitespace-pre-wrap [overflow-wrap:anywhere]">
+    <div class="px-4 py-2.5 rounded-2xl rounded-tr-sm bg-secondary text-secondary-foreground text-sm leading-relaxed border border-border/60 shadow-xs break-words whitespace-pre-wrap [overflow-wrap:anywhere] transition-colors hover:border-primary/30">
       {message.content}
     </div>
 
