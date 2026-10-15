@@ -231,7 +231,7 @@
       <Button
         variant="ghost"
         size="icon"
-        class="h-7 w-7 sm:h-8 sm:w-8 shrink-0 text-muted-foreground hover:text-cyan-400 hover:bg-muted cursor-pointer rounded-lg"
+        class="h-7 w-7 sm:h-8 sm:w-8 shrink-0 text-muted-foreground hover:text-primary hover:bg-muted cursor-pointer rounded-lg"
         onclick={() => (isActionMenuOpen = !isActionMenuOpen)}
         title="Aksi Cepat (+)"
         aria-label="Aksi Cepat"
@@ -250,7 +250,7 @@
       <Button
         variant="ghost"
         size="icon"
-        class="h-7 w-7 sm:h-8 sm:w-8 shrink-0 text-muted-foreground hover:text-cyan-400 hover:bg-muted cursor-pointer rounded-lg"
+        class="h-7 w-7 sm:h-8 sm:w-8 shrink-0 text-muted-foreground hover:text-primary hover:bg-muted cursor-pointer rounded-lg"
         onclick={() => fileInputRef?.click()}
         title="Lampirkan Dokumen atau Gambar"
         aria-label="Lampirkan Dokumen atau Gambar"
@@ -261,7 +261,7 @@
       <Button
         variant="ghost"
         size="icon"
-        class="h-7 w-7 sm:h-8 sm:w-8 shrink-0 text-muted-foreground hover:text-cyan-400 hover:bg-muted cursor-pointer rounded-lg"
+        class="h-7 w-7 sm:h-8 sm:w-8 shrink-0 text-muted-foreground hover:text-primary hover:bg-muted cursor-pointer rounded-lg"
         onclick={() => (isAudioModalOpen = true)}
         title="Rekam Suara"
         aria-label="Rekam Suara"

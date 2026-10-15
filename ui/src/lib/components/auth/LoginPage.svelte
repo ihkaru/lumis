@@ -53,7 +53,7 @@
 <div class="flex h-[100dvh] max-h-[100dvh] w-screen items-center justify-center bg-background px-4 font-sans select-none">
   <div class="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-2xl space-y-6">
     <div class="text-center space-y-2">
-      <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-950/60 border border-cyan-800/40 text-cyan-400">
+      <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 border border-primary/25 text-primary">
         <Shield class="h-6 w-6" />
       </div>
       <h1 class="text-2xl font-bold tracking-tight text-foreground">
@@ -134,7 +134,7 @@
       onclick={handleSsoRedirect}
       class="w-full h-11 text-xs font-medium gap-2 border-border/80 hover:bg-muted/50"
     >
-      <Shield class="h-4 w-4 text-cyan-400" />
+      <Shield class="h-4 w-4 text-primary" />
       <span>Masuk via Single Sign-On (SAML 2.0 / OIDC)</span>
     </Button>
   </div>

@@ -53,7 +53,7 @@
       onclick={() => (isExpanded = !isExpanded)}
       title="Daftar Isi / Minimap Outline"
     >
-      <ListTree class="w-3.5 h-3.5 text-cyan-400" />
+      <ListTree class="w-3.5 h-3.5 text-primary" />
       <span>Outline ({headings.length})</span>
       <ChevronRight class="w-3 h-3 transition-transform duration-150 {isExpanded ? 'rotate-90' : ''}" />
     </button>

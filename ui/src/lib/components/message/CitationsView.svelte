@@ -34,7 +34,7 @@
       aria-expanded={isOpen}
     >
       <div class="flex items-center gap-2">
-        <Globe class="h-3.5 w-3.5 text-cyan-400 shrink-0" />
+        <Globe class="h-3.5 w-3.5 text-primary shrink-0" />
         <span class="font-medium text-foreground">Sumber Rujukan Web & RAG</span>
         <span class="text-[10px] text-muted-foreground font-mono">({citations.length} sumber)</span>
       </div>
@@ -48,13 +48,13 @@
             href={item.url}
             target="_blank"
             rel="noopener noreferrer"
-            class="group flex items-start gap-2 p-2 rounded-lg border border-border/60 bg-card hover:border-cyan-500/40 hover:bg-muted/40 transition-all text-left"
+            class="group flex items-start gap-2 p-2 rounded-lg border border-border/60 bg-card hover:border-primary/40 hover:bg-muted/40 transition-all text-left"
           >
-            <div class="p-1 rounded bg-muted text-muted-foreground group-hover:text-cyan-400 shrink-0 mt-0.5">
+            <div class="p-1 rounded bg-muted text-muted-foreground group-hover:text-primary shrink-0 mt-0.5">
               <ExternalLink class="h-3 w-3" />
             </div>
             <div class="min-w-0 flex-1">
-              <div class="font-semibold text-xs text-foreground truncate group-hover:text-cyan-400 transition-colors">
+              <div class="font-semibold text-xs text-foreground truncate group-hover:text-primary transition-colors">
                 {item.title || getDomain(item.url)}
               </div>
               <div class="text-[10px] text-muted-foreground truncate font-mono">

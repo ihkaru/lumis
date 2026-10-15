@@ -129,16 +129,28 @@
     }
   }
 
+  async function startNewChat() {
+    if (typeof window !== "undefined" && window.innerWidth < 768) isMobileDrawerOpen = false;
+    if (isGenerating) handleStop();
+    errorMessage = null;
+    await router.navigate("/chat/new");
+    activeSessionId = null;
+    messages = [];
+    sessionTasks = [];
+  }
+
   // Watch URL params for deep-link navigation
   $effect(() => {
-    if (router.path === "/chat/new") {
+    const currentPath = router.path;
+    const targetId = router.params.id;
+    if (currentPath === "/chat/new" || (!targetId && currentPath === "/")) {
       if (activeSessionId !== null && !isGenerating) {
         activeSessionId = null;
         messages = [];
         sessionTasks = [];
       }
-    } else if (router.params.id && router.params.id !== "new" && router.params.id !== activeSessionId) {
-      selectSession(router.params.id);
+    } else if (targetId && targetId !== "new" && targetId !== activeSessionId) {
+      selectSession(targetId);
     }
   });
 
@@ -153,10 +165,7 @@
 
   async function selectSession(id: string) {
     if (id === "new") {
-      activeSessionId = null;
-      messages = [];
-      sessionTasks = [];
-      router.navigate("/chat/new");
+      await startNewChat();
       return;
     }
     if (activeSessionId === id && router.path === `/chat/${id}`) return;
@@ -164,7 +173,7 @@
     activeSessionId = id;
     if (typeof window !== "undefined" && window.innerWidth < 768) isMobileDrawerOpen = false;
     errorMessage = null;
-    router.navigate(`/chat/${id}`);
+    await router.navigate(`/chat/${id}`);
 
     const sess = sessions.find((s) => s.id === id);
     if (sess?.model_id) {
@@ -224,7 +233,7 @@
 
   function handleStop() { activeAbortController?.abort(); activeAbortController = null; isGenerating = false; messageViewport?.resetScrollState(); }
   function renameSession(id: string, newTitle: string) { sessions = sessions.map((s) => (s.id === id ? { ...s, title: newTitle } : s)); }
-  function deleteSession(id: string) { sessions = sessions.filter((s) => s.id !== id); if (activeSessionId === id) { activeSessionId = null; messages = []; router.navigate("/chat/new"); } }
+  function deleteSession(id: string) { sessions = sessions.filter((s) => s.id !== id); if (activeSessionId === id) { startNewChat(); } }
   function togglePin(target: Session) { sessions = sessions.map((s) => (s.id === target.id ? { ...s, is_pinned: !s.is_pinned } : s)); }
 </script>
 
@@ -248,11 +257,7 @@
       <!-- Sidebar -->
       <Sidebar
         {brandTitle} {sessions} {activeSessionId} {user} isOpenMobile={isMobileDrawerOpen} onSelectSession={selectSession}
-        onCreateSession={() => {
-          if (typeof window !== "undefined" && window.innerWidth < 768) isMobileDrawerOpen = false;
-          if (isGenerating) handleStop();
-          activeSessionId = null; messages = []; errorMessage = null; router.navigate("/chat/new");
-        }}
+        onCreateSession={startNewChat}
         onCloseMobile={() => (isMobileDrawerOpen = false)}
         onRenameSession={renameSession} onDeleteSession={deleteSession} onTogglePinSession={togglePin}
         onOpenSettings={() => { if (typeof window !== "undefined" && window.innerWidth < 768) isMobileDrawerOpen = false; isSettingsOpen = true; }}

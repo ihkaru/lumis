@@ -52,17 +52,30 @@
   }
 
   /* Theme Palettes */
-  [data-palette="dracula"] {
+  [data-palette="dracula"], html[data-palette="dracula"] {
     --primary: 265 89% 78%;
+    --primary-foreground: 222.2 47.4% 11.2%;
     --ring: 265 89% 78%;
   }
-  [data-palette="vitesse"] {
+  [data-palette="vitesse"], html[data-palette="vitesse"] {
     --primary: 142 71% 45%;
+    --primary-foreground: 0 0% 100%;
     --ring: 142 71% 45%;
   }
-  [data-palette="llumen"] {
+  [data-palette="llumen"], html[data-palette="llumen"] {
     --primary: 189 94% 43%;
+    --primary-foreground: 210 40% 98%;
     --ring: 189 94% 43%;
+  }
+  [data-palette="monochrome"], html[data-palette="monochrome"] {
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --ring: 240 5.9% 10%;
+  }
+  .dark[data-palette="monochrome"], html.dark[data-palette="monochrome"] {
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --ring: 0 0% 80%;
   }
 
   html, body, #app {

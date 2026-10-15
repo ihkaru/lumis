@@ -65,7 +65,7 @@
       <Button
         variant="ghost"
         size="icon"
-        class="min-h-[44px] min-w-[44px] sm:min-h-7 sm:min-w-7 h-8 w-8 sm:h-7 sm:w-7 hover:text-cyan-400 hover:bg-muted/50 touch-manipulation cursor-pointer"
+        class="min-h-[44px] min-w-[44px] sm:min-h-7 sm:min-w-7 h-8 w-8 sm:h-7 sm:w-7 hover:text-primary hover:bg-muted/50 touch-manipulation cursor-pointer"
         onclick={onRegenerate}
         title="Regenerasi respon (coba lagi)"
         aria-label="Regenerasi respon"
@@ -77,7 +77,7 @@
       <Button
         variant="ghost"
         size="icon"
-        class="min-h-[44px] min-w-[44px] sm:min-h-7 sm:min-w-7 h-8 w-8 sm:h-7 sm:w-7 hover:text-cyan-400 hover:bg-muted/50 touch-manipulation cursor-pointer"
+        class="min-h-[44px] min-w-[44px] sm:min-h-7 sm:min-w-7 h-8 w-8 sm:h-7 sm:w-7 hover:text-primary hover:bg-muted/50 touch-manipulation cursor-pointer"
         onclick={onFork}
         title="Cabangkan percakapan (Fork)"
         aria-label="Cabangkan percakapan"

@@ -4,7 +4,7 @@
   import Palette from "lucide-svelte/icons/palette";
   import Check from "lucide-svelte/icons/check";
 
-  export type ThemePalette = "llumen" | "dracula" | "vitesse";
+  export type ThemePalette = "llumen" | "dracula" | "vitesse" | "monochrome";
 
   interface Props {
     isDark: boolean;
@@ -19,6 +19,7 @@
     { id: "llumen" as ThemePalette, name: "Llumen Standard", primary: "#06b6d4" },
     { id: "dracula" as ThemePalette, name: "Dracula Enterprise", primary: "#bd93f9" },
     { id: "vitesse" as ThemePalette, name: "Vitesse Minimal", primary: "#4ade80" },
+    { id: "monochrome" as ThemePalette, name: "Monochrome (Hitam Putih)", primary: "#71717a" },
   ];
 </script>
 

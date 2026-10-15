@@ -153,7 +153,7 @@
     {#if pinnedSessions.length > 0}
       <div class="space-y-1">
         <div class="px-3 pt-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-          <Pin class="h-3 w-3 text-cyan-400 rotate-45" />
+          <Pin class="h-3 w-3 text-primary rotate-45" />
           <span>Disematkan ({pinnedSessions.length})</span>
         </div>
         {#each pinnedSessions as s (s.id)}
@@ -205,7 +205,7 @@
   <!-- User Profile Footer with Settings Trigger -->
   <div class="p-3 border-t border-border text-xs text-muted-foreground flex items-center justify-between bg-card/70 shrink-0">
     <div class="flex items-center gap-2 truncate min-w-0 pr-2">
-      <UserIcon class="w-4 h-4 text-cyan-400 shrink-0" />
+      <UserIcon class="w-4 h-4 text-primary shrink-0" />
       <span class="truncate font-medium text-foreground">{user ? user.username : "Pengguna"}</span>
       <Badge variant="cyan" class="font-mono text-[10px] shrink-0 py-0 px-1.5 uppercase">
         {user ? user.role : "Guest"}

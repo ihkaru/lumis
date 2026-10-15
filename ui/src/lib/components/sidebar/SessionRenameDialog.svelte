@@ -36,7 +36,7 @@
   <DialogContent open={isOpen} {onClose} class="max-w-sm">
     <DialogHeader>
       <DialogTitle class="flex items-center gap-2">
-        <Pencil class="h-4 w-4 text-cyan-400" />
+        <Pencil class="h-4 w-4 text-primary" />
         <span>Ubah Nama Obrolan</span>
       </DialogTitle>
     </DialogHeader>

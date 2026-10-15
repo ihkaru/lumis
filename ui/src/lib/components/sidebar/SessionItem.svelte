@@ -18,7 +18,7 @@
 </script>
 
 <div
-  class="group relative flex items-center justify-between w-full min-h-[44px] px-3 py-2 rounded-xl text-xs font-sans transition-all select-none cursor-pointer {isActive ? 'bg-cyan-950/50 text-cyan-400 border border-cyan-800/40 shadow-xs' : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'}"
+  class="group relative flex items-center justify-between w-full min-h-[44px] px-3 py-2 rounded-xl text-xs font-sans transition-all select-none cursor-pointer {isActive ? 'bg-primary/10 text-primary border border-primary/25 shadow-xs font-semibold' : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'}"
   onclick={onSelect}
   role="button"
   tabindex={0}
@@ -31,9 +31,9 @@
 >
   <div class="flex items-center gap-2 min-w-0 flex-1 pr-1">
     {#if session.is_pinned}
-      <Pin class="h-3.5 w-3.5 text-cyan-400 shrink-0 rotate-45" />
+      <Pin class="h-3.5 w-3.5 text-primary shrink-0 rotate-45" />
     {/if}
-    <span class="truncate font-medium {isActive ? 'text-cyan-400 font-semibold' : 'text-foreground'}">
+    <span class="truncate font-medium {isActive ? 'text-primary font-semibold' : 'text-foreground'}">
       {session.title}
     </span>
   </div>
@@ -46,7 +46,7 @@
         e.stopPropagation();
         onTogglePin(session);
       }}
-      class="p-1 rounded hover:bg-muted text-muted-foreground hover:text-cyan-400"
+      class="p-1 rounded hover:bg-muted text-muted-foreground hover:text-primary"
       title={session.is_pinned ? "Lepas sematan" : "Sematkan ke atas"}
       aria-label="Pin atau unpin sesi"
     >

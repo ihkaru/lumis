@@ -40,7 +40,7 @@ fn calculate_entropy(data: &[u8]) -> f64 {
         <ArrowLeft class="h-4 w-4" />
       </Button>
       <div class="flex items-center gap-2">
-        <FileEdit class="h-4 w-4 text-cyan-400" />
+        <FileEdit class="h-4 w-4 text-primary" />
         <span class="font-bold text-sm">Markdown Scratchpad</span>
       </div>
     </div>
@@ -56,7 +56,7 @@ fn calculate_entropy(data: &[u8]) -> f64 {
       </div>
       <textarea
         bind:value={markdownSource}
-        class="flex-1 w-full resize-none rounded-xl border border-border bg-card p-4 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-cyan-500 leading-relaxed"
+        class="flex-1 w-full resize-none rounded-xl border border-border bg-card p-4 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary leading-relaxed"
         placeholder="Ketik teks Markdown di sini..."
       ></textarea>
     </div>
@@ -64,7 +64,7 @@ fn calculate_entropy(data: &[u8]) -> f64 {
     <!-- Live Preview Pane -->
     <div class="flex flex-col p-4 overflow-y-auto smooth-momentum-scroll bg-background">
       <div class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
-        <Eye class="h-3.5 w-3.5 text-cyan-400" />
+        <Eye class="h-3.5 w-3.5 text-primary" />
         <span>Pratinjau Terformat (Live AST)</span>
       </div>
       <div class="flex-1 rounded-xl border border-border/80 bg-card/60 p-6 shadow-xs">

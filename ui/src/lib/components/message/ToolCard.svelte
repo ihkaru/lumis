@@ -112,14 +112,14 @@
               {/if}
             </button>
           </div>
-          <pre class="p-2.5 rounded-md bg-slate-950/90 text-slate-200 border border-border/40 overflow-x-auto whitespace-pre-wrap [overflow-wrap:anywhere] max-h-56 overflow-y-auto leading-relaxed">{formattedArgs}</pre>
+          <pre class="p-2.5 rounded-md bg-muted/60 dark:bg-slate-950/80 text-foreground dark:text-slate-200 border border-border/60 overflow-x-auto whitespace-pre-wrap [overflow-wrap:anywhere] max-h-56 overflow-y-auto leading-relaxed">{formattedArgs}</pre>
         </div>
       {/if}
 
       {#if error}
         <div class="space-y-1">
           <span class="text-red-400 font-sans font-medium text-[10px] uppercase tracking-wider">Error Message:</span>
-          <pre class="p-2.5 rounded-md bg-red-950/30 text-red-200 border border-red-800/40 overflow-x-auto whitespace-pre-wrap [overflow-wrap:anywhere] leading-relaxed">{error}</pre>
+          <pre class="p-2.5 rounded-md bg-destructive/10 text-destructive dark:bg-red-950/30 dark:text-red-200 border border-destructive/20 dark:border-red-800/40 overflow-x-auto whitespace-pre-wrap [overflow-wrap:anywhere] leading-relaxed">{error}</pre>
         </div>
       {/if}
 
@@ -142,7 +142,7 @@
               {/if}
             </button>
           </div>
-          <pre class="p-2.5 rounded-md bg-slate-950/90 text-emerald-300 border border-border/40 overflow-x-auto whitespace-pre-wrap [overflow-wrap:anywhere] max-h-56 overflow-y-auto leading-relaxed">{formattedResult}</pre>
+          <pre class="p-2.5 rounded-md bg-muted/60 dark:bg-slate-950/80 text-emerald-600 dark:text-emerald-300 border border-border/60 overflow-x-auto whitespace-pre-wrap [overflow-wrap:anywhere] max-h-56 overflow-y-auto leading-relaxed">{formattedResult}</pre>
         </div>
       {/if}
     </div>

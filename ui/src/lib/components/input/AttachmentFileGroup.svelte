@@ -32,7 +32,7 @@
     {#each files as file, idx}
       {@const IconComponent = getFileIcon(file.type, file.name)}
       <div class="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-card border border-border text-foreground shadow-2xs shrink-0 max-w-[200px]">
-        <IconComponent class="w-4 h-4 text-cyan-400 shrink-0" />
+        <IconComponent class="w-4 h-4 text-primary shrink-0" />
         <div class="min-w-0 flex-1">
           <p class="text-[11px] font-medium truncate">{file.name}</p>
           <p class="text-[9px] text-muted-foreground font-mono">{formatBytes(file.size)}</p>

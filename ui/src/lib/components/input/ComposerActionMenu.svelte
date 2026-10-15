@@ -58,7 +58,7 @@
       class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-foreground hover:bg-muted/80 transition-colors cursor-pointer text-left"
       onclick={() => selectAction(onAttachFile)}
     >
-      <Paperclip class="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+      <Paperclip class="w-3.5 h-3.5 text-primary shrink-0" />
       <span>Unggah Dokumen / Gambar</span>
     </button>
 
@@ -67,14 +67,14 @@
       class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-foreground hover:bg-muted/80 transition-colors cursor-pointer text-left"
       onclick={() => selectAction(onConvertToFile)}
     >
-      <FileCode class="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+      <FileCode class="w-3.5 h-3.5 text-primary shrink-0" />
       <span>Konversi Prompt ke Berkas</span>
     </button>
 
     <div class="my-1 border-t border-border/60"></div>
 
     <div class="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider select-none flex items-center gap-1">
-      <Sparkles class="w-3 h-3 text-cyan-400" />
+      <Sparkles class="w-3 h-3 text-primary" />
       <span>Preset Prompt</span>
     </div>
 

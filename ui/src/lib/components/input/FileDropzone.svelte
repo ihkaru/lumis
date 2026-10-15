@@ -33,7 +33,7 @@
 
 <!-- Drag and Drop Overlay -->
 {#if isOver}
-  <div class="dropzone absolute inset-0 z-30 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-cyan-400 bg-background/90 backdrop-blur-xs font-sans text-cyan-400 pointer-events-none">
+  <div class="dropzone absolute inset-0 z-30 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-primary bg-background/90 backdrop-blur-xs font-sans text-primary pointer-events-none">
     <UploadCloud class="h-10 w-10 animate-bounce mb-2" />
     <span class="text-sm font-semibold">Lepaskan berkas di sini untuk diunggah</span>
     <span class="text-xs text-muted-foreground mt-1">Mendukung PDF, CSV, gambar, dan dokumen</span>
@@ -49,10 +49,10 @@
           {#if f.previewUrl}
             <img src={f.previewUrl} alt={f.name} class="h-4 w-4 rounded object-cover" />
           {:else}
-            <Image class="h-3.5 w-3.5 text-cyan-400" />
+            <Image class="h-3.5 w-3.5 text-primary" />
           {/if}
         {:else}
-          <FileText class="h-3.5 w-3.5 text-cyan-400" />
+          <FileText class="h-3.5 w-3.5 text-primary" />
         {/if}
         <span class="font-medium max-w-[120px] truncate text-foreground">{f.name}</span>
         <span class="text-[10px] text-muted-foreground font-mono">({formatFileSize(f.size)})</span>

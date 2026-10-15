@@ -23,7 +23,7 @@
       bind:value={searchQuery}
       oninput={(e) => onSearchChange((e.target as HTMLInputElement).value)}
       placeholder="Cari obrolan..."
-      class="w-full h-8 pl-8 pr-7 rounded-lg border border-border/80 bg-background/60 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+      class="w-full h-8 pl-8 pr-7 rounded-lg border border-border/80 bg-background/60 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
     />
     {#if searchQuery}
       <button

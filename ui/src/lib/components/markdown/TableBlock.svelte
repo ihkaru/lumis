@@ -2,6 +2,8 @@
   import ZoomIn from "lucide-svelte/icons/zoom-in";
   import ZoomOut from "lucide-svelte/icons/zoom-out";
   import RotateCcw from "lucide-svelte/icons/rotate-ccw";
+  import Copy from "lucide-svelte/icons/copy";
+  import Check from "lucide-svelte/icons/check";
 
   interface Props {
     html: string;
@@ -10,6 +12,7 @@
   let { html }: Props = $props();
 
   let zoomLevel = $state(100);
+  let isCopied = $state(false);
 
   function zoomIn() {
     if (zoomLevel < 150) {
@@ -26,13 +29,76 @@
   function resetZoom() {
     zoomLevel = 100;
   }
+
+  async function copyTableToClipboard() {
+    if (typeof window === "undefined") return;
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+      const table = doc.querySelector("table");
+      if (!table) return;
+
+      const rows: string[] = [];
+      table.querySelectorAll("tr").forEach((tr) => {
+        const cells: string[] = [];
+        tr.querySelectorAll("th, td").forEach((cell) => {
+          const text = (cell.textContent || "").trim().replace(/\r?\n/g, " ").replace(/\t/g, " ");
+          cells.push(text);
+        });
+        if (cells.length > 0) {
+          rows.push(cells.join("\t"));
+        }
+      });
+      const tsvData = rows.join("\n");
+      const htmlData = table.outerHTML;
+
+      if (navigator.clipboard && window.ClipboardItem) {
+        const textBlob = new Blob([tsvData], { type: "text/plain" });
+        const htmlBlob = new Blob([htmlData], { type: "text/html" });
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            "text/plain": textBlob,
+            "text/html": htmlBlob,
+          }),
+        ]).catch(() => navigator.clipboard.writeText(tsvData));
+      } else {
+        await navigator.clipboard.writeText(tsvData);
+      }
+
+      isCopied = true;
+      setTimeout(() => {
+        isCopied = false;
+      }, 2000);
+    } catch {
+      // Graceful fallback
+    }
+  }
 </script>
 
 <div class="relative w-full my-3 group">
-  <!-- Minimalist Floating Zoom Pill (No outer card encapsulation) -->
+  <!-- Minimalist Floating Zoom & Copy Pill -->
   <div
     class="absolute top-1 right-2 z-10 flex items-center gap-0.5 rounded-full bg-background/85 dark:bg-card/90 backdrop-blur-md border border-border/80 shadow-xs px-1.5 py-0.5 text-xs select-none opacity-60 hover:opacity-100 group-hover:opacity-100 transition-opacity pointer-events-auto"
   >
+    <!-- 1-Click Copy for Excel / Google Sheets -->
+    <button
+      type="button"
+      onclick={copyTableToClipboard}
+      class="flex items-center gap-1 px-1.5 py-0.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors touch-manipulation text-[11px]"
+      title="Salin tabel untuk Excel / Google Sheets"
+      aria-label="Salin tabel ke Excel"
+    >
+      {#if isCopied}
+        <Check class="size-3 text-emerald-400" />
+        <span class="text-emerald-400 font-medium">Tersalin</span>
+      {:else}
+        <Copy class="size-3" />
+        <span>Salin</span>
+      {/if}
+    </button>
+
+    <div class="h-3 w-px bg-border/60 mx-0.5" aria-hidden="true"></div>
+
     <button
       type="button"
       onclick={zoomOut}

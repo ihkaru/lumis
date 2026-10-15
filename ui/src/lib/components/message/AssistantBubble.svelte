@@ -91,7 +91,7 @@
       <!-- Initial generation indicator while waiting for tokens -->
       {#if isStreaming && parts.length === 0 && !parsed.cleanText && !preContent && toolCalls.length === 0 && (!tasks || tasks.length === 0)}
         <div class="inline-flex items-center gap-2 text-xs text-muted-foreground animate-pulse py-1">
-          <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+          <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
           <span>Sedang memproses respons...</span>
         </div>
       {/if}
@@ -157,7 +157,7 @@
       {#if parsed.artifacts.length > 0}
         <div class="mt-4 pt-3 border-t border-border/60 space-y-2">
           <div class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-            <Zap class="h-3.5 w-3.5 text-cyan-400" />
+            <Zap class="h-3.5 w-3.5 text-primary" />
             <span>Interactive Artifacts ({parsed.artifacts.length})</span>
           </div>
           {#each parsed.artifacts as art}

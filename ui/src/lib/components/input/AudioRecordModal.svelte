@@ -76,7 +76,7 @@
     <div class="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-4 text-center">
       <div class="flex items-center justify-between">
         <h3 class="text-sm font-semibold text-foreground flex items-center gap-2">
-          <Mic class="h-4 w-4 text-cyan-400" />
+          <Mic class="h-4 w-4 text-primary" />
           <span>Rekam Pesan Suara</span>
         </h3>
         <button
@@ -100,7 +100,7 @@
       <div class="flex items-center justify-center h-20 gap-1.5 py-4">
         {#each [40, 70, 95, 60, 85, 50, 90, 65, 45] as h, i}
           <div
-            class="w-1.5 rounded-full bg-cyan-500 transition-all duration-150 {isRecording ? 'animate-pulse' : 'opacity-40'}"
+            class="w-1.5 rounded-full bg-primary transition-all duration-150 {isRecording ? 'animate-pulse' : 'opacity-40'}"
             style="height: {isRecording ? `${h}%` : '20%'}; animation-delay: {i * 100}ms"
           ></div>
         {/each}

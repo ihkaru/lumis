@@ -43,7 +43,7 @@
       class="gap-1.5 text-xs text-muted-foreground hover:text-foreground hidden sm:flex"
       title="Buka Markdown Scratchpad"
     >
-      <FileEdit class="w-3.5 h-3.5 text-cyan-400" />
+      <FileEdit class="w-3.5 h-3.5 text-primary" />
       <span>Scratchpad</span>
     </Button>
   </div>

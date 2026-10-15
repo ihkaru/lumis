@@ -36,7 +36,7 @@
   <DialogContent {open} {onClose} class="max-w-md">
     <DialogHeader>
       <DialogTitle class="flex items-center gap-2">
-        <div class="p-1 rounded-md bg-cyan-950/80 border border-cyan-800 text-cyan-400">
+        <div class="p-1 rounded-md bg-primary/10 border border-primary/25 text-primary">
           <FileCode class="w-4 h-4" />
         </div>
         <span>Konversi Teks ke Berkas</span>
@@ -55,7 +55,7 @@
             id="conv-filename"
             type="text"
             bind:value={filename}
-            class="flex-1 px-3 py-2 rounded-lg bg-background border border-border text-foreground font-mono focus:outline-hidden focus:ring-1 focus:ring-cyan-500 min-h-[44px]"
+            class="flex-1 px-3 py-2 rounded-lg bg-background border border-border text-foreground font-mono focus:outline-hidden focus:ring-1 focus:ring-primary min-h-[44px]"
             placeholder="nama-berkas"
           />
           <select
@@ -88,7 +88,8 @@
       </Button>
       <Button
         size="sm"
-        class="bg-cyan-600 hover:bg-cyan-500 text-white min-h-[44px] cursor-pointer"
+        variant="default"
+        class="min-h-[44px] cursor-pointer"
         onclick={handleConvert}
         disabled={!initialText.trim()}
       >

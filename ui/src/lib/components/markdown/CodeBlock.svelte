@@ -32,7 +32,7 @@
   <!-- Code Block Header -->
   <div class="flex items-center justify-between border-b border-border/60 bg-slate-900/80 px-3.5 py-1.5 select-none">
     <div class="flex items-center gap-2 text-slate-400">
-      <Code2 class="h-3.5 w-3.5 text-cyan-400" />
+      <Code2 class="h-3.5 w-3.5 text-primary" />
       <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-300">
         {lang || "plain"}
       </span>
@@ -51,7 +51,7 @@
       <Button
         variant="ghost"
         size="icon"
-        class="h-6 w-6 text-slate-400 hover:text-cyan-400 hover:bg-slate-800"
+        class="h-6 w-6 text-slate-400 hover:text-primary hover:bg-slate-800"
         onclick={handleCopy}
         title="Copy code to clipboard"
         aria-label="Copy code to clipboard"

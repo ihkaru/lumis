@@ -24,7 +24,7 @@
     <button
       type="button"
       onclick={() => onSelectMode(m.id)}
-      class="flex items-center gap-1.5 h-7 px-2.5 rounded-md font-medium transition-all duration-150 cursor-pointer {activeMode === m.id ? 'bg-cyan-950/60 text-cyan-400 border border-cyan-800/40 shadow-xs' : 'text-muted-foreground hover:text-foreground'}"
+      class="flex items-center gap-1.5 h-7 px-2.5 rounded-md font-medium transition-all duration-150 cursor-pointer {activeMode === m.id ? 'bg-primary/10 text-primary border border-primary/25 shadow-xs font-semibold' : 'text-muted-foreground hover:text-foreground'}"
       title={m.label}
     >
       <m.icon class="h-3.5 w-3.5" />
