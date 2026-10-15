@@ -75,12 +75,9 @@
     // 9router Real-Time Zero-Copy SSE Stream listener
     eventSource = api.connectStream((raw) => {
       const res = processStreamEvent(raw, { activeSessionId, messages, isGenerating, sessions, errorMessage, tasks: sessionTasks });
-      messages = res.messages;
-      isGenerating = res.isGenerating;
-      sessions = res.sessions;
-      errorMessage = res.errorMessage;
-      sessionTasks = res.tasks;
-      if (res.shouldScroll) scrollToBottom();
+      messages = res.messages; isGenerating = res.isGenerating; sessions = res.sessions;
+      errorMessage = res.errorMessage; sessionTasks = res.tasks;
+      if (res.shouldScroll) autoScrollDuringStream();
     });
   });
 
@@ -129,16 +126,10 @@
     }
 
     try {
-      const [page, tasks] = await Promise.all([
-        api.listMessages(id),
-        api.listSessionTasks(id).catch(() => []),
-      ]);
-      messages = page.items.reverse();
-      sessionTasks = tasks;
-      scrollToBottom();
+      const [page, tasks] = await Promise.all([api.listMessages(id), api.listSessionTasks(id).catch(() => [])]);
+      messages = page.items.reverse(); sessionTasks = tasks; scrollToBottom();
     } catch {
-      messages = [];
-      sessionTasks = [];
+      messages = []; sessionTasks = [];
     }
   }
 
@@ -146,28 +137,16 @@
     try {
       const title = customTitle || `Chat ${sessions.length + 1}`;
       const newSess = await api.createSession(title, selectedModelId);
-      sessions = [newSess, ...sessions];
-      activeSessionId = newSess.id;
+      sessions = [newSess, ...sessions]; activeSessionId = newSess.id;
       if (typeof window !== "undefined" && window.innerWidth < 768) isMobileDrawerOpen = false;
-      errorMessage = null;
-      router.navigate(`/chat/${newSess.id}`, true);
-      return newSess;
+      errorMessage = null; router.navigate(`/chat/${newSess.id}`, true); return newSess;
     } catch (err: unknown) {
-      errorMessage = err instanceof Error ? err.message : "Gagal membuat sesi baru.";
-      return null;
+      errorMessage = err instanceof Error ? err.message : "Gagal membuat sesi baru."; return null;
     }
   }
 
-  async function handleSend(
-    text: string,
-    files: AttachedFile[],
-    mode: ChatMode,
-    modelId: string
-  ) {
-    if (!user) {
-      router.navigate(`/login?redirect=${encodeURIComponent(router.path)}`);
-      return;
-    }
+  async function handleSend(text: string, files: AttachedFile[], mode: ChatMode, modelId: string) {
+    if (!user) { router.navigate(`/login?redirect=${encodeURIComponent(router.path)}`); return; }
     if (isGenerating) return;
 
     let targetSessionId = activeSessionId;
@@ -177,19 +156,17 @@
       targetSessionId = newSess.id;
     }
 
-    isGenerating = true;
-    errorMessage = null;
+    isGenerating = true; errorMessage = null; isUserScrolledUp = false;
     activeAbortController = new AbortController();
 
     // Optimistic UI append for User
     const localUserMsg: Message = { id: "temp_" + Date.now(), session_id: targetSessionId, role: "user", content: text, created_at: new Date().toISOString() };
     messages = [...messages, localUserMsg];
-    scrollToBottom();
+    scrollUserMessageToTop(localUserMsg.id);
 
     try {
       await api.sendMessage(targetSessionId, text, modelId);
       messages = [...messages, { id: "stream_" + Date.now(), session_id: targetSessionId, role: "assistant", content: "", model_id: modelId, created_at: new Date().toISOString() }];
-      scrollToBottom();
     } catch (err: unknown) {
       const errObj = err as { name?: string; message?: string };
       if (errObj?.name !== "AbortError") errorMessage = errObj?.message || "Gagal mengirimkan pesan.";
@@ -199,8 +176,53 @@
     }
   }
 
-  function handleStop() { activeAbortController?.abort(); activeAbortController = null; isGenerating = false; }
-  function scrollToBottom() { setTimeout(() => { if (messageContainerEl) messageContainerEl.scrollTop = messageContainerEl.scrollHeight; }, 50); }
+  let isUserScrolledUp = $state(false), lastScrollTop = 0;
+
+  function handleContainerScroll() {
+    if (!messageContainerEl) return;
+    const current = messageContainerEl.scrollTop;
+    if (isGenerating) {
+      if (current < lastScrollTop - 15) {
+        isUserScrolledUp = true;
+      } else {
+        const last = messageContainerEl.querySelector<HTMLElement>('[data-role="assistant"]:last-of-type');
+        if (last && last.getBoundingClientRect().bottom <= messageContainerEl.getBoundingClientRect().bottom + 60) isUserScrolledUp = false;
+      }
+    }
+    lastScrollTop = current;
+  }
+
+  function scrollUserMessageToTop(msgId: string) {
+    requestAnimationFrame(() => setTimeout(() => {
+      if (!messageContainerEl) return;
+      const el = messageContainerEl.querySelector<HTMLElement>(`[data-message-id="${msgId}"]`);
+      if (el) {
+        const cRect = messageContainerEl.getBoundingClientRect(), tRect = el.getBoundingClientRect();
+        messageContainerEl.scrollTo({ top: Math.max(0, messageContainerEl.scrollTop + (tRect.top - cRect.top) - 16), behavior: "smooth" });
+        isUserScrolledUp = false;
+      }
+    }, 40));
+  }
+
+  function autoScrollDuringStream() {
+    if (isUserScrolledUp || !messageContainerEl) return;
+    const last = messageContainerEl.querySelector<HTMLElement>('[data-role="assistant"]:last-of-type');
+    if (!last) return;
+    const cRect = messageContainerEl.getBoundingClientRect(), bRect = last.getBoundingClientRect();
+    if (bRect.bottom > cRect.bottom - 48) {
+      messageContainerEl.scrollTo({ top: messageContainerEl.scrollTop + (bRect.bottom - cRect.bottom + 48), behavior: "smooth" });
+    }
+  }
+
+  function handleStop() { activeAbortController?.abort(); activeAbortController = null; isGenerating = false; isUserScrolledUp = false; }
+  function scrollToBottom() {
+    setTimeout(() => {
+      if (!messageContainerEl) return;
+      const last = messageContainerEl.querySelector<HTMLElement>('[data-role="assistant"]:last-of-type, [data-role="user"]:last-of-type');
+      if (last) last.scrollIntoView({ behavior: "instant", block: "end" });
+      else messageContainerEl.scrollTop = messageContainerEl.scrollHeight;
+    }, 50);
+  }
   function renameSession(id: string, newTitle: string) { sessions = sessions.map((s) => (s.id === id ? { ...s, title: newTitle } : s)); }
   function deleteSession(id: string) { sessions = sessions.filter((s) => s.id !== id); if (activeSessionId === id) { activeSessionId = null; messages = []; router.navigate("/chat/new"); } }
   function togglePin(target: Session) { sessions = sessions.map((s) => (s.id === target.id ? { ...s, is_pinned: !s.is_pinned } : s)); }
@@ -225,9 +247,7 @@
     <div class="flex h-screen w-screen bg-background text-foreground antialiased font-sans overflow-hidden {isDark ? 'dark' : ''}">
       <!-- Sidebar -->
       <Sidebar
-        {brandTitle} {sessions} {activeSessionId} {user}
-        isOpenMobile={isMobileDrawerOpen}
-        onSelectSession={selectSession}
+        {brandTitle} {sessions} {activeSessionId} {user} isOpenMobile={isMobileDrawerOpen} onSelectSession={selectSession}
         onCreateSession={() => {
           if (typeof window !== "undefined" && window.innerWidth < 768) isMobileDrawerOpen = false;
           if (isGenerating) handleStop();
@@ -235,10 +255,7 @@
         }}
         onCloseMobile={() => (isMobileDrawerOpen = false)}
         onRenameSession={renameSession} onDeleteSession={deleteSession} onTogglePinSession={togglePin}
-        onOpenSettings={() => {
-          if (typeof window !== "undefined" && window.innerWidth < 768) isMobileDrawerOpen = false;
-          isSettingsOpen = true;
-        }}
+        onOpenSettings={() => { if (typeof window !== "undefined" && window.innerWidth < 768) isMobileDrawerOpen = false; isSettingsOpen = true; }}
       />
 
       <!-- Main Chat Area -->
@@ -246,20 +263,11 @@
         <!-- Chat Header -->
         <header class="h-16 border-b border-border px-4 md:px-6 flex items-center justify-between shrink-0 bg-background/80 backdrop-blur-md select-none">
           <div class="flex items-center gap-3 min-w-0">
-            <Button
-              variant="outline"
-              size="icon"
-              onclick={() => (isMobileDrawerOpen = !isMobileDrawerOpen)}
-              class="{isMobileDrawerOpen ? 'md:hidden' : ''} min-h-[44px] min-w-[44px] sm:min-h-9 sm:min-w-9"
-              aria-label="Buka Menu"
-            >
+            <Button variant="outline" size="icon" onclick={() => (isMobileDrawerOpen = !isMobileDrawerOpen)} class="{isMobileDrawerOpen ? 'md:hidden' : ''} min-h-[44px] min-w-[44px] sm:min-h-9 sm:min-w-9" aria-label="Buka Menu">
               <Menu class="w-5 h-5" />
             </Button>
-            <div class="font-medium text-foreground truncate max-w-xs md:max-w-md">
-              {activeSession ? activeSession.title : "Percakapan Baru"}
-            </div>
+            <div class="font-medium text-foreground truncate max-w-xs md:max-w-md">{activeSession ? activeSession.title : "Percakapan Baru"}</div>
           </div>
-
           <div class="flex items-center gap-2">
             <Button variant="ghost" size="sm" onclick={() => router.navigate("/markdown")} class="gap-1.5 text-xs text-muted-foreground hover:text-foreground hidden sm:flex" title="Buka Markdown Scratchpad">
               <FileEdit class="w-3.5 h-3.5 text-cyan-400" /><span>Scratchpad</span>
@@ -272,13 +280,11 @@
 
         <!-- Error Notification Banner -->
         {#if errorMessage}
-          <div class="bg-destructive/20 border-b border-destructive/40 text-red-400 text-xs px-6 py-2.5 break-words [overflow-wrap:anywhere]">
-            {errorMessage}
-          </div>
+          <div class="bg-destructive/20 border-b border-destructive/40 text-red-400 text-xs px-6 py-2.5 break-words [overflow-wrap:anywhere]">{errorMessage}</div>
         {/if}
 
         <!-- Message Viewport -->
-        <div bind:this={messageContainerEl} class="flex-1 overflow-y-auto p-4 md:p-6 space-y-5 smooth-momentum-scroll">
+        <div bind:this={messageContainerEl} onscroll={handleContainerScroll} class="flex-1 overflow-y-auto p-4 md:p-6 space-y-5 smooth-momentum-scroll">
           {#if (!activeSessionId || router.path === "/chat/new") && messages.length === 0}
             <NewChatWelcome {brandTitle} onSelectPrompt={(t) => (promptText = t)} />
           {:else}
@@ -298,6 +304,9 @@
                 />
               {/if}
             {/each}
+            {#if messages.length > 0}
+              <div class="h-[45vh] shrink-0 pointer-events-none transition-all duration-300" aria-hidden="true"></div>
+            {/if}
           {/if}
         </div>
 
@@ -308,12 +317,8 @@
             onSend={handleSend} onStop={handleStop}
             onModelChange={(m) => {
               selectedModelId = m;
-              if (typeof localStorage !== "undefined") {
-                localStorage.setItem("lumis_selected_model", m);
-              }
-              if (activeSessionId) {
-                sessions = sessions.map((s) => (s.id === activeSessionId ? { ...s, model_id: m } : s));
-              }
+              if (typeof localStorage !== "undefined") localStorage.setItem("lumis_selected_model", m);
+              if (activeSessionId) sessions = sessions.map((s) => (s.id === activeSessionId ? { ...s, model_id: m } : s));
             }}
             onModeChange={(md) => (chatMode = md)}
           />

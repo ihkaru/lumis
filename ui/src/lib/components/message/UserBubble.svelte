@@ -32,7 +32,7 @@
   }
 </script>
 
-<div class="flex justify-end font-sans group">
+<div class="flex justify-end font-sans group" data-role="user" data-message-id={message.id}>
   <div class="flex flex-col items-end max-w-2xl">
     <div class="flex items-center gap-2 mb-1 text-[11px] text-muted-foreground select-none">
       {#if branchTotal > 1}

@@ -69,7 +69,7 @@
   });
 </script>
 
-<div class="flex justify-start font-sans group">
+<div class="flex justify-start font-sans group" data-role="assistant" data-message-id={message.id}>
   <div class="flex flex-col items-start max-w-3xl w-full">
     <!-- Top Utility Controls (Only shown when Branch Pagination or Outline Minimap is active) -->
     {#if branchTotal > 1 || parsed.cleanText.includes("##")}
