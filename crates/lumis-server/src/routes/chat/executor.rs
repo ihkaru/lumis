@@ -58,8 +58,8 @@ pub fn spawn_chat_completion(
 
         let max_turns = get_max_agentic_turns();
         let mut executed_tools = Vec::new();
-        let mut final_text = String::new();
-        let mut initial_intro_text = String::new();
+        let mut message_parts: Vec<serde_json::Value> = Vec::new();
+        let mut combined_content = String::new();
         let mut turn = 0;
         let mut last_call_sig = (String::new(), String::new());
         let mut repeat_count = 0;
@@ -159,23 +159,17 @@ pub fn spawn_chat_completion(
                     continue;
                 }
 
-                final_text = turn_text;
+                if !turn_text.is_empty() {
+                    if !combined_content.is_empty() && !combined_content.ends_with('\n') { combined_content.push('\n'); }
+                    combined_content.push_str(&turn_text);
+                    message_parts.push(json!({ "type": "text", "text": turn_text }));
+                }
                 if !existing_tasks.is_empty() && check_plan_convergence(&repo, &sess_id).await {
-                    let conv_event = json!({
-                        "event": "plan_converged",
-                        "session_id": sess_id,
-                        "total_tasks": existing_tasks.len(),
-                    });
+                    let conv_event = json!({ "event": "plan_converged", "session_id": sess_id, "total_tasks": existing_tasks.len() });
                     let _ = stream_tx.send(bytes::Bytes::from(conv_event.to_string()));
                 }
 
-                let done_event = json!({
-                    "event": "chunk",
-                    "session_id": sess_id,
-                    "delta": "",
-                    "model_id": model,
-                    "is_done": true,
-                });
+                let done_event = json!({ "event": "chunk", "session_id": sess_id, "delta": "", "model_id": model, "is_done": true });
                 let _ = stream_tx.send(bytes::Bytes::from(done_event.to_string()));
                 break;
             }
@@ -183,38 +177,32 @@ pub fn spawn_chat_completion(
             // Anti-Stuck Loop Detector: Prevent runaway identical loops
             if let Some((_, first_tool, first_args)) = detected_calls.first() {
                 let current_sig = (first_tool.clone(), first_args.to_string());
-                if current_sig == last_call_sig {
-                    repeat_count += 1;
-                } else {
-                    last_call_sig = current_sig;
-                    repeat_count = 1;
-                }
+                if current_sig == last_call_sig { repeat_count += 1; } else { last_call_sig = current_sig; repeat_count = 1; }
 
                 if repeat_count >= 3 {
                     tracing::warn!("Anti-stuck circuit breaker: tool '{}' repeated {} times", first_tool, repeat_count);
-                    messages.push(ChatMessagePayload::new(
-                        "system",
-                        format!("[System Directive: Anti-Stuck Circuit Breaker - You executed '{}' with identical parameters {} times. Adjust your strategy or formulate your final answer based on available data.]", first_tool, repeat_count),
-                    ));
+                    messages.push(ChatMessagePayload::new("system", format!("[System Directive: Anti-Stuck Circuit Breaker - You executed '{}' with identical parameters {} times. Adjust your strategy or formulate your final answer based on available data.]", first_tool, repeat_count)));
                     if repeat_count >= 4 {
-                        final_text = format!("Model halted by Anti-Stuck Guard: Repeatedly called tool '{}' without progress.", first_tool);
+                        let halt = format!("Model halted by Anti-Stuck Guard: Repeatedly called tool '{}' without progress.", first_tool);
+                        if !combined_content.is_empty() && !combined_content.ends_with('\n') { combined_content.push('\n'); }
+                        combined_content.push_str(&halt);
+                        message_parts.push(json!({ "type": "text", "text": halt }));
                         break;
                     }
                 }
             }
 
-            if initial_intro_text.is_empty() && !turn_text.is_empty() {
-                initial_intro_text = turn_text.clone();
+            if !turn_text.is_empty() {
+                if !combined_content.is_empty() && !combined_content.ends_with('\n') { combined_content.push('\n'); }
+                combined_content.push_str(&turn_text);
+                message_parts.push(json!({ "type": "text", "text": turn_text }));
             }
 
             for (cid, tool_name, args) in detected_calls {
-                let start_event = json!({
-                    "event": "tool_call_start",
-                    "session_id": sess_id,
-                    "call_id": cid,
-                    "tool": tool_name,
-                    "args": args,
-                });
+                let tool_part_idx = message_parts.len();
+                message_parts.push(json!({ "type": "tool_call", "call_id": cid.clone(), "tool": tool_name.clone(), "args": args.clone(), "isRunning": false }));
+
+                let start_event = json!({ "event": "tool_call_start", "session_id": sess_id, "call_id": cid, "tool": tool_name, "args": args });
                 let _ = stream_tx.send(bytes::Bytes::from(start_event.to_string()));
 
                 let scrubbed_args = state.hook_pipeline.execute_before(&user, &tool_name, &args).await.unwrap_or_else(|_| args.clone());
@@ -234,22 +222,14 @@ pub fn spawn_chat_completion(
                     }
                 };
 
-                let res_event = json!({
-                    "event": "tool_call_result",
-                    "session_id": sess_id,
-                    "call_id": cid,
-                    "tool": tool_name,
-                    "result": output_str,
-                    "is_error": is_err,
-                });
+                let res_event = json!({ "event": "tool_call_result", "session_id": sess_id, "call_id": cid, "tool": tool_name, "result": output_str, "is_error": is_err });
                 let _ = stream_tx.send(bytes::Bytes::from(res_event.to_string()));
 
-                executed_tools.push(json!({
-                    "tool": tool_name,
-                    "args": args,
-                    "result": output_str,
-                    "error": if is_err { Some(&output_str) } else { None },
-                }));
+                executed_tools.push(json!({ "tool": tool_name, "args": args, "result": output_str, "error": if is_err { Some(&output_str) } else { None } }));
+                if let Some(part) = message_parts.get_mut(tool_part_idx) {
+                    part["result"] = json!(output_str);
+                    if is_err { part["error"] = json!(output_str); }
+                }
 
                 messages.push(ChatMessagePayload {
                     role: "assistant".to_string(),
@@ -288,11 +268,11 @@ pub fn spawn_chat_completion(
             }
         }
 
-        if !final_text.is_empty() {
-            let metadata = if !executed_tools.is_empty() {
-                let mut meta = json!({ "tool_calls": executed_tools });
-                if !initial_intro_text.is_empty() {
-                    meta["pre_content"] = json!(initial_intro_text);
+        if !combined_content.is_empty() || !executed_tools.is_empty() {
+            let metadata = if !executed_tools.is_empty() || !message_parts.is_empty() {
+                let mut meta = json!({ "tool_calls": executed_tools, "parts": message_parts });
+                if let Some(txt) = message_parts.first().and_then(|p| p.get("text")).and_then(|t| t.as_str()) {
+                    meta["pre_content"] = json!(txt);
                 }
                 Some(meta)
             } else {
@@ -301,7 +281,7 @@ pub fn spawn_chat_completion(
             let assistant_msg = NewMessage {
                 session_id: sess_id.clone(),
                 role: MessageRole::Assistant,
-                content: final_text,
+                content: combined_content,
                 model_id: Some(model),
                 token_count: None,
                 metadata,

@@ -1,4 +1,4 @@
-import type { Message, Session, SessionTask } from "./types";
+import type { Message, MessagePart, Session, SessionTask } from "./types";
 
 export interface StreamState {
   activeSessionId: string | null;
@@ -29,18 +29,30 @@ export function processStreamEvent(raw: string, state: StreamState): {
     if (data.event === "chunk" && data.session_id === state.activeSessionId) {
       const lastIdx = messages.length - 1;
       if (lastIdx >= 0 && messages[lastIdx].role === "assistant") {
+        const parts = [...((messages[lastIdx].metadata?.parts as MessagePart[]) || [])];
+        if (data.delta) {
+          const lastPart = parts[parts.length - 1];
+          if (lastPart && lastPart.type === "text") {
+            parts[parts.length - 1] = { ...lastPart, text: lastPart.text + data.delta };
+          } else {
+            parts.push({ type: "text", text: data.delta });
+          }
+        }
         messages[lastIdx] = {
           ...messages[lastIdx],
           content: messages[lastIdx].content + data.delta,
           model_id: messages[lastIdx].model_id || data.model_id,
+          metadata: { ...(messages[lastIdx].metadata || {}), parts },
         };
       } else {
+        const parts: MessagePart[] = data.delta ? [{ type: "text", text: data.delta }] : [];
         messages.push({
           id: "stream_" + Date.now(),
           session_id: state.activeSessionId || "",
           role: "assistant",
           content: data.delta,
           model_id: data.model_id,
+          metadata: { parts },
           created_at: new Date().toISOString(),
         });
       }
@@ -54,18 +66,23 @@ export function processStreamEvent(raw: string, state: StreamState): {
         args: data.args,
         isRunning: true,
       };
+      const toolPart: MessagePart = {
+        type: "tool_call",
+        call_id: data.call_id,
+        tool: data.tool,
+        args: data.args,
+        isRunning: true,
+      };
       if (lastIdx >= 0 && messages[lastIdx].role === "assistant") {
         const prevCalls = (messages[lastIdx].metadata?.tool_calls as any[]) || [];
-        const existingPre = messages[lastIdx].metadata?.pre_content;
-        const currentContent = messages[lastIdx].content;
-        const preContent = existingPre !== undefined ? existingPre : (currentContent ? currentContent : "");
+        const prevParts = [...((messages[lastIdx].metadata?.parts as MessagePart[]) || [])];
+        prevParts.push(toolPart);
         messages[lastIdx] = {
           ...messages[lastIdx],
-          content: existingPre !== undefined ? currentContent : "",
           metadata: {
             ...(messages[lastIdx].metadata || {}),
-            pre_content: preContent,
             tool_calls: [...prevCalls, tc],
+            parts: prevParts,
           },
         };
       } else {
@@ -74,7 +91,7 @@ export function processStreamEvent(raw: string, state: StreamState): {
           session_id: state.activeSessionId || "",
           role: "assistant",
           content: "",
-          metadata: { tool_calls: [tc] },
+          metadata: { tool_calls: [tc], parts: [toolPart] },
           created_at: new Date().toISOString(),
         });
       }
@@ -83,14 +100,30 @@ export function processStreamEvent(raw: string, state: StreamState): {
       const lastIdx = messages.length - 1;
       if (lastIdx >= 0 && messages[lastIdx].role === "assistant") {
         const prevCalls = (messages[lastIdx].metadata?.tool_calls as any[]) || [];
-        const updated = prevCalls.map((t: any) =>
-          t.id === data.call_id || t.tool === data.tool
+        const updatedCalls = prevCalls.map((t: any) =>
+          (t.id && t.id === data.call_id) || t.tool === data.tool
             ? { ...t, result: data.result, error: data.is_error ? data.result : undefined, isRunning: false }
             : t
         );
+        const prevParts = [...((messages[lastIdx].metadata?.parts as MessagePart[]) || [])];
+        const updatedParts = prevParts.map((p) => {
+          if (p.type === "tool_call" && ((p.call_id && p.call_id === data.call_id) || p.tool === data.tool)) {
+            return {
+              ...p,
+              result: data.result,
+              error: data.is_error ? data.result : undefined,
+              isRunning: false,
+            };
+          }
+          return p;
+        });
         messages[lastIdx] = {
           ...messages[lastIdx],
-          metadata: { ...(messages[lastIdx].metadata || {}), tool_calls: updated },
+          metadata: {
+            ...(messages[lastIdx].metadata || {}),
+            tool_calls: updatedCalls,
+            parts: updatedParts,
+          },
         };
       }
       shouldScroll = true;

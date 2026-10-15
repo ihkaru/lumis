@@ -1,5 +1,21 @@
 export type MessageRole = "user" | "assistant" | "system" | "tool";
 
+export type MessagePart =
+  | {
+      type: "text";
+      text: string;
+    }
+  | {
+      type: "tool_call";
+      call_id?: string;
+      tool: string;
+      server?: string;
+      args: any;
+      result?: any;
+      error?: string;
+      isRunning?: boolean;
+    };
+
 export interface Message {
   id: string;
   session_id: string;
