@@ -59,6 +59,7 @@ pub fn spawn_chat_completion(
         let max_turns = get_max_agentic_turns();
         let mut executed_tools = Vec::new();
         let mut final_text = String::new();
+        let mut initial_intro_text = String::new();
         let mut turn = 0;
         let mut last_call_sig = (String::new(), String::new());
         let mut repeat_count = 0;
@@ -202,6 +203,10 @@ pub fn spawn_chat_completion(
                 }
             }
 
+            if initial_intro_text.is_empty() && !turn_text.is_empty() {
+                initial_intro_text = turn_text.clone();
+            }
+
             for (cid, tool_name, args) in detected_calls {
                 let start_event = json!({
                     "event": "tool_call_start",
@@ -285,7 +290,11 @@ pub fn spawn_chat_completion(
 
         if !final_text.is_empty() {
             let metadata = if !executed_tools.is_empty() {
-                Some(json!({ "tool_calls": executed_tools }))
+                let mut meta = json!({ "tool_calls": executed_tools });
+                if !initial_intro_text.is_empty() {
+                    meta["pre_content"] = json!(initial_intro_text);
+                }
+                Some(meta)
             } else {
                 None
             };

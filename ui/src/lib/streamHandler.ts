@@ -56,9 +56,17 @@ export function processStreamEvent(raw: string, state: StreamState): {
       };
       if (lastIdx >= 0 && messages[lastIdx].role === "assistant") {
         const prevCalls = (messages[lastIdx].metadata?.tool_calls as any[]) || [];
+        const existingPre = messages[lastIdx].metadata?.pre_content;
+        const currentContent = messages[lastIdx].content;
+        const preContent = existingPre !== undefined ? existingPre : (currentContent ? currentContent : "");
         messages[lastIdx] = {
           ...messages[lastIdx],
-          metadata: { ...(messages[lastIdx].metadata || {}), tool_calls: [...prevCalls, tc] },
+          content: existingPre !== undefined ? currentContent : "",
+          metadata: {
+            ...(messages[lastIdx].metadata || {}),
+            pre_content: preContent,
+            tool_calls: [...prevCalls, tc],
+          },
         };
       } else {
         messages.push({

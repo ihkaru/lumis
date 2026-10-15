@@ -11,7 +11,6 @@
   import Sidebar from "./lib/components/sidebar/Sidebar.svelte";
   import UserBubble from "./lib/components/message/UserBubble.svelte";
   import AssistantBubble from "./lib/components/message/AssistantBubble.svelte";
-  import TaskProgressTree from "./lib/components/task/TaskProgressTree.svelte";
   import MessageInput from "./lib/components/input/MessageInput.svelte";
   import type { ChatMode } from "./lib/components/input/ModeSelector.svelte";
   import type { AttachedFile } from "./lib/components/input/FileDropzone.svelte";
@@ -283,17 +282,14 @@
           {#if (!activeSessionId || router.path === "/chat/new") && messages.length === 0}
             <NewChatWelcome {brandTitle} onSelectPrompt={(t) => (promptText = t)} />
           {:else}
-            {#if sessionTasks.length > 0}
-              <TaskProgressTree tasks={sessionTasks} {isGenerating} />
-            {/if}
-
-            {#each messages as m (m.id)}
+            {#each messages as m, idx (m.id)}
               {#if m.role === "user"}
                 <UserBubble message={m} onEditPrompt={(t) => (promptText = t)} />
               {:else}
                 <AssistantBubble
                   message={m}
                   isStreaming={isGenerating && m.id === messages[messages.length - 1]?.id}
+                  tasks={idx === messages.length - 1 ? sessionTasks : []}
                   onOpenArtifact={(art) => (activeArtifact = art)}
                   onRegenerate={() => {
                     const lastUserMsg = [...messages].reverse().find((x) => x.role === "user");

@@ -11,14 +11,16 @@
   import ConfidenceBadge from "./ConfidenceBadge.svelte";
   import MessageMinimap from "./MessageMinimap.svelte";
   import ZoomableModal from "../common/ZoomableModal.svelte";
+  import TaskProgressTree from "../task/TaskProgressTree.svelte";
   import { Badge } from "$lib/components/ui/badge";
   import { Button } from "$lib/components/ui/button";
   import { parseArtifactsFromContent } from "$lib/artifact-parser";
-  import type { ArtifactSpecification, Message } from "$lib/types";
+  import type { ArtifactSpecification, Message, SessionTask } from "$lib/types";
 
   interface Props {
     message: Message;
     isStreaming?: boolean;
+    tasks?: SessionTask[];
     branchIndex?: number;
     branchTotal?: number;
     onPrevBranch?: () => void;
@@ -31,6 +33,7 @@
   let {
     message,
     isStreaming = false,
+    tasks = [],
     branchIndex = 1,
     branchTotal = 1,
     onPrevBranch,
@@ -42,9 +45,12 @@
 
   let parsed = $derived(parseArtifactsFromContent(message.content));
 
+  // Extract preliminary text before tool execution if present
+  let preContent = $derived((message.metadata?.pre_content as string) || "");
+
   // Extract tools, research steps & citations from metadata if present
   let toolCalls = $derived(
-    (message.metadata?.tool_calls as Array<{ tool: string; server?: string; args: any; result: any; error?: string }>) || []
+    (message.metadata?.tool_calls as Array<{ tool: string; server?: string; args: any; result: any; error?: string; isRunning?: boolean }>) || []
   );
 
   let citations = $derived(
@@ -105,18 +111,45 @@
 
     <!-- Assistant Response Stream (Borderless, Flat Modern Layout) -->
     <div class="w-full text-foreground [overflow-wrap:anywhere] space-y-3 pt-0.5">
+      <!-- Initial generation indicator while waiting for tokens -->
+      {#if isStreaming && !parsed.cleanText && !preContent && toolCalls.length === 0 && (!tasks || tasks.length === 0)}
+        <div class="inline-flex items-center gap-2 text-xs text-muted-foreground animate-pulse py-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+          <span>Sedang memproses respons...</span>
+        </div>
+      {/if}
+
+      <!-- Preliminary Response / Explanation (if model emitted text before calling tool) -->
+      {#if preContent}
+        <MarkdownRenderer content={preContent} isStreaming={false} />
+      {/if}
+
+      <!-- Tool Execution & Result Cards (Rendered immediately after LLM response content) -->
+      {#each toolCalls as tc}
+        <ToolCard
+          toolName={tc.tool}
+          serverName={tc.server}
+          args={tc.args}
+          result={tc.result}
+          error={tc.error}
+          isRunning={tc.isRunning}
+        />
+      {/each}
+
+      <!-- Autonomous Plan / Session Tasks (Rendered inline with executing assistant turn) -->
+      {#if tasks && tasks.length > 0}
+        <TaskProgressTree {tasks} isGenerating={isStreaming} />
+      {/if}
+
+      <!-- Main / Post-Tool LLM Response Stream -->
+      {#if parsed.cleanText}
+        <MarkdownRenderer content={parsed.cleanText} {isStreaming} />
+      {/if}
+
       <!-- Deep Research Timeline if active -->
       {#if researchSteps.length > 0}
         <DeepResearchProgress steps={researchSteps} isActive={isStreaming} />
       {/if}
-
-      <!-- Tool Cards -->
-      {#each toolCalls as tc}
-        <ToolCard toolName={tc.tool} serverName={tc.server} args={tc.args} result={tc.result} error={tc.error} />
-      {/each}
-
-      <!-- Markdown & Reasoning Body -->
-      <MarkdownRenderer content={parsed.cleanText} {isStreaming} />
 
       <!-- Citations View -->
       <CitationsView {citations} />
