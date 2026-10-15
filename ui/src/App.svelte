@@ -253,7 +253,7 @@
     <MarkdownScratchpad />
   <!-- Main Application Layout -->
   {:else}
-    <div class="flex h-[100dvh] max-h-[100dvh] w-screen bg-background text-foreground antialiased font-sans overflow-hidden {isDark ? 'dark' : 'light'}" style="height: var(--app-height, 100dvh); max-height: var(--app-height, 100dvh);">
+    <div class="flex h-[100dvh] max-h-[100dvh] w-screen bg-background text-foreground antialiased font-sans overflow-hidden" style="height: var(--app-height, 100dvh); max-height: var(--app-height, 100dvh);">
       <!-- Sidebar -->
       <Sidebar
         {brandTitle} {sessions} {activeSessionId} {user} isOpenMobile={isMobileDrawerOpen} onSelectSession={selectSession}

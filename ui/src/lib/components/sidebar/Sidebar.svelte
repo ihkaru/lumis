@@ -100,8 +100,9 @@
 >
   <!-- Sidebar Header -->
   <div class="h-16 px-4 border-b border-border flex items-center justify-between shrink-0">
-    <div class="flex items-center gap-2 min-w-0 pr-2">
-      <span class="font-bold text-base tracking-tight bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent truncate">
+    <div class="flex items-center gap-2.5 min-w-0 pr-2">
+      <span class="w-2.5 h-2.5 rounded-full bg-primary shrink-0 shadow-xs" aria-hidden="true"></span>
+      <span class="font-bold text-base tracking-tight bg-gradient-to-r from-primary via-primary/90 to-primary/75 bg-clip-text text-transparent truncate">
         {brandTitle}
       </span>
     </div>

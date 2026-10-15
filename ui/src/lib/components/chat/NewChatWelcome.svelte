@@ -46,7 +46,7 @@
     <span>Enterprise AI Model Orchestration</span>
   </div>
 
-  <h1 class="text-3xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-primary via-blue-500 to-indigo-500 bg-clip-text text-transparent pb-2">
+  <h1 class="text-3xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-primary via-primary/90 to-primary/75 bg-clip-text text-transparent pb-2">
     {brandTitle}
   </h1>
   <p class="mt-2 text-sm md:text-base text-muted-foreground max-w-xl">
