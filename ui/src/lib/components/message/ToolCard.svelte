@@ -1,13 +1,11 @@
 <script lang="ts">
   import Wrench from "lucide-svelte/icons/wrench";
-  import Server from "lucide-svelte/icons/server";
   import ChevronDown from "lucide-svelte/icons/chevron-down";
   import CheckCircle2 from "lucide-svelte/icons/check-circle-2";
   import XCircle from "lucide-svelte/icons/x-circle";
   import Loader2 from "lucide-svelte/icons/loader-2";
   import Copy from "lucide-svelte/icons/copy";
   import Check from "lucide-svelte/icons/check";
-  import { Badge } from "$lib/components/ui/badge";
 
   interface Props {
     toolName: string;
@@ -30,7 +28,6 @@
   let isOpen = $state(false);
   let copiedField = $state<"args" | "result" | null>(null);
 
-  // Extract server name from tool prefix if formatted as server::tool or server__tool
   let parsedInfo = $derived.by(() => {
     if (serverName) {
       return { server: serverName, tool: toolName };
@@ -61,110 +58,101 @@
       setTimeout(() => {
         if (copiedField === field) copiedField = null;
       }, 1800);
-    } catch {
-      // Clipboard fallback
-    }
+    } catch {}
   }
 </script>
 
-<div class="my-2 overflow-hidden rounded-xl border border-border/70 bg-muted/20 font-sans text-xs">
+<div class="my-1.5 overflow-hidden rounded-lg border border-border/50 bg-muted/15 font-sans text-xs">
   <button
     type="button"
     onclick={() => (isOpen = !isOpen)}
-    class="flex w-full items-center justify-between px-3.5 py-2.5 text-left hover:bg-muted/40 transition-colors select-none cursor-pointer"
+    class="flex w-full items-center justify-between px-3 py-1.5 text-left hover:bg-muted/30 transition-colors select-none cursor-pointer"
     aria-expanded={isOpen}
   >
-    <div class="flex items-center gap-2 flex-wrap min-w-0">
-      <div class="p-1 rounded-md bg-cyan-950/50 border border-cyan-800/40 text-cyan-400 shrink-0">
-        <Wrench class="h-3.5 w-3.5" />
-      </div>
-
-      <span class="text-muted-foreground font-medium text-[11px]">Tool:</span>
+    <div class="flex items-center gap-2 min-w-0">
+      <Wrench class="h-3.5 w-3.5 text-cyan-400 shrink-0" />
 
       {#if parsedInfo.server}
-        <Badge variant="outline" class="font-mono text-[10px] py-0 px-1.5 text-muted-foreground border-border/60 bg-muted/40 flex items-center gap-1">
-          <Server class="h-2.5 w-2.5" />
-          <span>{parsedInfo.server}</span>
-        </Badge>
+        <span class="font-mono text-[11px] text-muted-foreground truncate">{parsedInfo.server}/</span>
       {/if}
 
-      <Badge variant="outline" class="font-mono text-[11px] py-0 px-2 text-cyan-400 border-cyan-800/40 bg-cyan-950/40 font-semibold truncate">
+      <span class="font-mono text-[11px] font-semibold text-foreground truncate">
         {parsedInfo.tool}
-      </Badge>
+      </span>
 
       {#if isRunning}
-        <span class="inline-flex items-center gap-1 text-[10px] text-amber-400 font-medium">
+        <span class="inline-flex items-center gap-1 text-[11px] text-amber-400 font-medium shrink-0 ml-1">
           <Loader2 class="h-3 w-3 animate-spin" />
-          <span>Menjalankan...</span>
+          <span>Running...</span>
         </span>
       {:else if error}
-        <span class="inline-flex items-center gap-1 text-[10px] text-red-400 font-medium">
+        <span class="inline-flex items-center gap-1 text-[11px] text-red-400 font-medium shrink-0 ml-1">
           <XCircle class="h-3 w-3" />
-          <span>Gagal</span>
+          <span>Failed</span>
         </span>
       {:else if result !== undefined}
-        <span class="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-medium">
+        <span class="inline-flex items-center gap-1 text-[11px] text-emerald-400 font-medium shrink-0 ml-1">
           <CheckCircle2 class="h-3 w-3" />
-          <span>Selesai</span>
+          <span>Completed</span>
         </span>
       {/if}
     </div>
 
-    <ChevronDown class="h-4 w-4 text-muted-foreground transition-transform duration-200 shrink-0 ml-2 {isOpen ? 'rotate-180' : ''}" />
+    <ChevronDown class="h-3.5 w-3.5 text-muted-foreground transition-transform duration-150 shrink-0 ml-2 {isOpen ? 'rotate-180' : ''}" />
   </button>
 
   {#if isOpen}
-    <div class="border-t border-border/50 p-3 space-y-3 bg-background/40 font-mono text-[11px]">
+    <div class="border-t border-border/40 p-2.5 space-y-2.5 bg-background/50 font-mono text-[11px]">
       {#if args}
         <div class="space-y-1">
           <div class="flex items-center justify-between">
-            <span class="text-muted-foreground font-sans font-semibold text-[10px] uppercase tracking-wider">Parameter Input:</span>
+            <span class="text-muted-foreground font-sans font-medium text-[10px] uppercase tracking-wider">Input Parameters:</span>
             <button
               type="button"
               onclick={() => copyToClipboard(formattedArgs, "args")}
               class="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground font-sans transition-colors cursor-pointer py-0.5 px-1 rounded hover:bg-muted/50"
-              title="Salin parameter"
+              title="Copy input arguments"
             >
               {#if copiedField === "args"}
                 <Check class="h-3 w-3 text-emerald-400" />
-                <span class="text-emerald-400">Tersalin</span>
+                <span class="text-emerald-400">Copied</span>
               {:else}
                 <Copy class="h-3 w-3" />
-                <span>Salin</span>
+                <span>Copy</span>
               {/if}
             </button>
           </div>
-          <pre class="p-2.5 rounded-lg bg-slate-950 text-slate-200 border border-border/40 overflow-x-auto whitespace-pre-wrap [overflow-wrap:anywhere] max-h-60 overflow-y-auto leading-relaxed">{formattedArgs}</pre>
+          <pre class="p-2.5 rounded-md bg-slate-950/90 text-slate-200 border border-border/40 overflow-x-auto whitespace-pre-wrap [overflow-wrap:anywhere] max-h-56 overflow-y-auto leading-relaxed">{formattedArgs}</pre>
         </div>
       {/if}
 
       {#if error}
         <div class="space-y-1">
-          <span class="text-red-400 font-sans font-semibold text-[10px] uppercase tracking-wider">Pesan Kesalahan (Error):</span>
-          <pre class="p-2.5 rounded-lg bg-red-950/40 text-red-200 border border-red-800/40 overflow-x-auto whitespace-pre-wrap [overflow-wrap:anywhere] leading-relaxed">{error}</pre>
+          <span class="text-red-400 font-sans font-medium text-[10px] uppercase tracking-wider">Error Message:</span>
+          <pre class="p-2.5 rounded-md bg-red-950/30 text-red-200 border border-red-800/40 overflow-x-auto whitespace-pre-wrap [overflow-wrap:anywhere] leading-relaxed">{error}</pre>
         </div>
       {/if}
 
       {#if result !== undefined}
         <div class="space-y-1">
           <div class="flex items-center justify-between">
-            <span class="text-muted-foreground font-sans font-semibold text-[10px] uppercase tracking-wider">Hasil Kembalian (Payload):</span>
+            <span class="text-muted-foreground font-sans font-medium text-[10px] uppercase tracking-wider">Output Result:</span>
             <button
               type="button"
               onclick={() => copyToClipboard(formattedResult, "result")}
               class="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground font-sans transition-colors cursor-pointer py-0.5 px-1 rounded hover:bg-muted/50"
-              title="Salin hasil kembalian"
+              title="Copy output result"
             >
               {#if copiedField === "result"}
                 <Check class="h-3 w-3 text-emerald-400" />
-                <span class="text-emerald-400">Tersalin</span>
+                <span class="text-emerald-400">Copied</span>
               {:else}
                 <Copy class="h-3 w-3" />
-                <span>Salin</span>
+                <span>Copy</span>
               {/if}
             </button>
           </div>
-          <pre class="p-2.5 rounded-lg bg-slate-950 text-emerald-300 border border-border/40 overflow-x-auto whitespace-pre-wrap [overflow-wrap:anywhere] max-h-60 overflow-y-auto leading-relaxed">{formattedResult}</pre>
+          <pre class="p-2.5 rounded-md bg-slate-950/90 text-emerald-300 border border-border/40 overflow-x-auto whitespace-pre-wrap [overflow-wrap:anywhere] max-h-56 overflow-y-auto leading-relaxed">{formattedResult}</pre>
         </div>
       {/if}
     </div>

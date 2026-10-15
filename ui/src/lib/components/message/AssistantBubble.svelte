@@ -1,5 +1,4 @@
 <script lang="ts">
-  import Bot from "lucide-svelte/icons/bot";
   import Zap from "lucide-svelte/icons/zap";
   import Eye from "lucide-svelte/icons/eye";
   import MarkdownRenderer from "../markdown/MarkdownRenderer.svelte";
@@ -8,7 +7,6 @@
   import MessageActions from "./MessageActions.svelte";
   import MessagePagination from "./MessagePagination.svelte";
   import DeepResearchProgress, { type ResearchStep } from "./DeepResearchProgress.svelte";
-  import ConfidenceBadge from "./ConfidenceBadge.svelte";
   import MessageMinimap from "./MessageMinimap.svelte";
   import ZoomableModal from "../common/ZoomableModal.svelte";
   import TaskProgressTree from "../task/TaskProgressTree.svelte";
@@ -64,14 +62,6 @@
     (message.metadata?.research_steps as ResearchStep[]) || []
   );
 
-  let confidenceScore = $derived(
-    typeof message.metadata?.confidence_score === "number" ? message.metadata.confidence_score : 0.96
-  );
-
-  let groundingRatio = $derived(
-    typeof message.metadata?.grounding_ratio === "number" ? message.metadata.grounding_ratio : 0.92
-  );
-
   let zoomModal = $state<{ open: boolean; src: string; alt: string }>({
     open: false,
     src: "",
@@ -81,26 +71,10 @@
 
 <div class="flex justify-start font-sans group">
   <div class="flex flex-col items-start max-w-3xl w-full">
-    <!-- Bubble Header with Model, Confidence, Minimap & Branch Pagination -->
-    <div class="flex items-center justify-between w-full mb-1.5 text-[11px] text-muted-foreground select-none">
-      <div class="flex items-center gap-2 flex-wrap">
-        <div class="p-1 rounded-full bg-cyan-950/80 border border-cyan-800 text-cyan-400">
-          <Bot class="h-3.5 w-3.5" />
-        </div>
-        <span class="font-semibold text-foreground">Lumis Assistant</span>
-        {#if message.model_id}
-          <Badge variant="outline" class="font-mono text-[10px] py-0 px-1.5 text-muted-foreground border-border/60">
-            {message.model_id}
-          </Badge>
-        {/if}
-        <!-- Factuality & Confidence Badge -->
-        <ConfidenceBadge score={confidenceScore} {groundingRatio} />
-      </div>
-
-      <div class="flex items-center gap-2">
-        <!-- Message Outline Minimap -->
+    <!-- Top Utility Controls (Only shown when Branch Pagination or Outline Minimap is active) -->
+    {#if branchTotal > 1 || parsed.cleanText.includes("##")}
+      <div class="flex items-center justify-end w-full mb-1 text-[11px] text-muted-foreground select-none gap-2">
         <MessageMinimap content={message.content} />
-
         {#if branchTotal > 1}
           <MessagePagination
             current={branchIndex}
@@ -110,7 +84,7 @@
           />
         {/if}
       </div>
-    </div>
+    {/if}
 
     <!-- Assistant Response Stream (Borderless, Flat Modern Layout) -->
     <div class="w-full text-foreground [overflow-wrap:anywhere] space-y-3 pt-0.5">
