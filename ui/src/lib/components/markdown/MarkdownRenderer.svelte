@@ -5,6 +5,7 @@
   import DOMPurify from "dompurify";
   import CodeBlock from "./CodeBlock.svelte";
   import MermaidRenderer from "./MermaidRenderer.svelte";
+  import HtmlPreviewBlock from "./HtmlPreviewBlock.svelte";
   import ReasoningBox from "../message/ReasoningBox.svelte";
   import TableBlock from "./TableBlock.svelte";
 
@@ -87,8 +88,21 @@
     return blocks.length > 0 ? blocks : fallback;
   });
 
+  function isInteractiveHtml(block: Block): boolean {
+    if (!block.lang) return false;
+    const l = block.lang.toLowerCase();
+    if (l === "html:preview" || l === "html:interactive" || l === "html:app" || l === "preview") {
+      return true;
+    }
+    if (l === "html") {
+      const c = block.content.trim();
+      return c.includes("<!DOCTYPE") || (c.includes("<html") && c.includes("</html>")) || (c.includes("<script") && c.includes("</" + "script>"));
+    }
+    return false;
+  }
+
   function processMarkdownAndCode(raw: string, acc: Block[]) {
-    const fenceRegex = /```([a-zA-Z0-9_-]*)[ \t]*\n([\s\S]*?)```/g;
+    const fenceRegex = /```([a-zA-Z0-9_:-]*)[ \t]*\n([\s\S]*?)```/g;
     let lIdx = 0;
     let fMatch: RegExpExecArray | null;
 
@@ -107,7 +121,7 @@
 
     if (lIdx < raw.length) {
       const remaining = raw.slice(lIdx);
-      const unclosedMatch = remaining.match(/^```([a-zA-Z0-9_-]*)[ \t]*\n([\s\S]*)$/);
+      const unclosedMatch = remaining.match(/^```([a-zA-Z0-9_:-]*)[ \t]*\n([\s\S]*)$/);
       if (unclosedMatch) {
         acc.push({
           type: "code",
@@ -187,6 +201,8 @@
     {:else if block.type === "code"}
       {#if block.lang === "mermaid"}
         <MermaidRenderer code={block.content} />
+      {:else if isInteractiveHtml(block)}
+        <HtmlPreviewBlock code={block.content} lang={block.lang} />
       {:else}
         <CodeBlock code={block.content} lang={block.lang} />
       {/if}

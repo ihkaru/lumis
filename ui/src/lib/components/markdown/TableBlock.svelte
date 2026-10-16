@@ -5,6 +5,10 @@
   import RotateCcw from "lucide-svelte/icons/rotate-ccw";
   import Copy from "lucide-svelte/icons/copy";
   import Check from "lucide-svelte/icons/check";
+  import Maximize2 from "lucide-svelte/icons/maximize-2";
+  import Minimize2 from "lucide-svelte/icons/minimize-2";
+  import X from "lucide-svelte/icons/x";
+  import TableIcon from "lucide-svelte/icons/table";
 
   interface Props {
     html: string;
@@ -14,10 +18,11 @@
 
   let zoomLevel = $state(100);
   let isCopied = $state(false);
+  let isFullscreen = $state(false);
 
   function zoomIn() {
-    if (zoomLevel < 150) {
-      zoomLevel = Math.min(150, zoomLevel + 15);
+    if (zoomLevel < 160) {
+      zoomLevel = Math.min(160, zoomLevel + 15);
     }
   }
 
@@ -30,6 +35,15 @@
   function resetZoom() {
     zoomLevel = 100;
   }
+
+  $effect(() => {
+    if (typeof window === "undefined") return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape" && isFullscreen) isFullscreen = false;
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  });
 
   async function copyTableToClipboard() {
     if (typeof window === "undefined") return;
@@ -95,7 +109,7 @@
     </div>
   </div>
 
-  <!-- Bottom-Right Controls Bar (Outside Table, Below Scrollbar X) -->
+  <!-- Bottom-Right Controls Bar -->
   <div class="flex justify-end mt-1">
     <div
       class="inline-flex items-center gap-0.5 rounded-full bg-background/85 dark:bg-card/90 backdrop-blur-md border border-border/30 dark:border-white/10 shadow-xs px-1.5 py-0.5 text-xs select-none opacity-70 hover:opacity-100 transition-opacity"
@@ -125,7 +139,6 @@
         disabled={zoomLevel <= 30}
         class="p-1 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors touch-manipulation"
         title="Zoom Out Tabel"
-        aria-label="Zoom Out Tabel"
       >
         <ZoomOut class="size-3" />
       </button>
@@ -133,10 +146,9 @@
       <button
         type="button"
         onclick={zoomIn}
-        disabled={zoomLevel >= 150}
+        disabled={zoomLevel >= 160}
         class="p-1 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors touch-manipulation"
         title="Zoom In Tabel"
-        aria-label="Zoom In Tabel"
       >
         <ZoomIn class="size-3" />
       </button>
@@ -147,14 +159,99 @@
           onclick={resetZoom}
           class="p-1 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors touch-manipulation"
           title="Reset Zoom"
-          aria-label="Reset Zoom"
         >
           <RotateCcw class="size-2.5" />
         </button>
       {/if}
+
+      <div class="h-3 w-px bg-border/60 mx-0.5" aria-hidden="true"></div>
+
+      <button
+        type="button"
+        onclick={() => (isFullscreen = !isFullscreen)}
+        class="p-1 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors touch-manipulation"
+        title="Fullscreen Tabel"
+      >
+        <Maximize2 class="size-3" />
+      </button>
     </div>
   </div>
 </div>
+
+<!-- Fullscreen Table Lightbox Modal -->
+{#if isFullscreen}
+  <div class="fixed inset-0 z-50 flex flex-col bg-slate-950/95 backdrop-blur-md p-3 sm:p-5">
+    <div class="flex items-center justify-between border-b border-white/10 pb-2 mb-2 select-none">
+      <div class="flex items-center gap-2">
+        <TableIcon class="h-4 w-4 text-primary" />
+        <span class="font-semibold text-sm text-slate-100">Table Data Viewer - Fullscreen</span>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <button
+          type="button"
+          onclick={copyTableToClipboard}
+          class="flex items-center gap-1 px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-xs text-slate-200 transition-colors"
+        >
+          {#if isCopied}
+            <Check class="size-3.5 text-emerald-400" />
+            <span class="text-emerald-400">Tersalin ke Excel</span>
+          {:else}
+            <Copy class="size-3.5" />
+            <span>Salin Excel</span>
+          {/if}
+        </button>
+        <button
+          type="button"
+          onclick={zoomOut}
+          class="p-1.5 rounded hover:bg-white/10 text-slate-300"
+          title="Zoom Out"
+        >
+          <ZoomOut class="size-4" />
+        </button>
+        <button
+          type="button"
+          onclick={zoomIn}
+          class="p-1.5 rounded hover:bg-white/10 text-slate-300"
+          title="Zoom In"
+        >
+          <ZoomIn class="size-4" />
+        </button>
+        <button
+          type="button"
+          onclick={resetZoom}
+          class="p-1.5 rounded hover:bg-white/10 text-slate-300"
+          title="Reset Zoom"
+        >
+          <RotateCcw class="size-3.5" />
+        </button>
+        <button
+          type="button"
+          onclick={() => (isFullscreen = false)}
+          class="p-1.5 rounded hover:bg-white/10 text-slate-300 hover:text-white transition-colors ml-1"
+          title="Tutup (Esc)"
+        >
+          <X class="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+    <div class="flex-1 w-full rounded-lg border border-white/10 bg-slate-900/60 p-4 overflow-auto shadow-2xl smooth-momentum-scroll">
+      <div
+        class="inline-block min-w-full align-middle transition-all duration-150"
+        style="font-size: {(zoomLevel / 100) * 0.875}rem"
+      >
+        <div class="table-content min-w-full">
+          {@html typeof window !== "undefined"
+            ? DOMPurify.sanitize(html, {
+                USE_PROFILES: { html: true, mathMl: true, svg: true },
+                ADD_TAGS: ["annotation", "semantics", "span", "div"],
+                ADD_ATTR: ["align", "style", "aria-hidden", "viewBox", "class"],
+              })
+            : html}
+        </div>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
   :global(.table-content table) {
