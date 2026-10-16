@@ -149,7 +149,7 @@
         messages = [];
         sessionTasks = [];
       }
-    } else if (targetId && targetId !== "new" && targetId !== activeSessionId) {
+    } else if (targetId && targetId !== "new" && targetId !== activeSessionId && !isGenerating) {
       selectSession(targetId);
     }
   });
@@ -190,11 +190,11 @@
 
   async function handleCreateSession(customTitle?: string): Promise<Session | null> {
     try {
-      const title = customTitle || `Chat ${sessions.length + 1}`;
+      const title = customTitle || "Percakapan Baru";
       const newSess = await api.createSession(title, selectedModelId);
       sessions = [newSess, ...sessions]; activeSessionId = newSess.id;
       if (typeof window !== "undefined" && window.innerWidth < 768) isMobileDrawerOpen = false;
-      errorMessage = null; router.navigate(`/chat/${newSess.id}`, true); return newSess;
+      errorMessage = null; await router.navigate(`/chat/${newSess.id}`, true); return newSess;
     } catch (err: unknown) {
       errorMessage = err instanceof Error ? err.message : "Gagal membuat sesi baru."; return null;
     }
@@ -206,7 +206,7 @@
 
     let targetSessionId = activeSessionId;
     if (!targetSessionId || targetSessionId === "new") {
-      const newSess = await handleCreateSession(text.slice(0, 30));
+      const newSess = await handleCreateSession();
       if (!newSess) return;
       targetSessionId = newSess.id;
     }

@@ -1,7 +1,8 @@
 #![deny(unsafe_code)]
 
 use std::sync::Arc;
-use lumis_core::traits::ChatRepository;
+use lumis_core::models::{ChatCompletionRequest, ChatMessagePayload};
+use lumis_core::traits::{ChatRepository, LlmProviderDriver};
 
 /// Maximum agentic turns for long-running workflows.
 /// Defaults to unbounded (usize::MAX) or configured via LUMIS_MAX_AGENT_TURNS (0 = infinite).
@@ -130,3 +131,100 @@ pub fn extract_manual_skill_names(prompt: &str) -> Vec<String> {
     names
 }
 
+/// Asynchronously generates a concise, high-relevance title (3-5 words) from the first turn
+/// using the active LLM driver, preventing raw heuristic query dumps.
+pub async fn generate_llm_title(
+    router: &Arc<dyn LlmProviderDriver>,
+    model: &str,
+    prompt: &str,
+    assistant_text: &str,
+) -> Option<String> {
+    let clean_prompt = prompt.trim();
+    if clean_prompt.is_empty() {
+        return None;
+    }
+
+    let trunc_prompt = if clean_prompt.len() > 300 {
+        &clean_prompt[..300]
+    } else {
+        clean_prompt
+    };
+
+    let clean_reply = assistant_text
+        .replace("<tool_call>", "")
+        .replace("</tool_call>", "")
+        .trim()
+        .to_string();
+
+    let trunc_reply = if clean_reply.len() > 300 {
+        &clean_reply[..300]
+    } else {
+        &clean_reply
+    };
+
+    let title_messages = vec![
+        ChatMessagePayload::new(
+            "system",
+            "You are a conversation title generator. Output ONLY a concise, high-relevance title (3 to 5 words) that summarizes the conversation topic. Do NOT use quotes, punctuation, or emoji. Respond in the same language used by the user.",
+        ),
+        ChatMessagePayload::new(
+            "user",
+            format!("User: {}\nAssistant: {}", trunc_prompt, trunc_reply),
+        ),
+    ];
+
+    let req = ChatCompletionRequest {
+        model: model.to_string(),
+        messages: title_messages,
+        temperature: Some(0.3),
+        max_tokens: Some(25),
+        stream: true,
+        tools: None,
+        tool_choice: None,
+    };
+
+    let mut rx = match tokio::time::timeout(tokio::time::Duration::from_secs(4), router.complete_chat(&req)).await {
+        Ok(Ok(receiver)) => receiver,
+        _ => return None,
+    };
+
+    let mut title_buf = String::new();
+    while let Ok(Some(chunk_res)) = tokio::time::timeout(tokio::time::Duration::from_millis(1500), rx.recv()).await {
+        if let Ok(chunk) = chunk_res {
+            title_buf.push_str(&chunk.content);
+            if chunk.is_done || title_buf.len() >= 60 {
+                break;
+            }
+        } else {
+            break;
+        }
+    }
+
+    let raw = title_buf
+        .replace(['\n', '\r', '"', '\'', '`', '*', '#', '<', '>', '.', ':', ';'], " ")
+        .trim()
+        .to_string();
+
+    let clean = if let Some(stripped) = raw.strip_prefix("Title").or_else(|| raw.strip_prefix("Judul")) {
+        stripped.trim()
+    } else {
+        raw.as_str()
+    };
+
+    if clean.is_empty() {
+        return None;
+    }
+
+    let words: Vec<&str> = clean.split_whitespace().collect();
+    if words.is_empty() {
+        return None;
+    }
+
+    let mut final_title = words.into_iter().take(6).collect::<Vec<_>>().join(" ");
+    if final_title.len() > 40 {
+        final_title.truncate(40);
+        final_title = final_title.trim_end().to_string();
+    }
+
+    Some(final_title)
+}

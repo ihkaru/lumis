@@ -10,6 +10,14 @@ use serde_json::Value;
 use tower::ServiceExt;
 
 async fn test_app() -> axum::Router {
+    std::env::set_var("SAML_IDP_PROVIDER_NAME", "Enterprise_SAML");
+    std::env::set_var("SAML_TENANT", "default");
+    std::env::set_var("SAML_IDP_ENTITY_ID", "https://sso.enterprise.internal");
+    std::env::set_var("SAML_SP_ENTITY_ID", "http://localhost:8080/saml/metadata");
+    std::env::set_var("SAML_SP_ACS_URL", "http://localhost:8080/api/auth/saml/acs");
+    std::env::set_var("SAML_SSO_URL", "https://sso.enterprise.internal/saml/sso");
+    std::env::set_var("SAML_METADATA_URL", "https://sso.enterprise.internal/saml/metadata");
+
     let driver = DatabaseFactory::create_driver("sqlite::memory:")
         .await
         .expect("Initialize SQLite in-memory driver");

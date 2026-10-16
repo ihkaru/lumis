@@ -109,6 +109,29 @@
     }
   }
 
+  let triggerBtnEl = $state<HTMLButtonElement | null>(null);
+  let popupStyle = $state("");
+
+  function updatePopupPosition() {
+    if (!triggerBtnEl || typeof window === "undefined") return;
+    const rect = triggerBtnEl.getBoundingClientRect();
+    const isMobile = window.innerWidth < 640;
+    if (isMobile) {
+      popupStyle = `bottom: calc(100vh - ${rect.top}px + 8px); left: 1rem; width: calc(100vw - 2rem);`;
+    } else {
+      const left = Math.max(16, Math.min(rect.left, window.innerWidth - 400));
+      popupStyle = `bottom: calc(100vh - ${rect.top}px + 8px); left: ${left}px; width: 24rem;`;
+    }
+  }
+
+  $effect(() => {
+    if (isOpen) {
+      updatePopupPosition();
+      window.addEventListener("resize", updatePopupPosition);
+      return () => window.removeEventListener("resize", updatePopupPosition);
+    }
+  });
+
   function formatTokens(tokens?: number): string {
     if (!tokens) return "";
     if (tokens >= 1000000) return `${Math.round(tokens / 1000000)}M ctx`;
@@ -120,6 +143,7 @@
 <div class="relative inline-block font-sans select-none">
   <!-- Trigger Button -->
   <button
+    bind:this={triggerBtnEl}
     type="button"
     onclick={() => (isOpen = !isOpen)}
     class="flex items-center gap-1 h-7 sm:h-8 px-2 rounded-lg border border-border/70 bg-card/80 hover:bg-muted text-[11px] sm:text-xs text-foreground transition-colors cursor-pointer touch-manipulation"
@@ -143,14 +167,15 @@
     <!-- Backdrop overlay -->
     <button
       type="button"
-      class="fixed inset-0 z-40 cursor-default bg-black/20 backdrop-blur-[1px] w-full h-full border-0 p-0"
+      class="fixed inset-0 z-40 cursor-default bg-black/40 backdrop-blur-xs w-full h-full border-0 p-0"
       onclick={() => (isOpen = false)}
       aria-label="Tutup Menu Pilihan Model"
     ></button>
 
-    <!-- Dropdown Content -->
+    <!-- Dropdown Content (Fixed positioned, unclipped by parent overflow-x) -->
     <div
-      class="absolute bottom-full left-0 mb-2 z-50 w-[92vw] sm:w-96 max-w-[420px] rounded-xl border border-border bg-popover text-popover-foreground p-2.5 shadow-2xl flex flex-col gap-2 max-h-[460px] animate-in fade-in zoom-in-95 duration-100"
+      style={popupStyle}
+      class="fixed z-50 max-w-[420px] rounded-xl border border-border bg-popover text-popover-foreground p-2.5 shadow-2xl flex flex-col gap-2 max-h-[460px] animate-in fade-in zoom-in-95 duration-100"
     >
       <!-- Header with Refresh Button -->
       <div class="flex items-center justify-between px-1">

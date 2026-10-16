@@ -45,7 +45,7 @@
 
     <SkillPills {manualSkills} {alwaysAppliedSkills} class="mb-1" />
 
-    <div class="px-4 py-2.5 rounded-2xl rounded-tr-sm bg-secondary text-secondary-foreground text-sm leading-relaxed border border-border/60 shadow-xs break-words whitespace-pre-wrap [overflow-wrap:anywhere] transition-colors hover:border-primary/30">
+    <div class="px-4 py-2.5 rounded-2xl rounded-tr-sm bg-muted/90 dark:bg-muted/70 text-foreground text-sm leading-relaxed border border-border/80 dark:border-primary/30 shadow-xs break-words whitespace-pre-wrap [overflow-wrap:anywhere] transition-all hover:border-primary/50 select-text">
       {message.content}
     </div>
 

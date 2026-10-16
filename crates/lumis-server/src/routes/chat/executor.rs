@@ -8,7 +8,7 @@ use crate::state::AppState;
 use super::assembly::{assemble_chat_context, extract_heuristic_title, format_mcp_tools_for_openai};
 use super::executor_helpers::{
     check_plan_convergence, compress_observation, extract_manual_skill_names,
-    get_max_agentic_turns, heal_or_infer_tool_name, parse_text_tool_calls,
+    generate_llm_title, get_max_agentic_turns, heal_or_infer_tool_name, parse_text_tool_calls,
 };
 
 pub fn spawn_chat_completion(
@@ -312,15 +312,18 @@ pub fn spawn_chat_completion(
             let assistant_msg = NewMessage {
                 session_id: sess_id.clone(),
                 role: MessageRole::Assistant,
-                content: combined_content,
-                model_id: Some(model),
+                content: combined_content.clone(),
+                model_id: Some(model.clone()),
                 token_count: None,
                 metadata,
             };
             let _ = repo.append_message(&assistant_msg).await;
 
             if session.title == "Percakapan Baru" || session.title.trim().is_empty() {
-                let new_title = extract_heuristic_title(&prompt);
+                let new_title = match generate_llm_title(&router, &model, &prompt, &combined_content).await {
+                    Some(t) if !t.is_empty() => t,
+                    _ => extract_heuristic_title(&prompt),
+                };
                 if let Ok(true) = repo.update_session_title(&sess_id, &new_title).await {
                     let title_event = json!({
                         "event": "title",

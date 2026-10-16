@@ -167,9 +167,9 @@
 
 <style>
   :global(.markdown-body p) {
-    margin-top: 0.625rem;
-    margin-bottom: 0.625rem;
-    line-height: 1.65;
+    margin-top: 0.375rem;
+    margin-bottom: 0.375rem;
+    line-height: 1.55;
     color: var(--foreground, #e2e8f0);
   }
   :global(.markdown-body p:first-child) {
@@ -179,45 +179,45 @@
     margin-bottom: 0;
   }
   :global(.markdown-body h1) {
-    font-size: 1.25rem;
+    font-size: 1.15rem;
     font-weight: 600;
     letter-spacing: -0.015em;
-    margin-top: 1.25rem;
-    margin-bottom: 0.5rem;
-    color: var(--foreground, #ffffff);
-  }
-  :global(.markdown-body h2) {
-    font-size: 1.125rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    margin-top: 1rem;
+    margin-top: 0.875rem;
     margin-bottom: 0.375rem;
     color: var(--foreground, #ffffff);
   }
-  :global(.markdown-body h3) {
-    font-size: 1rem;
+  :global(.markdown-body h2) {
+    font-size: 1.05rem;
     font-weight: 600;
-    letter-spacing: -0.005em;
+    letter-spacing: -0.01em;
     margin-top: 0.75rem;
     margin-bottom: 0.25rem;
     color: var(--foreground, #ffffff);
   }
+  :global(.markdown-body h3) {
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    margin-top: 0.625rem;
+    margin-bottom: 0.2rem;
+    color: var(--foreground, #ffffff);
+  }
   :global(.markdown-body ul) {
     list-style-type: disc !important;
-    padding-left: 1.25rem !important;
-    margin-top: 0.375rem;
-    margin-bottom: 0.375rem;
+    padding-left: 1.15rem !important;
+    margin-top: 0.25rem;
+    margin-bottom: 0.25rem;
   }
   :global(.markdown-body ol) {
     list-style-type: decimal !important;
-    padding-left: 1.25rem !important;
-    margin-top: 0.375rem;
-    margin-bottom: 0.375rem;
+    padding-left: 1.15rem !important;
+    margin-top: 0.25rem;
+    margin-bottom: 0.25rem;
   }
   :global(.markdown-body li) {
-    margin-top: 0.2rem;
-    margin-bottom: 0.2rem;
-    line-height: 1.6;
+    margin-top: 0.125rem;
+    margin-bottom: 0.125rem;
+    line-height: 1.5;
   }
   :global(.markdown-body li > p) {
     margin-top: 0;
@@ -226,21 +226,21 @@
   }
   :global(.markdown-body ul ul) {
     list-style-type: circle !important;
-    padding-left: 1.25rem !important;
-    margin-top: 0.25rem;
-    margin-bottom: 0.25rem;
+    padding-left: 1.15rem !important;
+    margin-top: 0.15rem;
+    margin-bottom: 0.15rem;
   }
   :global(.markdown-body ol ol) {
     list-style-type: lower-alpha !important;
-    padding-left: 1.25rem !important;
-    margin-top: 0.25rem;
-    margin-bottom: 0.25rem;
+    padding-left: 1.15rem !important;
+    margin-top: 0.15rem;
+    margin-bottom: 0.15rem;
   }
   :global(.markdown-body ul ol),
   :global(.markdown-body ol ul) {
-    padding-left: 1.25rem !important;
-    margin-top: 0.25rem;
-    margin-bottom: 0.25rem;
+    padding-left: 1.15rem !important;
+    margin-top: 0.15rem;
+    margin-bottom: 0.15rem;
   }
   :global(.markdown-body strong) {
     font-weight: 600;
@@ -248,15 +248,15 @@
   }
   :global(.markdown-body table) {
     width: 100%;
-    margin-top: 0.75rem;
-    margin-bottom: 0.75rem;
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
     border-collapse: collapse;
     font-size: 0.8125rem;
   }
   :global(.markdown-body th),
   :global(.markdown-body td) {
     border: 1px solid var(--border);
-    padding: 0.5rem 0.75rem;
+    padding: 0.4rem 0.6rem;
     text-align: left;
   }
   :global(.markdown-body th) {
@@ -264,9 +264,9 @@
     font-weight: 600;
   }
   :global(.markdown-body blockquote) {
-    border-left: 3px solid var(--primary);
-    padding-left: 1rem;
-    margin: 0.75rem 0;
+    border-left: 2px solid var(--primary);
+    padding-left: 0.75rem;
+    margin: 0.375rem 0;
     color: var(--muted-foreground);
     font-style: italic;
   }

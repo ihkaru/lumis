@@ -1,13 +1,12 @@
 use lumis_core::models::{CursorQuery, MessageRole, NewMessage, NewSession, User, EnterpriseRole};
-use lumis_core::traits::ChatRepository;
-use lumis_db::SqliteRepository;
-use sqlx::SqlitePool;
+use lumis_db::DatabaseFactory;
 use uuid::Uuid;
 
 #[tokio::test]
 async fn test_sqlite_repository_lifecycle() {
-    let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
-    let repo = SqliteRepository::new(pool).await.unwrap();
+    let repo = DatabaseFactory::create_repository("sqlite::memory:")
+        .await
+        .expect("Failed to initialize SQLite repository");
 
     // 1. Create User
     let user_id = Uuid::new_v4().to_string();
@@ -121,8 +120,9 @@ async fn test_sqlite_repository_lifecycle() {
 
 #[tokio::test]
 async fn test_sqlite_session_task_state_machine() {
-    let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
-    let repo = SqliteRepository::new(pool).await.unwrap();
+    let repo = DatabaseFactory::create_repository("sqlite::memory:")
+        .await
+        .expect("Failed to initialize SQLite repository");
 
     let user_id = Uuid::new_v4().to_string();
     let user = User {

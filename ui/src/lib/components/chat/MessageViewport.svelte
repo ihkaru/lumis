@@ -62,6 +62,9 @@
           behavior: "smooth"
         });
         isUserScrolledUp = false;
+      } else {
+        messageContainerEl.scrollTo({ top: 0, behavior: "smooth" });
+        isUserScrolledUp = false;
       }
     }, 40));
   }
@@ -72,6 +75,18 @@
     if (!last) return;
     const cRect = messageContainerEl.getBoundingClientRect();
     const bRect = last.getBoundingClientRect();
+
+    // On the first turn, keep the user message visible unless the assistant text overflows the viewport
+    if (messages.length <= 2) {
+      if (bRect.bottom > cRect.bottom - 16) {
+        messageContainerEl.scrollTo({
+          top: messageContainerEl.scrollTop + (bRect.bottom - cRect.bottom + 16),
+          behavior: "smooth"
+        });
+      }
+      return;
+    }
+
     if (bRect.bottom > cRect.bottom - 48) {
       messageContainerEl.scrollTo({
         top: messageContainerEl.scrollTop + (bRect.bottom - cRect.bottom + 48),
