@@ -56,7 +56,12 @@ pub fn spawn_chat_completion(
                 }
             }
         }
-        let fts_skills = repo.search_skills_fts(tenant_id, &user.id, &prompt, 5).await.unwrap_or_default();
+        let mut fts_skills = repo.search_skills_fts(tenant_id, &user.id, &prompt, 5).await.unwrap_or_default();
+        if fts_skills.is_empty() {
+            if let Ok(general) = repo.list_skills(tenant_id, &user.id, None, 5, 0).await {
+                fts_skills = general.into_iter().map(|s| lumis_core::models::SkillSearchResult { skill: s, bm25_score: 0.0 }).collect();
+            }
+        }
         let active_skill_summaries: Vec<_> = fts_skills.into_iter().map(|r| r.skill).collect();
 
         let mut messages = assemble_chat_context(

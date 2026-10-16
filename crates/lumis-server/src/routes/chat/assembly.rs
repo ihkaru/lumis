@@ -85,7 +85,12 @@ pub fn assemble_chat_context(
         1. Professional Tone & Zero-Emoticon Policy: Maintain a clean, professional, enterprise-grade tone. Strictly minimize and avoid decorative emojis/emoticons (e.g. 📝, 🚀, ✨, 💡, ✅, 🔍) in headings, bullet points, and body text. Use crisp bold titles, clean semantic lists, and code formatting instead.\n\
         2. Two-Tier Nested Lists & Hierarchy: For multi-step explanations or technical breakdowns, structure responses using clean headings and two-level indented bullet points (- Level 1\n  - Level 2 sub-bullet) for maximum readability.\n\
         3. High-Density Clarity: Present technical tables, code blocks with explicit language tags, and clear mathematical formulas without conversational filler.\n\
-        </formatting_and_style_directives>",
+        </formatting_and_style_directives>\n\n\
+        <enterprise_skills_architecture>\n\
+        1. Lumis On-Demand Skill Engine: Skills in Lumis are expert behavioral directives, domain personas, and standard procedures (distinct from backend MCP/CLI tools).\n\
+        2. Invocation: Users can equip skills on-demand by typing `$skill-name` in their prompt, or view/toggle/create them via Settings -> Skills Enterprise.\n\
+        3. Inquiries: When asked about available skills or capabilities, refer to the skills catalog, explain how to use `$skill-name`, and guide the user to Settings. Do NOT call `gateway_search_tools` or state that skills do not exist.\n\
+        </enterprise_skills_architecture>",
         model_display, model_display
     );
 
@@ -131,16 +136,16 @@ pub fn assemble_chat_context(
     if let Some(skills) = active_skills {
         if !skills.is_empty() {
             system_text.push_str("\n\n<available_skills>\n");
-            system_text.push_str("You have access to the following on-demand enterprise skills:\n");
+            system_text.push_str("You have access to the following on-demand enterprise skills in Lumis:\n");
             for s in skills {
                 let desc = if s.description.len() > 250 {
                     format!("{}...", &s.description[..247])
                 } else {
                     s.description.clone()
                 };
-                system_text.push_str(&format!("- `{}`: {}\n", s.name, desc));
+                system_text.push_str(&format!("- `${}` ({}): {}\n", s.name, s.display_title, desc));
             }
-            system_text.push_str("Apply relevant skill directives when the user's task matches the skill description.\n</available_skills>\n");
+            system_text.push_str("Apply relevant skill directives when the user's task matches the skill description or when the user invokes `$skill-name`.\n</available_skills>\n");
         }
     }
 

@@ -186,16 +186,6 @@ pub async fn seed_default_enterprise_skills(
     tenant_id: &str,
     author_id: &str,
 ) -> Result<()> {
-    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM skills WHERE tenant_id = ?")
-        .bind(tenant_id)
-        .fetch_one(pool)
-        .await
-        .unwrap_or(0);
-
-    if count > 0 {
-        return Ok(());
-    }
-
     let seeds = [
         (
             "data-analysis",
@@ -232,6 +222,19 @@ pub async fn seed_default_enterprise_skills(
     ];
 
     for (name, title, desc, body, cat, always) in seeds {
+        let exists: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM skills WHERE name = ? AND (tenant_id = ? OR tenant_id = 'default' OR tenant_id = 'system')"
+        )
+        .bind(name)
+        .bind(tenant_id)
+        .fetch_one(pool)
+        .await
+        .unwrap_or(0);
+
+        if exists > 0 {
+            continue;
+        }
+
         let input = CreateSkillInput {
             name: name.to_string(),
             display_title: Some(title.to_string()),

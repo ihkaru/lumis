@@ -31,7 +31,7 @@ pub async fn search_skills_fts(
         FROM skills_fts
         JOIN skills s ON skills_fts.skill_id = s.id
         LEFT JOIN user_skill_preferences p ON p.skill_id = s.id AND p.user_id = ?
-        WHERE skills_fts MATCH ? AND s.tenant_id = ? AND s.is_active = 1
+        WHERE skills_fts MATCH ? AND (s.tenant_id = ? OR s.tenant_id = 'default' OR s.tenant_id = 'system') AND s.is_active = 1
         ORDER BY rank
         LIMIT ?
         "#,
@@ -87,7 +87,7 @@ pub async fn list_skills(
                COALESCE(p.is_enabled, 1) as is_enabled
         FROM skills s
         LEFT JOIN user_skill_preferences p ON p.skill_id = s.id AND p.user_id = ?
-        WHERE s.tenant_id = ? AND s.is_active = 1
+        WHERE (s.tenant_id = ? OR s.tenant_id = 'default' OR s.tenant_id = 'system') AND s.is_active = 1
         "#,
     );
 
@@ -139,7 +139,7 @@ pub async fn get_skill_by_name(
                category, always_apply, user_invocable, disable_model_invocation,
                allowed_tools, author_id, version, is_active, created_at, updated_at
         FROM skills
-        WHERE tenant_id = ? AND name = ? AND is_active = 1
+        WHERE (tenant_id = ? OR tenant_id = 'default' OR tenant_id = 'system') AND name = ? AND is_active = 1
         "#,
     )
     .bind(tenant_id)
@@ -162,7 +162,7 @@ pub async fn get_skill_by_id(
                category, always_apply, user_invocable, disable_model_invocation,
                allowed_tools, author_id, version, is_active, created_at, updated_at
         FROM skills
-        WHERE tenant_id = ? AND id = ? AND is_active = 1
+        WHERE (tenant_id = ? OR tenant_id = 'default' OR tenant_id = 'system') AND id = ? AND is_active = 1
         "#,
     )
     .bind(tenant_id)
@@ -186,7 +186,7 @@ pub async fn get_always_apply_skills(
                s.allowed_tools, s.author_id, s.version, s.is_active, s.created_at, s.updated_at
         FROM skills s
         LEFT JOIN user_skill_preferences p ON p.skill_id = s.id AND p.user_id = ?
-        WHERE s.tenant_id = ? AND s.always_apply = 1 AND s.is_active = 1 AND COALESCE(p.is_enabled, 1) = 1
+        WHERE (s.tenant_id = ? OR s.tenant_id = 'default' OR s.tenant_id = 'system') AND s.always_apply = 1 AND s.is_active = 1 AND COALESCE(p.is_enabled, 1) = 1
         ORDER BY s.name ASC
         "#,
     )

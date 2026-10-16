@@ -327,8 +327,9 @@ pub async fn run_sqlite_migrations(pool: &SqlitePool) -> Result<()> {
         "#
     ).execute(pool).await;
 
-    // Seed default enterprise skills if database is newly initialized
+    // Seed default enterprise skills if missing
     let _ = crate::sqlite::skills_mut::seed_default_enterprise_skills(pool, "default", "system-admin").await;
+    let _ = crate::sqlite::skills_mut::seed_default_enterprise_skills(pool, "bps", "system-admin").await;
 
     Ok(())
 }
