@@ -86,17 +86,13 @@ pub fn spawn_chat_completion(
                 Ok(receiver) => receiver,
                 Err(e) => {
                     tracing::error!("LLM completion turn failed: {}", e);
-                    if !executed_tools.is_empty() && combined_content.is_empty() {
-                        let fallback = "Hasil eksekusi tool telah diterima. Silakan lanjutkan pertanyaan atau ketik 'Lanjutkan'.";
+                    let last_is_tool = !message_parts.is_empty() && message_parts.last().and_then(|p| p.get("type")).and_then(|t| t.as_str()) == Some("tool_call");
+                    if !executed_tools.is_empty() && last_is_tool {
+                        let fallback = "Hasil eksekusi tool telah diterima. Silakan ketik 'Lanjutkan' untuk merangkum hasil pencarian.";
+                        if !combined_content.is_empty() && !combined_content.ends_with('\n') { combined_content.push('\n'); }
                         combined_content.push_str(fallback);
                         message_parts.push(json!({ "type": "text", "text": fallback }));
-                        let chunk_event = json!({
-                            "event": "chunk",
-                            "session_id": sess_id,
-                            "delta": fallback,
-                            "model_id": model,
-                            "is_done": false,
-                        });
+                        let chunk_event = json!({ "event": "chunk", "session_id": sess_id, "delta": fallback, "model_id": model, "is_done": false });
                         let _ = stream_tx.send(bytes::Bytes::from(chunk_event.to_string()));
                     }
                     let done_event = json!({ "event": "chunk", "session_id": sess_id, "delta": "", "model_id": model, "is_done": true });
@@ -107,7 +103,6 @@ pub fn spawn_chat_completion(
 
             let mut turn_text = String::new();
             let mut native_tcs: HashMap<usize, (Option<String>, Option<String>, String)> = HashMap::new();
-            let mut had_chunk_error = false;
 
             while let Some(chunk_res) = rx.recv().await {
                 match chunk_res {
@@ -142,7 +137,6 @@ pub fn spawn_chat_completion(
                     }
                     Err(e) => {
                         tracing::error!("Error receiving chunk: {}", e);
-                        had_chunk_error = true;
                         break;
                     }
                 }
@@ -180,21 +174,17 @@ pub fn spawn_chat_completion(
                     continue;
                 }
 
+                let last_is_tool = !message_parts.is_empty() && message_parts.last().and_then(|p| p.get("type")).and_then(|t| t.as_str()) == Some("tool_call");
                 if !turn_text.is_empty() {
                     if !combined_content.is_empty() && !combined_content.ends_with('\n') { combined_content.push('\n'); }
                     combined_content.push_str(&turn_text);
                     message_parts.push(json!({ "type": "text", "text": turn_text }));
-                } else if had_chunk_error && combined_content.is_empty() && !executed_tools.is_empty() {
-                    let fallback = "Eksekusi tool selesai, namun terjadi kendala saat menerima sintesis akhir. Ketik 'Lanjutkan' untuk memproses ulang.";
+                } else if !executed_tools.is_empty() && last_is_tool {
+                    let fallback = "Eksekusi tool selesai. Silakan ketik 'Lanjutkan' untuk merangkum dan menganalisis hasil pencarian.";
+                    if !combined_content.is_empty() && !combined_content.ends_with('\n') { combined_content.push('\n'); }
                     combined_content.push_str(fallback);
                     message_parts.push(json!({ "type": "text", "text": fallback }));
-                    let chunk_event = json!({
-                        "event": "chunk",
-                        "session_id": sess_id,
-                        "delta": fallback,
-                        "model_id": model,
-                        "is_done": false,
-                    });
+                    let chunk_event = json!({ "event": "chunk", "session_id": sess_id, "delta": fallback, "model_id": model, "is_done": false });
                     let _ = stream_tx.send(bytes::Bytes::from(chunk_event.to_string()));
                 }
 
@@ -302,6 +292,9 @@ pub fn spawn_chat_completion(
                     msg.content = compress_observation(&msg.content, 2000);
                 }
             }
+
+            let status_event = json!({ "event": "chunk", "session_id": sess_id, "delta": "", "status": "Menganalisis hasil...", "model_id": model, "is_done": false });
+            let _ = stream_tx.send(bytes::Bytes::from(status_event.to_string()));
         }
 
         if !combined_content.is_empty() || !executed_tools.is_empty() {

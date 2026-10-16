@@ -155,6 +155,12 @@
             />
           {/if}
         {/each}
+        {#if isStreaming && parts[parts.length - 1]?.type === "tool_call"}
+          <div class="inline-flex items-center gap-2 text-xs text-muted-foreground animate-pulse py-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-primary animate-ping"></span>
+            <span>Menganalisis hasil dan menyusun jawaban...</span>
+          </div>
+        {/if}
       {:else}
         <!-- Legacy Fallback (for historical records in DB without parts) -->
         {#if preContent}

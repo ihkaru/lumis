@@ -100,14 +100,15 @@ export function processStreamEvent(raw: string, state: StreamState): {
       const lastIdx = messages.length - 1;
       if (lastIdx >= 0 && messages[lastIdx].role === "assistant") {
         const prevCalls = (messages[lastIdx].metadata?.tool_calls as any[]) || [];
+        const matchCall = (id?: string, tool?: string) => (id && data.call_id ? id === data.call_id : tool === data.tool);
         const updatedCalls = prevCalls.map((t: any) =>
-          (t.id && t.id === data.call_id) || t.tool === data.tool
+          matchCall(t.id, t.tool)
             ? { ...t, result: data.result, error: data.is_error ? data.result : undefined, isRunning: false }
             : t
         );
         const prevParts = [...((messages[lastIdx].metadata?.parts as MessagePart[]) || [])];
         const updatedParts = prevParts.map((p) => {
-          if (p.type === "tool_call" && ((p.call_id && p.call_id === data.call_id) || p.tool === data.tool)) {
+          if (p.type === "tool_call" && matchCall(p.call_id, p.tool)) {
             return {
               ...p,
               result: data.result,

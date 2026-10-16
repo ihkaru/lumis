@@ -221,14 +221,14 @@
       targetSessionId = newSess.id;
     }
 
-    // Optimistic UI append for User
+    // Optimistic UI append for User and Assistant placeholder
     const localUserMsg: Message = { id: "temp_" + Date.now(), session_id: targetSessionId, role: "user", content: text, created_at: new Date().toISOString() };
-    messages = [...messages, localUserMsg];
+    const localAssistantMsg: Message = { id: "stream_" + Date.now(), session_id: targetSessionId, role: "assistant", content: "", model_id: modelId, created_at: new Date().toISOString() };
+    messages = [...messages, localUserMsg, localAssistantMsg];
     messageViewport?.scrollUserMessageToTop(localUserMsg.id);
 
     try {
       await api.sendMessage(targetSessionId, text, modelId);
-      messages = [...messages, { id: "stream_" + Date.now(), session_id: targetSessionId, role: "assistant", content: "", model_id: modelId, created_at: new Date().toISOString() }];
     } catch (err: unknown) {
       const errObj = err as { name?: string; message?: string };
       if (errObj?.name !== "AbortError") errorMessage = errObj?.message || "Gagal mengirimkan pesan.";
