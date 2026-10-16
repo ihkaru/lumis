@@ -21,7 +21,9 @@ pub struct OpenAiCompatibleDriver {
 impl OpenAiCompatibleDriver {
     pub fn new(provider_name: String, base_url: String, api_key: Option<String>) -> Self {
         let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(60))
+            .timeout(std::time::Duration::from_secs(180))
+            .tcp_keepalive(Some(std::time::Duration::from_secs(30)))
+            .pool_idle_timeout(Some(std::time::Duration::from_secs(90)))
             .build()
             .unwrap_or_default();
 
@@ -36,6 +38,7 @@ impl OpenAiCompatibleDriver {
     fn build_headers(&self) -> HeaderMap {
         let mut headers = HeaderMap::new();
         headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+        headers.insert(reqwest::header::ACCEPT, HeaderValue::from_static("text/event-stream, application/json"));
         if let Some(ref key) = self.api_key {
             if let Ok(val) = HeaderValue::from_str(&format!("Bearer {}", key)) {
                 headers.insert(AUTHORIZATION, val);
@@ -132,9 +135,9 @@ impl LlmProviderDriver for OpenAiCompatibleDriver {
             while let Some(chunk_res) = stream.next().await {
                 match chunk_res {
                     Ok(bytes) => {
-                        if let Ok(text) = std::str::from_utf8(&bytes) {
-                            buffer.push_str(text);
-                            while let Some(newline_idx) = buffer.find('\n') {
+                        let text = String::from_utf8_lossy(&bytes);
+                        buffer.push_str(&text);
+                        while let Some(newline_idx) = buffer.find('\n') {
                                 let line: String = buffer.drain(..=newline_idx).collect();
                                 let trimmed = line.trim();
 
@@ -193,7 +196,6 @@ impl LlmProviderDriver for OpenAiCompatibleDriver {
                                 }
                             }
                         }
-                    }
                     Err(e) => {
                         let _ = tx.send(Err(LumisError::Internal(e.to_string()))).await;
                         return;
