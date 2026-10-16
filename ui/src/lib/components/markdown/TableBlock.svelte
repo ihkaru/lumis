@@ -75,7 +75,7 @@
   }
 </script>
 
-<div class="relative w-full my-3">
+<div class="relative w-full my-1.5">
   <!-- Horizontal Scroll Viewport -->
   <div class="w-full overflow-x-auto smooth-momentum-scroll">
     <div
@@ -89,9 +89,9 @@
   </div>
 
   <!-- Bottom-Right Controls Bar (Outside Table, Below Scrollbar X) -->
-  <div class="flex justify-end mt-1.5">
+  <div class="flex justify-end mt-1">
     <div
-      class="inline-flex items-center gap-0.5 rounded-full bg-background/85 dark:bg-card/90 backdrop-blur-md border border-border/80 shadow-xs px-1.5 py-0.5 text-xs select-none opacity-70 hover:opacity-100 transition-opacity"
+      class="inline-flex items-center gap-0.5 rounded-full bg-background/85 dark:bg-card/90 backdrop-blur-md border border-border/30 dark:border-white/10 shadow-xs px-1.5 py-0.5 text-xs select-none opacity-70 hover:opacity-100 transition-opacity"
     >
       <!-- 1-Click Copy for Excel / Google Sheets -->
       <button
@@ -161,14 +161,14 @@
   }
   :global(.table-content th),
   :global(.table-content td) {
-    border: 1px solid var(--border);
-    padding: 0.5rem 0.85rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0.35rem 0.65rem;
     text-align: left;
     white-space: normal;
-    min-width: 100px;
+    min-width: 80px;
   }
   :global(.table-content th) {
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: rgba(255, 255, 255, 0.04);
     font-weight: 600;
     color: var(--foreground, #ffffff);
   }

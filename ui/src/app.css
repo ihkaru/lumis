@@ -1,6 +1,12 @@
+@import "highlight.js/styles/github-dark.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.hljs {
+  background: transparent !important;
+  padding: 0 !important;
+}
 
 @layer base {
   :root {

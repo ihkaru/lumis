@@ -2,6 +2,7 @@
   import { marked } from "marked";
   import CodeBlock from "./CodeBlock.svelte";
   import LatexRenderer from "./LatexRenderer.svelte";
+  import MermaidRenderer from "./MermaidRenderer.svelte";
   import ReasoningBox from "../message/ReasoningBox.svelte";
   import TableBlock from "./TableBlock.svelte";
 
@@ -51,7 +52,7 @@
 
   function processMarkdownAndCode(raw: string, acc: Block[]) {
     // Extract code fences ```lang ... ```
-    const fenceRegex = /```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g;
+    const fenceRegex = /```([a-zA-Z0-9_-]*)[ \t]*\n([\s\S]*?)```/g;
     let lIdx = 0;
     let fMatch: RegExpExecArray | null;
 
@@ -62,7 +63,7 @@
       }
       acc.push({
         type: "code",
-        lang: fMatch[1] || "text",
+        lang: (fMatch[1] || "text").trim().toLowerCase(),
         content: fMatch[2] || "",
       });
       lIdx = fMatch.index + fMatch[0].length;
@@ -70,7 +71,16 @@
 
     if (lIdx < raw.length) {
       const remaining = raw.slice(lIdx);
-      if (remaining.trim()) processMathBlocks(remaining, acc);
+      const unclosedMatch = remaining.match(/^```([a-zA-Z0-9_-]*)[ \t]*\n([\s\S]*)$/);
+      if (unclosedMatch) {
+        acc.push({
+          type: "code",
+          lang: (unclosedMatch[1] || "text").trim().toLowerCase(),
+          content: unclosedMatch[2] || "",
+        });
+      } else if (remaining.trim()) {
+        processMathBlocks(remaining, acc);
+      }
     }
   }
 
@@ -148,7 +158,11 @@
     {#if block.type === "think"}
       <ReasoningBox content={block.content} {isStreaming} />
     {:else if block.type === "code"}
-      <CodeBlock code={block.content} lang={block.lang} />
+      {#if block.lang === "mermaid"}
+        <MermaidRenderer code={block.content} />
+      {:else}
+        <CodeBlock code={block.content} lang={block.lang} />
+      {/if}
     {:else if block.type === "math_block"}
       <LatexRenderer math={block.content} displayMode={true} />
     {:else}
@@ -255,31 +269,37 @@
   }
   :global(.markdown-body th),
   :global(.markdown-body td) {
-    border: 1px solid var(--border);
-    padding: 0.4rem 0.6rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0.3rem 0.55rem;
     text-align: left;
   }
   :global(.markdown-body th) {
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: rgba(255, 255, 255, 0.04);
     font-weight: 600;
   }
   :global(.markdown-body blockquote) {
-    border-left: 2px solid var(--primary);
-    padding-left: 0.75rem;
-    margin: 0.375rem 0;
+    border-left: 1.5px solid hsl(var(--primary) / 0.6);
+    padding-left: 0.5rem;
+    margin: 0.25rem 0;
     color: var(--muted-foreground);
     font-style: italic;
   }
   :global(.markdown-body a) {
     color: #38bdf8;
     text-decoration: underline;
-    text-underline-offset: 3px;
+    text-underline-offset: 2px;
   }
   :global(.markdown-body code:not(pre code)) {
-    background-color: rgba(255, 255, 255, 0.1);
-    padding: 0.15rem 0.35rem;
+    background-color: rgba(255, 255, 255, 0.07);
+    padding: 0.1rem 0.3rem;
     border-radius: 0.25rem;
     font-family: monospace;
     font-size: 0.8em;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  :global(.markdown-body hr) {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    margin: 0.625rem 0;
   }
 </style>
