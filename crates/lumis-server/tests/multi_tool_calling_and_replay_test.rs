@@ -253,3 +253,16 @@ async fn test_arbitrary_n_tools_calling_and_replay() {
     assert_eq!(final_asst.content, "Semua 8 data berhasil dihimpun.");
 }
 
+#[test]
+fn test_compress_observation_utf8_char_boundary_safety() {
+    use lumis_server::routes::chat::executor_helpers::compress_observation;
+
+    // Multi-byte smart quotes right at split boundary (bytes 749..752)
+    let prefix = "a".repeat(749);
+    let sample = format!("{}’dan “kutipan” serta emoji 🚀{}", prefix, "b".repeat(750));
+    let compressed = compress_observation(&sample, 1500);
+    assert!(!compressed.is_empty());
+    assert!(compressed.contains("truncated"));
+    assert!(compressed.ends_with(&"b".repeat(100)));
+}
+

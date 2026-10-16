@@ -168,8 +168,8 @@
       await startNewChat();
       return;
     }
-    if (activeSessionId === id && router.path === `/chat/${id}`) return;
-    if (isGenerating) handleStop();
+    if (activeSessionId === id && router.path === `/chat/${id}` && messages.length > 0) return;
+    if (isGenerating) return;
     activeSessionId = id;
     if (typeof window !== "undefined" && window.innerWidth < 768) isMobileDrawerOpen = false;
     errorMessage = null;
@@ -192,27 +192,34 @@
     try {
       const title = customTitle || "Percakapan Baru";
       const newSess = await api.createSession(title, selectedModelId);
-      sessions = [newSess, ...sessions]; activeSessionId = newSess.id;
+      activeSessionId = newSess.id;
+      sessions = [newSess, ...sessions];
       if (typeof window !== "undefined" && window.innerWidth < 768) isMobileDrawerOpen = false;
-      errorMessage = null; await router.navigate(`/chat/${newSess.id}`, true); return newSess;
+      errorMessage = null;
+      await router.navigate(`/chat/${newSess.id}`, true);
+      return newSess;
     } catch (err: unknown) {
-      errorMessage = err instanceof Error ? err.message : "Gagal membuat sesi baru."; return null;
+      errorMessage = err instanceof Error ? err.message : "Gagal membuat sesi baru.";
+      return null;
     }
   }
 
   async function handleSend(text: string, files: AttachedFile[], mode: ChatMode, modelId: string) {
     if (!user) { router.navigate(`/login?redirect=${encodeURIComponent(router.path)}`); return; }
     if (isGenerating) return;
+    isGenerating = true; errorMessage = null;
+    activeAbortController = new AbortController();
 
     let targetSessionId = activeSessionId;
     if (!targetSessionId || targetSessionId === "new") {
       const newSess = await handleCreateSession();
-      if (!newSess) return;
+      if (!newSess) {
+        isGenerating = false;
+        activeAbortController = null;
+        return;
+      }
       targetSessionId = newSess.id;
     }
-
-    isGenerating = true; errorMessage = null;
-    activeAbortController = new AbortController();
 
     // Optimistic UI append for User
     const localUserMsg: Message = { id: "temp_" + Date.now(), session_id: targetSessionId, role: "user", content: text, created_at: new Date().toISOString() };

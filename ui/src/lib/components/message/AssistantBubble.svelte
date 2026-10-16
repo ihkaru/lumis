@@ -62,6 +62,43 @@
     (message.metadata?.research_steps as ResearchStep[]) || []
   );
 
+  let fullCopyText = $derived.by(() => {
+    if (parts.length > 0) {
+      const formattedParts = parts.map((part) => {
+        if (part.type === "text") return parseArtifactsFromContent(part.text).cleanText;
+        if (part.type === "tool_call") {
+          const name = part.tool || "tool";
+          const input = typeof part.args === "string" ? part.args : JSON.stringify(part.args, null, 2);
+          let b = `### Tool Execution: \`${name}\`\n**Input:**\n\`\`\`json\n${input}\n\`\`\``;
+          if (part.error) b += `\n**Error:**\n\`\`\`\n${part.error}\n\`\`\``;
+          else if (part.result !== undefined && part.result !== null) {
+            const out = typeof part.result === "string" ? part.result : JSON.stringify(part.result, null, 2);
+            b += `\n**Output:**\n\`\`\`json\n${out}\n\`\`\``;
+          }
+          return b;
+        }
+        return "";
+      }).filter(Boolean);
+      return formattedParts.join("\n\n");
+    }
+
+    const blocks: string[] = [];
+    if (preContent) blocks.push(preContent);
+    for (const tc of toolCalls) {
+      const name = tc.tool || "tool";
+      const input = typeof tc.args === "string" ? tc.args : JSON.stringify(tc.args, null, 2);
+      let b = `### Tool Execution: \`${name}\`\n**Input:**\n\`\`\`json\n${input}\n\`\`\``;
+      if (tc.error) b += `\n**Error:**\n\`\`\`\n${tc.error}\n\`\`\``;
+      else if (tc.result !== undefined && tc.result !== null) {
+        const out = typeof tc.result === "string" ? tc.result : JSON.stringify(tc.result, null, 2);
+        b += `\n**Output:**\n\`\`\`json\n${out}\n\`\`\``;
+      }
+      blocks.push(b);
+    }
+    if (parsed.cleanText) blocks.push(parsed.cleanText);
+    return blocks.length > 0 ? blocks.join("\n\n") : message.content;
+  });
+
   let zoomModal = $state<{ open: boolean; src: string; alt: string }>({
     open: false,
     src: "",
@@ -185,7 +222,7 @@
 
     <!-- Action Bar -->
     <MessageActions
-      content={message.content}
+      content={fullCopyText}
       role="assistant"
       {onRegenerate}
       {onFork}

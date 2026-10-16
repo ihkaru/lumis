@@ -19,17 +19,14 @@ pub fn get_max_agentic_turns() -> usize {
 
 /// Compresses historical tool observations exceeding character limits to prevent context drift and bloat.
 pub fn compress_observation(text: &str, max_len: usize) -> String {
-    if text.len() <= max_len {
-        text.to_string()
-    } else {
-        let half = max_len / 2;
-        format!(
-            "{}... [truncated {} characters] ...{}",
-            &text[..half],
-            text.len() - max_len,
-            &text[text.len() - half..]
-        )
-    }
+    if text.len() <= max_len { return text.to_string(); }
+    let half = max_len / 2;
+    let mut p_end = half;
+    while p_end > 0 && !text.is_char_boundary(p_end) { p_end -= 1; }
+    let mut s_start = text.len().saturating_sub(half);
+    while s_start < text.len() && !text.is_char_boundary(s_start) { s_start += 1; }
+    if p_end >= s_start { return text.to_string(); }
+    format!("{}... [truncated {} bytes] ...{}", &text[..p_end], s_start.saturating_sub(p_end), &text[s_start..])
 }
 
 /// Heals or infers tool name if empty or omitted by upstream model using common argument signatures.
