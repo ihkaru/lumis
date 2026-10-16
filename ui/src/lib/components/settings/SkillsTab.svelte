@@ -5,6 +5,11 @@
   import X from "lucide-svelte/icons/x";
   import Tag from "lucide-svelte/icons/tag";
   import ShieldCheck from "lucide-svelte/icons/shield-check";
+  import Plus from "lucide-svelte/icons/plus";
+  import Pencil from "lucide-svelte/icons/pencil";
+  import Trash2 from "lucide-svelte/icons/trash-2";
+  import { Button } from "$lib/components/ui/button";
+  import SkillEditorModal from "./SkillEditorModal.svelte";
   import { skillsApi } from "$lib/skills-api";
   import type { SkillSummary } from "$lib/types";
 
@@ -12,6 +17,8 @@
   let skills = $state<SkillSummary[]>([]);
   let isLoading = $state(true);
   let errorMsg = $state<string | null>(null);
+  let isEditorOpen = $state(false);
+  let skillToEdit = $state<SkillSummary | null>(null);
 
   async function loadSkills() {
     isLoading = true;
@@ -44,6 +51,16 @@
     }
   }
 
+  async function handleDelete(skill: SkillSummary) {
+    if (!confirm(`Hapus skill $${skill.name} (${skill.display_title})?`)) return;
+    try {
+      await skillsApi.deleteSkill(skill.id);
+      skills = skills.filter((s) => s.id !== skill.id);
+    } catch (err: any) {
+      errorMsg = err.message || "Gagal menghapus skill";
+    }
+  }
+
   $effect(() => {
     const query = searchQuery;
     const timer = setTimeout(() => {
@@ -65,6 +82,15 @@
         Kelola keahlian agen on-demand (diindeks sub-milidetik FTS5). Panggil langsung di chat dengan tanda <span class="font-mono text-primary font-medium">$nama-skill</span>.
       </p>
     </div>
+    <Button
+      variant="cyan"
+      size="touch"
+      onclick={() => { skillToEdit = null; isEditorOpen = true; }}
+      class="gap-1.5 text-xs font-semibold shrink-0 min-h-[44px] sm:min-h-[36px] px-3.5 cursor-pointer rounded-xl shadow-xs"
+    >
+      <Plus class="size-3.5" />
+      <span>Tambah Skill</span>
+    </Button>
   </div>
 
   <!-- Search Bar -->
@@ -137,8 +163,31 @@
             {/if}
           </div>
 
-          <!-- Toggle Button -->
-          <div class="shrink-0 flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/40">
+          <!-- Actions: Edit, Delete, Toggle -->
+          <div class="shrink-0 flex items-center sm:flex-col sm:items-end justify-between sm:justify-center gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/40">
+            <div class="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onclick={() => { skillToEdit = skill; isEditorOpen = true; }}
+                title="Edit Skill"
+                aria-label="Edit Skill"
+                class="size-7 text-muted-foreground hover:text-foreground cursor-pointer rounded-lg"
+              >
+                <Pencil class="size-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onclick={() => handleDelete(skill)}
+                title="Hapus Skill"
+                aria-label="Hapus Skill"
+                class="size-7 text-muted-foreground hover:text-destructive cursor-pointer rounded-lg"
+              >
+                <Trash2 class="size-3.5" />
+              </Button>
+            </div>
+
             <button
               type="button"
               onclick={() => handleToggle(skill)}
@@ -158,4 +207,12 @@
       {/each}
     </div>
   {/if}
+
+  <!-- Skill Editor Modal -->
+  <SkillEditorModal
+    open={isEditorOpen}
+    {skillToEdit}
+    onClose={() => (isEditorOpen = false)}
+    onSaved={() => loadSkills()}
+  />
 </div>
