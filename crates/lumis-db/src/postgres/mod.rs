@@ -9,6 +9,8 @@ pub mod message;
 pub mod schema;
 pub mod scim;
 pub mod session;
+pub mod skills;
+pub mod skills_mut;
 pub mod task;
 pub mod user;
 
@@ -30,6 +32,7 @@ pub struct PostgresRepository {
 impl PostgresRepository {
     pub async fn new(pool: PgPool) -> Result<Self> {
         schema::run_pg_migrations(&pool).await?;
+        let _ = skills_mut::seed_default_enterprise_skills(&pool, "default", "system").await;
         Ok(Self { pool })
     }
 
@@ -275,5 +278,64 @@ impl ChatRepository for PostgresRepository {
 
     async fn clear_session_tasks(&self, session_id: &str) -> Result<u64> {
         task::clear_session_tasks(&self.pool, session_id).await
+    }
+
+    async fn search_skills_fts(
+        &self,
+        tenant_id: &str,
+        user_id: &str,
+        query: &str,
+        limit: usize,
+    ) -> Result<Vec<lumis_core::models::SkillSearchResult>> {
+        skills::search_skills_fts(&self.pool, tenant_id, user_id, query, limit).await
+    }
+
+    async fn list_skills(
+        &self,
+        tenant_id: &str,
+        user_id: &str,
+        category: Option<&str>,
+        limit: usize,
+        offset: usize,
+    ) -> Result<Vec<lumis_core::models::SkillSummary>> {
+        skills::list_skills(&self.pool, tenant_id, user_id, category, limit, offset).await
+    }
+
+    async fn get_skill_by_id(&self, tenant_id: &str, id: &str) -> Result<Option<lumis_core::models::Skill>> {
+        skills::get_skill_by_id(&self.pool, tenant_id, id).await
+    }
+
+    async fn get_skill_by_name(&self, tenant_id: &str, name: &str) -> Result<Option<lumis_core::models::Skill>> {
+        skills::get_skill_by_name(&self.pool, tenant_id, name).await
+    }
+
+    async fn get_always_apply_skills(&self, tenant_id: &str, user_id: &str) -> Result<Vec<lumis_core::models::Skill>> {
+        skills::get_always_apply_skills(&self.pool, tenant_id, user_id).await
+    }
+
+    async fn create_skill(
+        &self,
+        tenant_id: &str,
+        author_id: &str,
+        input: &lumis_core::models::CreateSkillInput,
+    ) -> Result<lumis_core::models::Skill> {
+        skills_mut::create_skill(&self.pool, tenant_id, author_id, input).await
+    }
+
+    async fn update_skill(
+        &self,
+        tenant_id: &str,
+        id: &str,
+        input: &lumis_core::models::UpdateSkillInput,
+    ) -> Result<lumis_core::models::Skill> {
+        skills_mut::update_skill(&self.pool, tenant_id, id, input).await
+    }
+
+    async fn delete_skill(&self, tenant_id: &str, id: &str) -> Result<bool> {
+        skills_mut::delete_skill(&self.pool, tenant_id, id).await
+    }
+
+    async fn toggle_user_skill(&self, user_id: &str, skill_id: &str, is_enabled: bool) -> Result<()> {
+        skills_mut::toggle_user_skill(&self.pool, user_id, skill_id, is_enabled).await
     }
 }

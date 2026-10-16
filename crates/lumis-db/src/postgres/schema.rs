@@ -226,6 +226,42 @@ pub async fn run_pg_migrations(pool: &PgPool) -> Result<()> {
 
         CREATE INDEX IF NOT EXISTS idx_pg_session_tasks_session ON session_tasks(session_id, order_index);
         CREATE INDEX IF NOT EXISTS idx_pg_session_tasks_status ON session_tasks(session_id, status);
+
+        CREATE TABLE IF NOT EXISTS skills (
+            id VARCHAR(64) PRIMARY KEY,
+            tenant_id VARCHAR(64) NOT NULL,
+            name VARCHAR(64) NOT NULL,
+            display_title VARCHAR(256) NOT NULL,
+            description TEXT NOT NULL,
+            body TEXT NOT NULL,
+            frontmatter JSONB NOT NULL DEFAULT '{}',
+            category VARCHAR(64) NOT NULL DEFAULT 'general',
+            always_apply BOOLEAN NOT NULL DEFAULT FALSE,
+            user_invocable BOOLEAN NOT NULL DEFAULT TRUE,
+            disable_model_invocation BOOLEAN NOT NULL DEFAULT FALSE,
+            allowed_tools JSONB NOT NULL DEFAULT '[]',
+            author_id VARCHAR(64) NOT NULL REFERENCES users(id),
+            version BIGINT NOT NULL DEFAULT 1,
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at TIMESTAMPTZ NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL,
+            CONSTRAINT uq_pg_skill_tenant_name UNIQUE (tenant_id, name)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_pg_skills_tenant_cat ON skills(tenant_id, category, is_active);
+        CREATE INDEX IF NOT EXISTS idx_pg_skills_tenant_always ON skills(tenant_id, always_apply, is_active);
+
+        CREATE TABLE IF NOT EXISTS user_skill_preferences (
+            user_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            skill_id VARCHAR(64) NOT NULL REFERENCES skills(id) ON DELETE CASCADE,
+            is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+            updated_at TIMESTAMPTZ NOT NULL,
+            PRIMARY KEY (user_id, skill_id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_pg_skills_fts ON skills USING gin(
+            to_tsvector('simple', coalesce(name, '') || ' ' || coalesce(display_title, '') || ' ' || coalesce(description, '') || ' ' || coalesce(category, ''))
+        );
         "#,
     )
     .execute(pool)
