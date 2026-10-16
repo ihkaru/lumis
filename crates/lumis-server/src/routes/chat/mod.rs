@@ -4,6 +4,7 @@ pub mod executor_helpers;
 pub mod helpers;
 pub mod messages;
 pub mod sessions;
+pub mod system_prompts;
 pub mod tasks;
 pub mod types;
 

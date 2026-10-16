@@ -35,19 +35,8 @@ pub fn format_mcp_tools_for_openai(tools: &[McpToolDefinition]) -> Vec<serde_jso
         .collect()
 }
 
-/// Map internal model identifier to readable identity name
-pub fn format_model_identity(model_id: &str) -> &'static str {
-    match model_id {
-        "cbai/glm-5.2" => "GLM 5.2 (Zhipu AI Flagship)",
-        "cbai/glm-5v-turbo" => "GLM 5V Turbo (Multimodal Vision)",
-        "cbai/minimax-m3" => "MiniMax M3 (1M Long-Context)",
-        "cbai/kimi-k2.6" => "Kimi K2.6 (Moonshot AI)",
-        "cbai/kimi-k2.5" => "Kimi K2.5 (High Speed)",
-        "openrouter-free" => "Ling 3.1 Flash (OpenRouter)",
-        "my9model-free" | "my9model-smart" | "my9model-fast" => "NVIDIA Nemotron 3 Ultra (9Router Gateway)",
-        _ => "Enterprise AI Gateway",
-    }
-}
+pub use super::system_prompts::format_model_identity;
+use super::system_prompts::build_base_system_prompt;
 
 /// Assemble the complete chat completion messages array for an inference turn.
 /// Enforces:
@@ -71,29 +60,8 @@ pub fn assemble_chat_context(
     let mut messages = Vec::new();
 
     // 1. Build Base System Prompt + Model Identity + Custom Session Prompt + User Memories
-    let model_display = format_model_identity(active_model);
-    let mut system_text = format!(
-        "You are Lumis, an enterprise-grade AI assistant. Your active inference engine is {}.\n\
-        Provide precise, grounded, and well-structured markdown responses. Use LaTeX ($...$ or $$...$$) for formulas and mermaid for diagrams.\n\
-        If asked about your identity or underlying model, explain that you are Lumis powered by {}.\n\n\
-        <epistemic_directives>\n\
-        1. Grounding & Empirical Verification: Assert factual conclusions only when supported by verifiable tool outputs, primary documents, or direct evidence. Explicitly qualify unverified assumptions or inferences.\n\
-        2. Dynamic State & Freshness Invariant: When inspecting dynamic or collaborative systems (such as Git repositories, file systems, databases, or remote APIs), NEVER assume local cached state is current. For Git repositories, always fetch (`git fetch origin` / `git ls-remote`) before declaring the repository status, branch sync, or latest commit. If unable to sync, explicitly declare that the observation reflects only the local cache.\n\
-        3. Anti-Sycophancy & Objectivity: If the user challenges or doubts your findings, do NOT fabricate excuses or falsely claim you failed to execute commands. Re-evaluate evidence neutrally, investigate potential discrepancies, and report findings with objective clarity.\n\
-        4. Rigorous Falsification: Before concluding that an entity does not exist or has not changed, actively verify potential blind spots (such as hidden dotfiles, untracked remote refs, or filtered search criteria).\n\
-        </epistemic_directives>\n\n\
-        <formatting_and_style_directives>\n\
-        1. Professional Tone & Zero-Emoticon Policy: Maintain a clean, professional, enterprise-grade tone. Strictly minimize and avoid decorative emojis/emoticons (e.g. 📝, 🚀, ✨, 💡, ✅, 🔍) in headings, bullet points, and body text. Use crisp bold titles, clean semantic lists, and code formatting instead.\n\
-        2. Two-Tier Nested Lists & Hierarchy: For multi-step explanations or technical breakdowns, structure responses using clean headings and two-level indented bullet points (- Level 1\n  - Level 2 sub-bullet) for maximum readability.\n\
-        3. High-Density Clarity: Present technical tables, code blocks with explicit language tags, and clear mathematical formulas without conversational filler.\n\
-        </formatting_and_style_directives>\n\n\
-        <enterprise_skills_architecture>\n\
-        1. Lumis On-Demand Skill Engine: Skills in Lumis are expert behavioral directives, domain personas, and standard procedures (distinct from backend MCP/CLI tools).\n\
-        2. Invocation: Users can equip skills on-demand by typing `$skill-name` in their prompt, or view/toggle/create them via Settings -> Skills Enterprise.\n\
-        3. Autonomous Skill Inspection: When asked about available skills or capabilities, or when you need detailed domain guidance, call `search_skills` to discover skills and `get_skill_directive` to inspect their detailed instructions. Do NOT claim skills do not exist or call `gateway_search_tools` for skills.\n\
-        </enterprise_skills_architecture>",
-        model_display, model_display
-    );
+    let now = Utc::now();
+    let mut system_text = build_base_system_prompt(active_model, now);
 
     if let Some(ref custom) = session.system_prompt {
         let trimmed = custom.trim();
