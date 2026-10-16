@@ -32,18 +32,27 @@ pub fn compress_observation(text: &str, max_len: usize) -> String {
 pub fn heal_or_infer_tool_name(raw_name: &str, args: &serde_json::Value) -> String {
     let trimmed = raw_name.trim();
     if !trimmed.is_empty() {
+        if trimmed == "get_skill" {
+            return "get_skill_directive".to_string();
+        }
         return trimmed.to_string();
     }
     if args.get("code").is_some() {
         "execute_code".to_string()
     } else if args.get("query").is_some() {
-        "gateway_search_tools".to_string()
+        if args.get("category").is_some() || args.get("limit").is_some() {
+            "search_skills".to_string()
+        } else {
+            "gateway_search_tools".to_string()
+        }
     } else if args.get("goal").is_some() {
         "gateway_plan_tasks".to_string()
     } else if args.get("plan").is_some() {
         "gateway_execute_plan".to_string()
     } else if args.get("ticket_id").is_some() {
         "resolve_approval".to_string()
+    } else if args.get("skill").is_some() || args.get("skill_name").is_some() {
+        "get_skill_directive".to_string()
     } else {
         String::new()
     }

@@ -25,7 +25,9 @@ impl DatabaseFactory {
                 .parse::<sqlx::sqlite::SqliteConnectOptions>()
                 .map_err(|e| LumisError::Database(format!("Invalid SQLite URL: {}", e)))?
                 .create_if_missing(true);
+            let max_conn = if database_url.contains(":memory:") { 1 } else { 10 };
             let pool = sqlx::sqlite::SqlitePoolOptions::new()
+                .max_connections(max_conn)
                 .connect_with(options)
                 .await
                 .map_err(|e| LumisError::Database(format!("SQLite connection failed: {}", e)))?;

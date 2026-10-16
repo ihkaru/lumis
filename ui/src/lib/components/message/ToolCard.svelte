@@ -42,6 +42,20 @@
     return { server: null, tool: toolName };
   });
 
+  function toPascalCase(str: string): string {
+    if (!str) return "";
+    if (str.includes("_") || str.includes("-") || str.includes(" ")) {
+      return str
+        .split(/[_\-\s]+/)
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join("");
+    }
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+
+  let displayToolName = $derived(toPascalCase(parsedInfo.tool));
+
   let formattedArgs = $derived(
     typeof args === "string" ? args : JSON.stringify(args || {}, null, 2)
   );
@@ -83,8 +97,8 @@
         <span class="font-mono text-[11px] text-muted-foreground truncate">{parsedInfo.server}/</span>
       {/if}
 
-      <span class="font-mono text-[11px] font-medium text-foreground truncate">
-        {parsedInfo.tool}
+      <span class="font-mono text-[11px] font-medium text-foreground truncate" title={parsedInfo.tool}>
+        {displayToolName}
       </span>
     </div>
 

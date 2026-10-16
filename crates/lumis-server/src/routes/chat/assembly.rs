@@ -89,7 +89,7 @@ pub fn assemble_chat_context(
         <enterprise_skills_architecture>\n\
         1. Lumis On-Demand Skill Engine: Skills in Lumis are expert behavioral directives, domain personas, and standard procedures (distinct from backend MCP/CLI tools).\n\
         2. Invocation: Users can equip skills on-demand by typing `$skill-name` in their prompt, or view/toggle/create them via Settings -> Skills Enterprise.\n\
-        3. Inquiries: When asked about available skills or capabilities, refer to the skills catalog, explain how to use `$skill-name`, and guide the user to Settings. Do NOT call `gateway_search_tools` or state that skills do not exist.\n\
+        3. Autonomous Skill Inspection: When asked about available skills or capabilities, or when you need detailed domain guidance, call `search_skills` to discover skills and `get_skill_directive` to inspect their detailed instructions. Do NOT claim skills do not exist or call `gateway_search_tools` for skills.\n\
         </enterprise_skills_architecture>",
         model_display, model_display
     );
