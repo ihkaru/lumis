@@ -7,8 +7,8 @@ use serde_json::json;
 use crate::state::AppState;
 use super::assembly::{assemble_chat_context, extract_heuristic_title, format_mcp_tools_for_openai};
 use super::executor_helpers::{
-    check_plan_convergence, compress_observation, get_max_agentic_turns, heal_or_infer_tool_name,
-    parse_text_tool_calls,
+    check_plan_convergence, compress_observation, extract_manual_skill_names,
+    get_max_agentic_turns, heal_or_infer_tool_name, parse_text_tool_calls,
 };
 
 pub fn spawn_chat_completion(
@@ -45,6 +45,20 @@ pub fn spawn_chat_completion(
             None
         };
 
+        let tenant_id = user.tenant_id.as_deref().unwrap_or("default");
+        let always_skills = repo.get_always_apply_skills(tenant_id, &user.id).await.unwrap_or_default();
+        let mut primed_skills = always_skills;
+        let manual_skill_names = extract_manual_skill_names(&prompt);
+        for name in &manual_skill_names {
+            if let Ok(Some(s)) = repo.get_skill_by_name(tenant_id, name).await {
+                if !primed_skills.iter().any(|ps| ps.id == s.id) {
+                    primed_skills.push(s);
+                }
+            }
+        }
+        let fts_skills = repo.search_skills_fts(tenant_id, &user.id, &prompt, 5).await.unwrap_or_default();
+        let active_skill_summaries: Vec<_> = fts_skills.into_iter().map(|r| r.skill).collect();
+
         let mut messages = assemble_chat_context(
             &session,
             &user,
@@ -53,6 +67,8 @@ pub fn spawn_chat_completion(
             &model,
             &user_memories,
             Some(&active_tools),
+            Some(&active_skill_summaries),
+            Some(&primed_skills),
             None,
         );
 
@@ -269,14 +285,24 @@ pub fn spawn_chat_completion(
         }
 
         if !combined_content.is_empty() || !executed_tools.is_empty() {
-            let metadata = if !executed_tools.is_empty() || !message_parts.is_empty() {
-                let mut meta = json!({ "tool_calls": executed_tools, "parts": message_parts });
-                if let Some(txt) = message_parts.first().and_then(|p| p.get("text")).and_then(|t| t.as_str()) {
-                    meta["pre_content"] = json!(txt);
+            let metadata = {
+                let mut meta = if !executed_tools.is_empty() || !message_parts.is_empty() {
+                    let mut m = json!({ "tool_calls": executed_tools, "parts": message_parts });
+                    if let Some(txt) = message_parts.first().and_then(|p| p.get("text")).and_then(|t| t.as_str()) {
+                        m["pre_content"] = json!(txt);
+                    }
+                    m
+                } else {
+                    json!({})
+                };
+                if !manual_skill_names.is_empty() {
+                    meta["manual_skills"] = json!(manual_skill_names);
+                }
+                if !primed_skills.is_empty() {
+                    let names: Vec<_> = primed_skills.iter().map(|s| s.name.clone()).collect();
+                    meta["always_applied_skills"] = json!(names);
                 }
                 Some(meta)
-            } else {
-                None
             };
             let assistant_msg = NewMessage {
                 session_id: sess_id.clone(),

@@ -237,6 +237,34 @@ export interface SessionTask {
   updated_at: string;
 }
 
+export interface Skill {
+  id: string;
+  tenant_id: string;
+  name: string;
+  display_title: string;
+  description: string;
+  body: string;
+  frontmatter: Record<string, unknown>;
+  category: string;
+  always_apply: boolean;
+  user_invocable: boolean;
+  disable_model_invocation: boolean;
+  allowed_tools: string[];
+  author_id: string;
+  version: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
-
-
+export interface SkillSummary {
+  id: string;
+  name: string;
+  display_title: string;
+  description: string;
+  category: string;
+  always_apply: boolean;
+  user_invocable: boolean;
+  is_enabled: boolean;
+  version: number;
+}

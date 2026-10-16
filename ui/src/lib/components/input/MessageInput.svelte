@@ -11,6 +11,8 @@
   import ComposerActionMenu from "./ComposerActionMenu.svelte";
   import AttachmentFileGroup from "./AttachmentFileGroup.svelte";
   import ConvertToFileModal from "./ConvertToFileModal.svelte";
+  import SkillsPopover from "./SkillsPopover.svelte";
+  import type { SkillSummary } from "$lib/types";
   import { Button } from "$lib/components/ui/button";
 
   interface Props {
@@ -42,6 +44,9 @@
   let isAudioModalOpen = $state(false);
   let isActionMenuOpen = $state(false);
   let isConvertModalOpen = $state(false);
+  let isSkillsPopoverOpen = $state(false);
+  let skillQuery = $state("");
+  let skillsPopoverRef: any = null;
   let fileInputRef: HTMLInputElement | null = null;
   let textareaRef: HTMLTextAreaElement | null = null;
 
@@ -51,17 +56,7 @@
     for (const f of rawFiles) {
       const fileId = `file_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
       const previewUrl = f.type.startsWith("image/") ? URL.createObjectURL(f) : undefined;
-      attachedFiles = [
-        ...attachedFiles,
-        {
-          id: fileId,
-          file: f,
-          name: f.name,
-          size: f.size,
-          type: f.type,
-          previewUrl,
-        },
-      ];
+      attachedFiles = [...attachedFiles, { id: fileId, file: f, name: f.name, size: f.size, type: f.type, previewUrl }];
     }
   }
 
@@ -72,9 +67,7 @@
   }
 
   function handleRemoveFileByIndex(idx: number) {
-    if (idx >= 0 && idx < attachedFiles.length) {
-      handleRemoveFile(attachedFiles[idx].id);
-    }
+    if (idx >= 0 && idx < attachedFiles.length) handleRemoveFile(attachedFiles[idx].id);
   }
 
   function handleFileSelect(e: Event) {
@@ -92,22 +85,12 @@
     }
   }
 
-  function handleDragOver(e: DragEvent) {
-    e.preventDefault();
-    isDragOver = true;
-  }
-
-  function handleDragLeave(e: DragEvent) {
-    e.preventDefault();
-    isDragOver = false;
-  }
-
+  function handleDragOver(e: DragEvent) { e.preventDefault(); isDragOver = true; }
+  function handleDragLeave(e: DragEvent) { e.preventDefault(); isDragOver = false; }
   function handleDrop(e: DragEvent) {
     e.preventDefault();
     isDragOver = false;
-    if (e.dataTransfer && e.dataTransfer.files.length > 0) {
-      handleAddFiles(Array.from(e.dataTransfer.files));
-    }
+    if (e.dataTransfer && e.dataTransfer.files.length > 0) handleAddFiles(Array.from(e.dataTransfer.files));
   }
 
   function handleSubmit() {
@@ -120,7 +103,44 @@
     onSend(textToSend, filesToSend, chatMode, selectedModelId);
   }
 
+  function handleInput() {
+    autoResizeTextarea();
+    if (!textareaRef) return;
+    const cursor = textareaRef.selectionStart;
+    const textBefore = promptText.slice(0, cursor);
+    const match = textBefore.match(/(?:^|\s)\$([a-zA-Z0-9_-]*)$/);
+    if (match) {
+      skillQuery = match[1];
+      isSkillsPopoverOpen = true;
+    } else {
+      isSkillsPopoverOpen = false;
+    }
+  }
+
+  function handleSelectSkill(skill: SkillSummary) {
+    if (!textareaRef) return;
+    const cursor = textareaRef.selectionStart;
+    const textBefore = promptText.slice(0, cursor);
+    const textAfter = promptText.slice(cursor);
+    const match = textBefore.match(/(?:^|\s)\$([a-zA-Z0-9_-]*)$/);
+    if (match) {
+      const prefix = textBefore.slice(0, textBefore.length - match[0].length);
+      const space = match[0].startsWith(" ") ? " " : "";
+      promptText = `${prefix}${space}$${skill.name} ${textAfter}`;
+    } else {
+      promptText = `${promptText} $${skill.name} `;
+    }
+    isSkillsPopoverOpen = false;
+    setTimeout(() => {
+      textareaRef?.focus();
+      autoResizeTextarea();
+    }, 10);
+  }
+
   function handleKeyDown(e: KeyboardEvent) {
+    if (isSkillsPopoverOpen && skillsPopoverRef?.handleKeyDown(e)) {
+      return;
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
@@ -191,13 +211,22 @@
     }}
   />
 
+  <!-- Skills Autocomplete Popover -->
+  <SkillsPopover
+    bind:this={skillsPopoverRef}
+    open={isSkillsPopoverOpen}
+    query={skillQuery}
+    onSelect={handleSelectSkill}
+    onClose={() => (isSkillsPopoverOpen = false)}
+  />
+
   <!-- Textarea Area -->
   <div class="p-3">
     <textarea
       bind:this={textareaRef}
       bind:value={promptText}
       onkeydown={handleKeyDown}
-      oninput={autoResizeTextarea}
+      oninput={handleInput}
       onpaste={handlePaste}
       onfocus={() => {
         setTimeout(() => {

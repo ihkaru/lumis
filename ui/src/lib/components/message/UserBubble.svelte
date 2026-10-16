@@ -1,6 +1,7 @@
 <script lang="ts">
   import MessageActions from "./MessageActions.svelte";
   import MessagePagination from "./MessagePagination.svelte";
+  import SkillPills from "./SkillPills.svelte";
   import { formatLocalTime } from "$lib/dateTime";
   import type { Message } from "$lib/types";
 
@@ -21,6 +22,9 @@
     onNextBranch,
     onEditPrompt
   }: Props = $props();
+
+  let manualSkills = $derived((message.metadata?.manual_skills as string[]) || []);
+  let alwaysAppliedSkills = $derived((message.metadata?.always_applied_skills as string[]) || []);
 </script>
 
 <div class="flex justify-end font-sans group" data-role="user" data-message-id={message.id}>
@@ -38,6 +42,8 @@
       <span>{formatLocalTime(message.created_at)}</span>
       <span class="font-medium text-foreground">Anda</span>
     </div>
+
+    <SkillPills {manualSkills} {alwaysAppliedSkills} class="mb-1" />
 
     <div class="px-4 py-2.5 rounded-2xl rounded-tr-sm bg-secondary text-secondary-foreground text-sm leading-relaxed border border-border/60 shadow-xs break-words whitespace-pre-wrap [overflow-wrap:anywhere] transition-colors hover:border-primary/30">
       {message.content}

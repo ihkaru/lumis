@@ -5,10 +5,12 @@
   import ShieldCheck from "lucide-svelte/icons/shield-check";
   import Brain from "lucide-svelte/icons/brain";
   import Wrench from "lucide-svelte/icons/wrench";
+  import Sparkles from "lucide-svelte/icons/sparkles";
   import { Dialog, DialogOverlay, DialogContent, DialogTitle, DialogClose } from "$lib/components/ui/dialog";
   import { Tabs, TabsContent } from "$lib/components/ui/tabs";
   import AccountTab from "./AccountTab.svelte";
   import ThemesTab, { type ThemePalette } from "./ThemesTab.svelte";
+  import SkillsTab from "./SkillsTab.svelte";
   import ProviderKeysTab from "./ProviderKeysTab.svelte";
   import MemoriesTab from "./MemoriesTab.svelte";
   import AdminTab from "./AdminTab.svelte";
@@ -44,6 +46,7 @@
   const tabList = $derived([
     { id: "account", label: "Akun & Profil", icon: UserIcon },
     { id: "themes", label: "Tema & Warna", icon: Palette },
+    { id: "skills", label: "Skills Enterprise", icon: Sparkles },
     { id: "memories", label: "Memori AI", icon: Brain },
     { id: "providers", label: "Provider AI", icon: Server },
     { id: "mcp", label: "Tools & MCP", icon: Wrench },
@@ -102,6 +105,9 @@
           </TabsContent>
           <TabsContent value="themes">
             <ThemesTab {isDark} {palette} {onToggleDark} {onSelectPalette} />
+          </TabsContent>
+          <TabsContent value="skills">
+            <SkillsTab />
           </TabsContent>
           <TabsContent value="memories">
             <MemoriesTab />

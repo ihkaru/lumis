@@ -17,6 +17,7 @@ pub mod models;
 pub mod password;
 pub mod saml;
 pub mod scim;
+pub mod skills;
 pub mod spa;
 pub mod stream;
 
@@ -82,6 +83,16 @@ pub fn create_router(state: AppState) -> Router {
             "/api/user/memories/{id}",
             axum::routing::delete(memory::delete_memory),
         )
+        // Phase 2 Enterprise Skill Engine (FTS5 BM25 Ranked, On-Demand, Scalable to 3000+ Skills)
+        .route("/api/skills", get(skills::list_skills_handler).post(skills::create_skill_handler))
+        .route("/api/skills/search", get(skills::search_skills_autocomplete_handler))
+        .route(
+            "/api/skills/{id}",
+            get(skills::get_skill_handler)
+                .put(skills::update_skill_handler)
+                .delete(skills::delete_skill_handler),
+        )
+        .route("/api/skills/{id}/toggle", axum::routing::post(skills::toggle_skill_handler))
         // Interactive Artifacts & Sandboxed PostMessage IPC (Phase 13)
         .route("/api/artifacts/parse", axum::routing::post(artifact::parse_artifacts))
         .route("/api/artifacts/ipc", axum::routing::post(artifact::handle_artifact_ipc))

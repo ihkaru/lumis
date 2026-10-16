@@ -1,6 +1,6 @@
 use chrono::Utc;
 use lumis_core::models::{
-    ChatMessagePayload, McpToolDefinition, Message, MessageRole, Session, User, UserMemory,
+    ChatMessagePayload, McpToolDefinition, Message, MessageRole, Session, Skill, SkillSummary, User, UserMemory,
 };
 
 pub const DEFAULT_MAX_CONTEXT_TOKENS: usize = 8192;
@@ -62,6 +62,8 @@ pub fn assemble_chat_context(
     active_model: &str,
     user_memories: &[UserMemory],
     available_tools: Option<&[McpToolDefinition]>,
+    active_skills: Option<&[SkillSummary]>,
+    primed_skill_bodies: Option<&[Skill]>,
     max_context_tokens: Option<usize>,
 ) -> Vec<ChatMessagePayload> {
     let budget = max_context_tokens.unwrap_or(DEFAULT_MAX_CONTEXT_TOKENS);
@@ -112,6 +114,33 @@ pub fn assemble_chat_context(
                 system_text.push_str(&format!("- `{}`: {}\n  Parameters: {}\n", t.name, t.description, schema_brief));
             }
             system_text.push_str("\nWhen asked to perform a search, calculation, database query, or API call:\n1. If function calling is supported, call the tool directly.\n2. Otherwise, emit:\n<tool_call>\n{\"name\": \"<tool_name>\", \"arguments\": { ... }}\n</tool_call>\nDo NOT claim you lack tools or cannot execute them when tools are listed above.\n</tools_capability>\n");
+        }
+    }
+
+    if let Some(primed) = primed_skill_bodies {
+        if !primed.is_empty() {
+            system_text.push_str("\n\n<primed_skills>\n");
+            system_text.push_str("The following specialized enterprise skill directives are actively primed for this turn:\n");
+            for s in primed {
+                system_text.push_str(&format!("--- Skill: {} ({}) ---\n{}\n\n", s.name, s.display_title, s.body.trim()));
+            }
+            system_text.push_str("</primed_skills>\n");
+        }
+    }
+
+    if let Some(skills) = active_skills {
+        if !skills.is_empty() {
+            system_text.push_str("\n\n<available_skills>\n");
+            system_text.push_str("You have access to the following on-demand enterprise skills:\n");
+            for s in skills {
+                let desc = if s.description.len() > 250 {
+                    format!("{}...", &s.description[..247])
+                } else {
+                    s.description.clone()
+                };
+                system_text.push_str(&format!("- `{}`: {}\n", s.name, desc));
+            }
+            system_text.push_str("Apply relevant skill directives when the user's task matches the skill description.\n</available_skills>\n");
         }
     }
 

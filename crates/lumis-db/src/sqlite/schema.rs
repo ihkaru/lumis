@@ -229,6 +229,62 @@ pub async fn run_sqlite_migrations(pool: &SqlitePool) -> Result<()> {
 
         CREATE INDEX IF NOT EXISTS idx_session_tasks_session ON session_tasks(session_id, order_index);
         CREATE INDEX IF NOT EXISTS idx_session_tasks_status ON session_tasks(session_id, status);
+
+        CREATE TABLE IF NOT EXISTS skills (
+            id TEXT PRIMARY KEY,
+            tenant_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            display_title TEXT NOT NULL,
+            description TEXT NOT NULL,
+            body TEXT NOT NULL,
+            frontmatter TEXT NOT NULL DEFAULT '{}',
+            category TEXT NOT NULL DEFAULT 'general',
+            always_apply INTEGER NOT NULL DEFAULT 0,
+            user_invocable INTEGER NOT NULL DEFAULT 1,
+            disable_model_invocation INTEGER NOT NULL DEFAULT 0,
+            allowed_tools TEXT NOT NULL DEFAULT '[]',
+            author_id TEXT NOT NULL REFERENCES users(id),
+            version INTEGER NOT NULL DEFAULT 1,
+            is_active INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            CONSTRAINT uq_skill_tenant_name UNIQUE (tenant_id, name)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_skills_tenant_cat ON skills(tenant_id, category, is_active);
+        CREATE INDEX IF NOT EXISTS idx_skills_tenant_always ON skills(tenant_id, always_apply, is_active);
+
+        CREATE TABLE IF NOT EXISTS user_skill_preferences (
+            user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            skill_id TEXT NOT NULL REFERENCES skills(id) ON DELETE CASCADE,
+            is_enabled INTEGER NOT NULL DEFAULT 1,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (user_id, skill_id)
+        );
+
+        CREATE VIRTUAL TABLE IF NOT EXISTS skills_fts USING fts5(
+            skill_id UNINDEXED,
+            name,
+            display_title,
+            description,
+            category,
+            tokenize='unicode61'
+        );
+
+        CREATE TRIGGER IF NOT EXISTS trg_skills_ai AFTER INSERT ON skills BEGIN
+            INSERT INTO skills_fts(skill_id, name, display_title, description, category)
+            VALUES (new.id, new.name, new.display_title, new.description, new.category);
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS trg_skills_ad AFTER DELETE ON skills BEGIN
+            DELETE FROM skills_fts WHERE skill_id = old.id;
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS trg_skills_au AFTER UPDATE ON skills BEGIN
+            DELETE FROM skills_fts WHERE skill_id = old.id;
+            INSERT INTO skills_fts(skill_id, name, display_title, description, category)
+            VALUES (new.id, new.name, new.display_title, new.description, new.category);
+        END;
         "#,
     )
     .execute(pool)
@@ -270,6 +326,9 @@ pub async fn run_sqlite_migrations(pool: &SqlitePool) -> Result<()> {
         WHERE password_hash IS NOT NULL;
         "#
     ).execute(pool).await;
+
+    // Seed default enterprise skills if database is newly initialized
+    let _ = crate::sqlite::skills_mut::seed_default_enterprise_skills(pool, "default", "system-admin").await;
 
     Ok(())
 }

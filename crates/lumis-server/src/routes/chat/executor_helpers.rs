@@ -103,3 +103,21 @@ pub async fn check_plan_convergence(repo: &Arc<dyn ChatRepository>, session_id: 
     }
     false
 }
+
+/// Extracts manually specified skill names ($skill-name) from user prompt.
+pub fn extract_manual_skill_names(prompt: &str) -> Vec<String> {
+    let mut names = Vec::new();
+    for word in prompt.split_whitespace() {
+        if let Some(stripped) = word.strip_prefix('$') {
+            let clean: String = stripped
+                .chars()
+                .filter(|c| c.is_ascii_alphanumeric() || *c == '-')
+                .collect();
+            if !clean.is_empty() && !names.contains(&clean) {
+                names.push(clean);
+            }
+        }
+    }
+    names
+}
+

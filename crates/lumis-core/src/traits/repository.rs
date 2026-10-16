@@ -96,5 +96,65 @@ pub trait ChatRepository: Send + Sync {
     async fn list_session_tasks(&self, session_id: &str) -> Result<Vec<crate::models::SessionTask>>;
     async fn delete_session_task(&self, task_id: &str) -> Result<bool>;
     async fn clear_session_tasks(&self, session_id: &str) -> Result<u64>;
+
+    // Phase 2 Enterprise Skill Engine Operations (On-Demand, FTS5-Indexed)
+    async fn search_skills_fts(
+        &self,
+        _tenant_id: &str,
+        _user_id: &str,
+        _query: &str,
+        _limit: usize,
+    ) -> Result<Vec<crate::models::SkillSearchResult>> {
+        Ok(Vec::new())
+    }
+
+    async fn list_skills(
+        &self,
+        _tenant_id: &str,
+        _user_id: &str,
+        _category: Option<&str>,
+        _limit: usize,
+        _offset: usize,
+    ) -> Result<Vec<crate::models::SkillSummary>> {
+        Ok(Vec::new())
+    }
+
+    async fn get_skill_by_id(&self, _tenant_id: &str, _id: &str) -> Result<Option<crate::models::Skill>> {
+        Ok(None)
+    }
+
+    async fn get_skill_by_name(&self, _tenant_id: &str, _name: &str) -> Result<Option<crate::models::Skill>> {
+        Ok(None)
+    }
+
+    async fn get_always_apply_skills(&self, _tenant_id: &str, _user_id: &str) -> Result<Vec<crate::models::Skill>> {
+        Ok(Vec::new())
+    }
+
+    async fn create_skill(
+        &self,
+        _tenant_id: &str,
+        _author_id: &str,
+        _input: &crate::models::CreateSkillInput,
+    ) -> Result<crate::models::Skill> {
+        Err(crate::error::LumisError::Internal("Not implemented".to_string()))
+    }
+
+    async fn update_skill(
+        &self,
+        _tenant_id: &str,
+        _id: &str,
+        _input: &crate::models::UpdateSkillInput,
+    ) -> Result<crate::models::Skill> {
+        Err(crate::error::LumisError::Internal("Not implemented".to_string()))
+    }
+
+    async fn delete_skill(&self, _tenant_id: &str, _id: &str) -> Result<bool> {
+        Ok(false)
+    }
+
+    async fn toggle_user_skill(&self, _user_id: &str, _skill_id: &str, _is_enabled: bool) -> Result<()> {
+        Ok(())
+    }
 }
 

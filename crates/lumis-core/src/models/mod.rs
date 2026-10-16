@@ -10,6 +10,7 @@ pub mod pagination;
 pub mod prompt_cache;
 pub mod scim;
 pub mod session;
+pub mod skill;
 pub mod task;
 pub mod telemetry;
 pub mod user;
@@ -41,6 +42,9 @@ pub use scim::{ScimEmail, ScimErrorResponse, ScimGroup, ScimListResponse, ScimMe
 pub use session::{NewSession, Session};
 pub use telemetry::{QuotaCheckResult, TokenUsageRecord};
 pub use user::{EnterpriseRole, ModelClearanceTier, User, UserClaims, UserIdentity};
+pub use skill::{
+    is_valid_skill_name, CreateSkillInput, Skill, SkillSearchResult, SkillSummary, UpdateSkillInput,
+};
 
 
 
