@@ -101,6 +101,30 @@
     return false;
   }
 
+  function pushMarkdownOrInteractiveHtml(text: string, acc: Block[]) {
+    const rawAppRegex = /(<(?:div|section|main|article|html|!DOCTYPE)\b[\s\S]*?<script\b[\s\S]*?<\/[sS]cript\s*>\s*(?:<\/(?:div|section|main|article|html)>)?)/gi;
+    let lastIdx = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = rawAppRegex.exec(text)) !== null) {
+      if (match.index > lastIdx) {
+        const pre = text.slice(lastIdx, match.index);
+        if (pre.trim()) acc.push({ type: "markdown", content: pre });
+      }
+      acc.push({
+        type: "code",
+        lang: "html:preview",
+        content: match[1],
+      });
+      lastIdx = match.index + match[0].length;
+    }
+
+    if (lastIdx < text.length) {
+      const rest = text.slice(lastIdx);
+      if (rest.trim()) acc.push({ type: "markdown", content: rest });
+    }
+  }
+
   function processMarkdownAndCode(raw: string, acc: Block[]) {
     const fenceRegex = /```([a-zA-Z0-9_:-]*)[ \t]*\n([\s\S]*?)```/g;
     let lIdx = 0;
@@ -109,7 +133,7 @@
     while ((fMatch = fenceRegex.exec(raw)) !== null) {
       if (fMatch.index > lIdx) {
         const mdText = raw.slice(lIdx, fMatch.index);
-        if (mdText.trim()) acc.push({ type: "markdown", content: mdText });
+        if (mdText.trim()) pushMarkdownOrInteractiveHtml(mdText, acc);
       }
       acc.push({
         type: "code",
@@ -129,7 +153,7 @@
           content: unclosedMatch[2] || "",
         });
       } else if (remaining.trim()) {
-        acc.push({ type: "markdown", content: remaining });
+        pushMarkdownOrInteractiveHtml(remaining, acc);
       }
     }
   }
