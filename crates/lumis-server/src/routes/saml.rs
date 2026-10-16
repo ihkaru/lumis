@@ -41,30 +41,32 @@ pub struct AcsFormPayload {
 fn get_idp_sso_url() -> String {
     env::var("SAML_SSO_URL")
         .or_else(|_| env::var("RIDM_BPS_SAML_SSO_URL"))
-        .unwrap_or_else(|_| "https://sso.enterprise.internal/saml/sso".to_string())
+        .unwrap_or_else(|_| "https://auth.dvlpid.my.id/t/bps/saml/sso".to_string())
 }
 
 fn get_idp_metadata_url() -> String {
     env::var("SAML_METADATA_URL")
         .or_else(|_| env::var("RIDM_BPS_SAML_METADATA_URL"))
-        .unwrap_or_else(|_| "https://sso.enterprise.internal/saml/metadata".to_string())
+        .unwrap_or_else(|_| "https://auth.dvlpid.my.id/t/bps/saml/metadata".to_string())
 }
 
 fn get_sp_entity_id() -> String {
     env::var("SAML_SP_ENTITY_ID")
-        .unwrap_or_else(|_| "http://localhost:8080/saml/metadata".to_string())
+        .or_else(|_| env::var("APP_URL").map(|u| format!("{}/saml/metadata", u.trim_end_matches('/'))))
+        .unwrap_or_else(|_| "https://chat.dvlpid.my.id/saml/metadata".to_string())
 }
 
 fn get_sp_acs_url() -> String {
     env::var("SAML_SP_ACS_URL")
-        .unwrap_or_else(|_| "http://localhost:8080/api/auth/saml/acs".to_string())
+        .or_else(|_| env::var("APP_URL").map(|u| format!("{}/api/auth/saml/acs", u.trim_end_matches('/'))))
+        .unwrap_or_else(|_| "https://chat.dvlpid.my.id/api/auth/saml/acs".to_string())
 }
 
 pub async fn saml_config() -> impl IntoResponse {
     let resp = SamlConfigResponse {
-        provider: env::var("SAML_IDP_PROVIDER_NAME").unwrap_or_else(|_| "Enterprise_SAML".to_string()),
-        tenant: env::var("SAML_TENANT").unwrap_or_else(|_| "default".to_string()),
-        idp_entity_id: env::var("SAML_IDP_ENTITY_ID").unwrap_or_else(|_| "https://sso.enterprise.internal".to_string()),
+        provider: env::var("SAML_IDP_PROVIDER_NAME").unwrap_or_else(|_| "rIDM BPS SSO".to_string()),
+        tenant: env::var("SAML_TENANT").unwrap_or_else(|_| "bps".to_string()),
+        idp_entity_id: env::var("SAML_IDP_ENTITY_ID").unwrap_or_else(|_| "https://auth.dvlpid.my.id/t/bps".to_string()),
         idp_sso_url: get_idp_sso_url(),
         idp_metadata_url: get_idp_metadata_url(),
         sp_entity_id: get_sp_entity_id(),
@@ -179,11 +181,23 @@ pub async fn saml_acs(
         }
     };
 
-    let subject = extract_attr_val(&saml_xml, "nip")
-        .or_else(|| extract_tag(&saml_xml, "NameID"))
-        .or_else(|| extract_tag(&saml_xml, "nameid"))
-        .or_else(|| extract_attr_val(&saml_xml, "email"))
+    let name_id = extract_tag(&saml_xml, "NameID").or_else(|| extract_tag(&saml_xml, "nameid"));
+    let nip = extract_attr_val(&saml_xml, "nip");
+    let email = extract_attr_val(&saml_xml, "email").or_else(|| {
+        if name_id.as_ref().is_some_and(|s| s.contains('@')) {
+            name_id.clone()
+        } else {
+            None
+        }
+    });
+    let preferred_username = extract_attr_val(&saml_xml, "panggilan")
+        .or_else(|| extract_attr_val(&saml_xml, "name"))
+        .or_else(|| extract_attr_val(&saml_xml, "username"))
+        .or_else(|| name_id.clone())
+        .or_else(|| nip.clone())
         .unwrap_or_else(|| "saml_user".to_string());
+
+    let subject = nip.or(name_id).unwrap_or_else(|| preferred_username.clone());
 
     let role_raw = extract_attr_val(&saml_xml, "Role")
         .or_else(|| extract_attr_val(&saml_xml, "groups"))
@@ -197,7 +211,16 @@ pub async fn saml_acs(
         EnterpriseRole::Member
     };
 
-    let user = match crate::routes::chat::helpers::ensure_federated_user(&state, "saml", &subject, &subject, role, None).await {
+    let user = match crate::routes::chat::helpers::ensure_federated_user(
+        &state,
+        "saml",
+        &subject,
+        &preferred_username,
+        role,
+        email,
+    )
+    .await
+    {
         Ok(u) => u,
         Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": e }))).into_response(),
     };

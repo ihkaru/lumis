@@ -113,6 +113,8 @@ async fn test_multi_turn_context_assembly_order_and_system_prompt() {
         &user_memories,
         None,
         None,
+        None,
+        None,
     );
 
     // Assert system prompt at index 0 contains base, custom session instructions, and user memories
@@ -186,7 +188,7 @@ async fn test_sliding_window_context_truncation_budget() {
         });
     }
 
-    // Set a tight budget (650 tokens, fitting system prompt ~400 tokens + 1-2 recent messages)
+    // Set a tight budget (1100 tokens, fitting system prompt ~850 tokens + 1-2 recent messages)
     let assembled = assemble_chat_context(
         &session,
         &user,
@@ -195,7 +197,9 @@ async fn test_sliding_window_context_truncation_budget() {
         &session.model_id,
         &[],
         None,
-        Some(650),
+        None,
+        None,
+        Some(1100),
     );
 
     // Oldest messages should be pruned
