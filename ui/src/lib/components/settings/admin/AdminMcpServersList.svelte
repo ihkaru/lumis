@@ -36,6 +36,7 @@
   let activeDetailsServer = $state<McpServerItem | null>(null);
   let serverTools = $state<McpToolItem[]>([]);
   let isLoadingTools = $state(false);
+  let syncingServerId = $state<string | null>(null);
 
   async function loadServers() {
     isLoading = true;
@@ -47,6 +48,25 @@
       errorMessage = e instanceof Error ? e.message : "Gagal memuat server MCP";
     } finally {
       isLoading = false;
+    }
+  }
+
+  async function handleSyncServer(srv: McpServerItem) {
+    if (syncingServerId) return;
+    syncingServerId = srv.id;
+    errorMessage = null;
+    successMessage = null;
+    try {
+      const res = await mcpApi.syncServer(srv.id);
+      successMessage = `Berhasil menyinkronkan ${res.tools_count} tool dari server "${srv.display_title}".`;
+      await loadServers();
+      if (activeDetailsServer?.id === srv.id) {
+        await viewServerDetails(srv);
+      }
+    } catch (e) {
+      errorMessage = e instanceof Error ? e.message : "Gagal menyinkronkan server";
+    } finally {
+      syncingServerId = null;
     }
   }
 
@@ -181,6 +201,19 @@
               </div>
             </div>
             <div class="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+              {#if canManage}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onclick={() => handleSyncServer(srv)}
+                  disabled={syncingServerId === srv.id}
+                  class="h-8 gap-1 text-[11px] min-h-[44px] sm:min-h-[32px] hover:text-primary"
+                  title="Sinkronkan tool terbaru dari endpoint server MCP"
+                >
+                  <RefreshCw class="h-3 w-3 {syncingServerId === srv.id ? 'animate-spin text-primary' : ''}" />
+                  <span>{syncingServerId === srv.id ? 'Sinkron...' : 'Sinkron'}</span>
+                </Button>
+              {/if}
               <Button variant="ghost" size="sm" onclick={() => viewServerDetails(srv)} class="h-8 gap-1 text-[11px] min-h-[44px] sm:min-h-[32px]">
                 <Eye class="h-3.5 w-3.5" />
                 <span>Detail</span>
@@ -237,7 +270,21 @@
         </div>
 
         <div class="space-y-2">
-          <div class="font-semibold text-xs text-foreground">Katalog Tool Terdaftar ({serverTools.length})</div>
+          <div class="flex items-center justify-between">
+            <div class="font-semibold text-xs text-foreground">Katalog Tool Terdaftar ({serverTools.length})</div>
+            {#if canManage && activeDetailsServer}
+              <Button
+                variant="outline"
+                size="sm"
+                onclick={() => handleSyncServer(activeDetailsServer!)}
+                disabled={syncingServerId === activeDetailsServer.id}
+                class="h-7 text-[10px] gap-1 px-2 min-h-[44px] sm:min-h-[28px]"
+              >
+                <RefreshCw class="h-2.5 w-2.5 {syncingServerId === activeDetailsServer.id ? 'animate-spin' : ''}" />
+                <span>Sinkronkan Ulang</span>
+              </Button>
+            {/if}
+          </div>
           {#if isLoadingTools}
             <div class="flex items-center justify-center p-6 text-muted-foreground gap-2">
               <Loader2 class="h-4 w-4 animate-spin text-primary" />

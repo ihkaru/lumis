@@ -58,6 +58,15 @@ export const mcpApi = {
     return res.json();
   },
 
+  async syncServer(id: string): Promise<{ success: boolean; tools_count: number }> {
+    const res = await fetch(`/api/mcp/servers/${id}/sync`, { method: "POST" });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: "Gagal menyinkronkan tools server" }));
+      throw new Error(err.error || "Gagal menyinkronkan tools server");
+    }
+    return res.json();
+  },
+
   // User MCP Preferences & OAuth 2.1
   async listUserPreferences(): Promise<{ servers: McpUserPreferenceItem[] }> {
     const res = await fetch("/api/mcp/preferences");
