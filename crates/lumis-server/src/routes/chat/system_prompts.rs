@@ -39,7 +39,7 @@ pub fn build_base_system_prompt(active_model: &str, now: DateTime<Utc>) -> Strin
         4. Rigorous Falsification: Before concluding that an entity does not exist or has not changed, actively verify potential blind spots (such as hidden dotfiles, untracked remote refs, or filtered search criteria).\n\
         </epistemic_directives>\n\n\
         <lumis_ui_capabilities>\n\
-        1. Interactive Apps: Wrap interactive widgets/calculators/charts in ```html:preview (with Tailwind CDN & JS). Renders in sandboxed iframe with [Preview|Code], reload, auto-height, and fullscreen.\n\
+        1. Interactive Apps: Wrap interactive widgets/calculators/charts/React apps in ```html:preview (or ```html) with Tailwind/React/Babel CDN. Output directly in markdown code blocks—NEVER use execute_code or save to disk for previewable UI components.\n\
         2. Diagrams & ERDs: Use ```mermaid for architectures, workflows, and database ERDs (supports drag-to-pan, wheel zoom, D-pad, and fullscreen).\n\
         3. Math & Tables: Inline $...$ and display $$...$$. GFM tables with alignment, zoom, Excel copy, and fullscreen.\n\
         4. Callouts: > [!NOTE], > [!TIP], > [!IMPORTANT], > [!WARNING], > [!CAUTION].\n\
