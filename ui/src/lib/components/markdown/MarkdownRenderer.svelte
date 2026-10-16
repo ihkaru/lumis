@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { marked } from "marked";
+  import { Marked } from "marked";
+  import markedFootnote from "marked-footnote";
+  import markedKatex from "marked-katex-extension";
   import DOMPurify from "dompurify";
   import CodeBlock from "./CodeBlock.svelte";
-  import LatexRenderer from "./LatexRenderer.svelte";
   import MermaidRenderer from "./MermaidRenderer.svelte";
   import ReasoningBox from "../message/ReasoningBox.svelte";
   import TableBlock from "./TableBlock.svelte";
@@ -15,17 +16,52 @@
   let { content = "", isStreaming = false }: Props = $props();
 
   interface Block {
-    type: "think" | "code" | "math_block" | "markdown";
+    type: "think" | "code" | "markdown";
     content: string;
     lang?: string;
   }
 
-  // Parse structured blocks from content
+  const markedParser = new Marked();
+  markedParser.use(markedFootnote());
+  markedParser.use(markedKatex({
+    throwOnError: false,
+    nonStandard: true,
+  }));
+  const alertIcons: Record<string, string> = {
+    NOTE: `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>`,
+    TIP: `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M12 2a7 7 0 0 0-7 7c0 2.5 1.5 4.5 3 6h8c1.5-1.5 3-3.5 3-6a7 7 0 0 0-7-7z"></path></svg>`,
+    IMPORTANT: `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`,
+    WARNING: `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`,
+    CAUTION: `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`
+  };
+
+  markedParser.use({
+    renderer: {
+      blockquote(token) {
+        const text = token.text || "";
+        const match = text.match(/^\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\](?:\s*\n|\s*)([\s\S]*)$/i);
+        if (match) {
+          const type = match[1].toUpperCase();
+          const title = type.charAt(0) + type.slice(1).toLowerCase();
+          const icon = alertIcons[type] || "";
+          const clonedTokens = JSON.parse(JSON.stringify(token.tokens || []));
+          if (clonedTokens[0]?.type === "paragraph" && clonedTokens[0]?.tokens?.[0]?.type === "text") {
+            clonedTokens[0].tokens[0].text = clonedTokens[0].tokens[0].text.replace(/^\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\](?:\s*\n|\s*)/i, "");
+            clonedTokens[0].text = clonedTokens[0].text.replace(/^\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\](?:\s*\n|\s*)/i, "");
+          }
+          const body = (this as any).parser.parse(clonedTokens);
+          return `<div class="markdown-alert markdown-alert-${type.toLowerCase()}"><div class="markdown-alert-header"><span class="markdown-alert-title">${icon}<span>${title}</span></span></div><div class="markdown-alert-body">${body}</div></div>\n`;
+        }
+        return `<blockquote>${(this as any).parser.parse(token.tokens || [])}</blockquote>\n`;
+      }
+    }
+  });
+
+  // Parse structured blocks from content (think, code fences, markdown)
   let parsedBlocks = $derived.by(() => {
     const blocks: Block[] = [];
     let text = content;
 
-    // 1. Extract <think> blocks
     const thinkRegex = /<think>([\s\S]*?)(?:<\/think>|$)/gi;
     let lastIndex = 0;
     let match: RegExpExecArray | null;
@@ -52,7 +88,6 @@
   });
 
   function processMarkdownAndCode(raw: string, acc: Block[]) {
-    // Extract code fences ```lang ... ```
     const fenceRegex = /```([a-zA-Z0-9_-]*)[ \t]*\n([\s\S]*?)```/g;
     let lIdx = 0;
     let fMatch: RegExpExecArray | null;
@@ -60,7 +95,7 @@
     while ((fMatch = fenceRegex.exec(raw)) !== null) {
       if (fMatch.index > lIdx) {
         const mdText = raw.slice(lIdx, fMatch.index);
-        if (mdText.trim()) processMathBlocks(mdText, acc);
+        if (mdText.trim()) acc.push({ type: "markdown", content: mdText });
       }
       acc.push({
         type: "code",
@@ -80,32 +115,8 @@
           content: unclosedMatch[2] || "",
         });
       } else if (remaining.trim()) {
-        processMathBlocks(remaining, acc);
+        acc.push({ type: "markdown", content: remaining });
       }
-    }
-  }
-
-  function processMathBlocks(raw: string, acc: Block[]) {
-    // Extract block math $$ ... $$
-    const mathRegex = /\$\$([\s\S]*?)\$\$/g;
-    let idx = 0;
-    let mMatch: RegExpExecArray | null;
-
-    while ((mMatch = mathRegex.exec(raw)) !== null) {
-      if (mMatch.index > idx) {
-        const t = raw.slice(idx, mMatch.index);
-        if (t.trim()) acc.push({ type: "markdown", content: t });
-      }
-      acc.push({
-        type: "math_block",
-        content: mMatch[1] || "",
-      });
-      idx = mMatch.index + mMatch[0].length;
-    }
-
-    if (idx < raw.length) {
-      const rem = raw.slice(idx);
-      if (rem.trim()) acc.push({ type: "markdown", content: rem });
     }
   }
 
@@ -123,9 +134,7 @@
     while ((match = tableRegex.exec(html)) !== null) {
       if (match.index > lastIdx) {
         const text = html.slice(lastIdx, match.index);
-        if (text.trim()) {
-          segments.push({ type: "html", content: text });
-        }
+        if (text.trim()) segments.push({ type: "html", content: text });
       }
       segments.push({ type: "table", content: match[0] });
       lastIdx = match.index + match[0].length;
@@ -133,9 +142,7 @@
 
     if (lastIdx < html.length) {
       const rest = html.slice(lastIdx);
-      if (rest.trim()) {
-        segments.push({ type: "html", content: rest });
-      }
+      if (rest.trim()) segments.push({ type: "html", content: rest });
     }
 
     return segments.length > 0 ? segments : [{ type: "html", content: html }];
@@ -143,15 +150,26 @@
 
   function renderMarkdownHtml(mdText: string): string {
     try {
-      const raw = marked.parse(mdText, {
+      const raw = markedParser.parse(mdText, {
         async: false,
         gfm: true,
         breaks: true,
       }) as string;
       if (typeof window !== "undefined") {
         return DOMPurify.sanitize(raw, {
-          USE_PROFILES: { html: true },
-          FORBID_TAGS: ["script", "style"],
+          USE_PROFILES: { html: true, mathMl: true, svg: true },
+          ADD_TAGS: ["annotation", "semantics", "span", "div", "section"],
+          ADD_ATTR: [
+            "data-footnote-ref",
+            "data-footnote-backref",
+            "data-footnotes",
+            "aria-label",
+            "aria-hidden",
+            "align",
+            "target",
+            "style"
+          ],
+          FORBID_TAGS: ["script", "iframe"],
           FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover", "onfocus", "onblur"],
         });
       }
@@ -172,8 +190,6 @@
       {:else}
         <CodeBlock code={block.content} lang={block.lang} />
       {/if}
-    {:else if block.type === "math_block"}
-      <LatexRenderer math={block.content} displayMode={true} />
     {:else}
       {#each splitHtmlTables(renderMarkdownHtml(block.content)) as segment}
         {#if segment.type === "table"}
@@ -187,128 +203,3 @@
     {/if}
   {/each}
 </div>
-
-<style>
-  :global(.markdown-body p) {
-    margin-top: 0.375rem;
-    margin-bottom: 0.375rem;
-    line-height: 1.55;
-    color: var(--foreground, #e2e8f0);
-  }
-  :global(.markdown-body p:first-child) {
-    margin-top: 0;
-  }
-  :global(.markdown-body p:last-child) {
-    margin-bottom: 0;
-  }
-  :global(.markdown-body h1) {
-    font-size: 1.15rem;
-    font-weight: 600;
-    letter-spacing: -0.015em;
-    margin-top: 0.875rem;
-    margin-bottom: 0.375rem;
-    color: var(--foreground, #ffffff);
-  }
-  :global(.markdown-body h2) {
-    font-size: 1.05rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    margin-top: 0.75rem;
-    margin-bottom: 0.25rem;
-    color: var(--foreground, #ffffff);
-  }
-  :global(.markdown-body h3) {
-    font-size: 0.95rem;
-    font-weight: 600;
-    letter-spacing: -0.005em;
-    margin-top: 0.625rem;
-    margin-bottom: 0.2rem;
-    color: var(--foreground, #ffffff);
-  }
-  :global(.markdown-body ul) {
-    list-style-type: disc !important;
-    padding-left: 1.15rem !important;
-    margin-top: 0.25rem;
-    margin-bottom: 0.25rem;
-  }
-  :global(.markdown-body ol) {
-    list-style-type: decimal !important;
-    padding-left: 1.15rem !important;
-    margin-top: 0.25rem;
-    margin-bottom: 0.25rem;
-  }
-  :global(.markdown-body li) {
-    margin-top: 0.125rem;
-    margin-bottom: 0.125rem;
-    line-height: 1.5;
-  }
-  :global(.markdown-body li > p) {
-    margin-top: 0;
-    margin-bottom: 0;
-    display: inline;
-  }
-  :global(.markdown-body ul ul) {
-    list-style-type: circle !important;
-    padding-left: 1.15rem !important;
-    margin-top: 0.15rem;
-    margin-bottom: 0.15rem;
-  }
-  :global(.markdown-body ol ol) {
-    list-style-type: lower-alpha !important;
-    padding-left: 1.15rem !important;
-    margin-top: 0.15rem;
-    margin-bottom: 0.15rem;
-  }
-  :global(.markdown-body ul ol),
-  :global(.markdown-body ol ul) {
-    padding-left: 1.15rem !important;
-    margin-top: 0.15rem;
-    margin-bottom: 0.15rem;
-  }
-  :global(.markdown-body strong) {
-    font-weight: 600;
-    color: var(--foreground, #ffffff);
-  }
-  :global(.markdown-body table) {
-    width: 100%;
-    margin-top: 0.5rem;
-    margin-bottom: 0.5rem;
-    border-collapse: collapse;
-    font-size: 0.8125rem;
-  }
-  :global(.markdown-body th),
-  :global(.markdown-body td) {
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 0.3rem 0.55rem;
-    text-align: left;
-  }
-  :global(.markdown-body th) {
-    background-color: rgba(255, 255, 255, 0.04);
-    font-weight: 600;
-  }
-  :global(.markdown-body blockquote) {
-    border-left: 1.5px solid hsl(var(--primary) / 0.6);
-    padding-left: 0.5rem;
-    margin: 0.25rem 0;
-    color: var(--muted-foreground);
-    font-style: italic;
-  }
-  :global(.markdown-body a) {
-    color: #38bdf8;
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
-  :global(.markdown-body code:not(pre code)) {
-    background-color: rgba(255, 255, 255, 0.07);
-    padding: 0.1rem 0.3rem;
-    border-radius: 0.25rem;
-    font-family: monospace;
-    font-size: 0.8em;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-  }
-  :global(.markdown-body hr) {
-    border: none;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-    margin: 0.625rem 0;
-  }
-</style>

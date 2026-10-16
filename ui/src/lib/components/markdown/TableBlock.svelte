@@ -84,7 +84,13 @@
       style="font-size: {(zoomLevel / 100) * 0.8125}rem"
     >
       <div class="table-content min-w-full">
-        {@html typeof window !== "undefined" ? DOMPurify.sanitize(html) : html}
+        {@html typeof window !== "undefined"
+          ? DOMPurify.sanitize(html, {
+              USE_PROFILES: { html: true, mathMl: true, svg: true },
+              ADD_TAGS: ["annotation", "semantics", "span", "div"],
+              ADD_ATTR: ["align", "style", "aria-hidden", "viewBox", "class"],
+            })
+          : html}
       </div>
     </div>
   </div>
@@ -160,23 +166,35 @@
     margin-top: 0.25rem;
     margin-bottom: 0.25rem;
   }
+  :global(.table-content th[align="center"]),
+  :global(.table-content td[align="center"]) {
+    text-align: center !important;
+  }
+  :global(.table-content th[align="right"]),
+  :global(.table-content td[align="right"]) {
+    text-align: right !important;
+  }
+  :global(.table-content th[align="left"]),
+  :global(.table-content td[align="left"]) {
+    text-align: left !important;
+  }
   :global(.table-content th),
   :global(.table-content td) {
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid hsl(var(--border) / 0.8);
     padding: 0.35rem 0.65rem;
     text-align: left;
     white-space: normal;
     min-width: 80px;
   }
   :global(.table-content th) {
-    background-color: rgba(255, 255, 255, 0.04);
+    background-color: hsl(var(--muted) / 0.7);
     font-weight: 600;
-    color: var(--foreground, #ffffff);
+    color: var(--foreground);
   }
   :global(.table-content tr:nth-child(even)) {
-    background-color: rgba(255, 255, 255, 0.02);
+    background-color: hsl(var(--muted) / 0.25);
   }
   :global(.table-content tr:hover) {
-    background-color: rgba(255, 255, 255, 0.04);
+    background-color: hsl(var(--muted) / 0.45);
   }
 </style>

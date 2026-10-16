@@ -1,0 +1,328 @@
+/* Markdown typography & custom elements for Lumis UI */
+
+.markdown-body {
+  color: hsl(var(--foreground));
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.markdown-body p {
+  margin-top: 0.4rem;
+  margin-bottom: 0.4rem;
+  line-height: 1.55;
+  color: var(--foreground, #e2e8f0);
+}
+
+.markdown-body p:first-child {
+  margin-top: 0;
+}
+
+.markdown-body p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body h1 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: hsl(var(--foreground));
+}
+
+.markdown-body h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-top: 0.85rem;
+  margin-bottom: 0.35rem;
+  color: hsl(var(--foreground));
+}
+
+.markdown-body h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  margin-top: 0.75rem;
+  margin-bottom: 0.25rem;
+  color: hsl(var(--foreground));
+}
+
+.markdown-body ul {
+  list-style-type: disc !important;
+  padding-left: 1.25rem !important;
+  margin-top: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.markdown-body ol {
+  list-style-type: decimal !important;
+  padding-left: 1.25rem !important;
+  margin-top: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.markdown-body li {
+  margin-top: 0.15rem;
+  margin-bottom: 0.15rem;
+  line-height: 1.5;
+}
+
+.markdown-body li > p {
+  margin-top: 0;
+  margin-bottom: 0;
+  display: inline;
+}
+
+.markdown-body ul ul {
+  list-style-type: circle !important;
+  padding-left: 1.15rem !important;
+  margin-top: 0.15rem;
+  margin-bottom: 0.15rem;
+}
+
+.markdown-body ol ol {
+  list-style-type: lower-alpha !important;
+  padding-left: 1.15rem !important;
+  margin-top: 0.15rem;
+  margin-bottom: 0.15rem;
+}
+
+.markdown-body ul ol,
+.markdown-body ol ul {
+  padding-left: 1.15rem !important;
+  margin-top: 0.15rem;
+  margin-bottom: 0.15rem;
+}
+
+.markdown-body strong {
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.markdown-body blockquote {
+  border-left: 3px solid hsl(var(--primary) / 0.6);
+  padding: 0.25rem 0.75rem;
+  margin: 0.5rem 0;
+  color: hsl(var(--muted-foreground));
+  background: hsl(var(--muted) / 0.15);
+  border-radius: 0 0.375rem 0.375rem 0;
+  font-style: italic;
+}
+
+.markdown-body a {
+  color: #38bdf8;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.15s ease;
+}
+
+.markdown-body a:hover {
+  color: #7dd3fc;
+}
+
+/* Inline code snippet */
+.markdown-body code:not(pre code) {
+  background-color: hsl(var(--muted) / 0.5);
+  padding: 0.125rem 0.35rem;
+  border-radius: 0.25rem;
+  font-family: var(--font-mono, "Google Sans Code", monospace);
+  font-size: 0.825em;
+  border: 1px solid hsl(var(--border) / 0.6);
+  color: hsl(var(--foreground));
+}
+
+/* Indented code blocks (4 spaces) & unstyled <pre> */
+.markdown-body pre {
+  background-color: hsl(var(--card) / 0.95);
+  border: 1px solid hsl(var(--border) / 0.8);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  margin: 0.6rem 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.markdown-body pre code {
+  background: transparent !important;
+  padding: 0 !important;
+  border: none !important;
+  font-family: var(--font-mono, "Google Sans Code", monospace);
+  color: hsl(var(--foreground));
+  font-size: inherit;
+}
+
+.markdown-body hr {
+  border: none;
+  border-top: 1px solid hsl(var(--border) / 0.7);
+  margin: 0.875rem 0;
+}
+
+/* Tables fallback inside markdown-body */
+.markdown-body table {
+  width: 100%;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.markdown-body th,
+.markdown-body td {
+  border: 1px solid hsl(var(--border) / 0.7);
+  padding: 0.4rem 0.65rem;
+}
+
+.markdown-body th {
+  background-color: hsl(var(--muted) / 0.6);
+  font-weight: 600;
+}
+
+/* KaTeX Mathematics Styling */
+.markdown-body .katex-display {
+  display: block;
+  margin: 0.75rem 0;
+  text-align: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.5rem 0.25rem;
+  scrollbar-width: thin;
+}
+
+.markdown-body .katex {
+  font-size: 1.05em;
+  text-rendering: auto;
+  color: hsl(var(--foreground));
+}
+
+.markdown-body .katex-display > .katex {
+  display: inline-block;
+  white-space: nowrap;
+  text-align: initial;
+}
+
+/* Footnotes Styling */
+.markdown-body .footnotes,
+.markdown-body section[data-footnotes] {
+  border-top: 1px solid hsl(var(--border) / 0.8);
+  margin-top: 1.5rem;
+  padding-top: 0.75rem;
+  font-size: 0.8125rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.markdown-body .footnotes ol,
+.markdown-body section[data-footnotes] ol {
+  padding-left: 1.25rem !important;
+  margin-top: 0.5rem;
+}
+
+.markdown-body .footnotes li,
+.markdown-body section[data-footnotes] li {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.markdown-body a[data-footnote-ref] {
+  font-size: 0.75em;
+  font-weight: 600;
+  vertical-align: super;
+  text-decoration: none;
+  padding: 0 0.15rem;
+  color: hsl(var(--primary));
+}
+
+.markdown-body a[data-footnote-ref]:hover {
+  text-decoration: underline;
+}
+
+.markdown-body a[data-footnote-backref] {
+  font-size: 0.8em;
+  text-decoration: none;
+  margin-left: 0.35rem;
+  color: hsl(var(--primary) / 0.8);
+}
+
+.markdown-body a[data-footnote-backref]:hover {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+}
+
+/* GitHub Style Alerts */
+.markdown-alert {
+  border-left: 3.5px solid;
+  border-radius: 0 0.5rem 0.5rem 0;
+  padding: 0.65rem 0.85rem;
+  margin: 0.75rem 0;
+  background-color: hsl(var(--card) / 0.6);
+  border-color: hsl(var(--border));
+}
+
+.markdown-alert-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  line-height: 1.25;
+  margin-bottom: 0.3rem;
+}
+
+.markdown-alert-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.markdown-alert-body {
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: hsl(var(--foreground));
+}
+
+.markdown-alert-body p {
+  margin-top: 0.2rem;
+  margin-bottom: 0.2rem;
+}
+
+.markdown-alert-note {
+  border-left-color: #38bdf8;
+  background-color: rgba(56, 189, 248, 0.08);
+}
+.markdown-alert-note .markdown-alert-header {
+  color: #38bdf8;
+}
+
+.markdown-alert-tip {
+  border-left-color: #34d399;
+  background-color: rgba(52, 211, 153, 0.08);
+}
+.markdown-alert-tip .markdown-alert-header {
+  color: #34d399;
+}
+
+.markdown-alert-important {
+  border-left-color: #a78bfa;
+  background-color: rgba(167, 139, 250, 0.08);
+}
+.markdown-alert-important .markdown-alert-header {
+  color: #a78bfa;
+}
+
+.markdown-alert-warning {
+  border-left-color: #fbbf24;
+  background-color: rgba(251, 191, 36, 0.08);
+}
+.markdown-alert-warning .markdown-alert-header {
+  color: #fbbf24;
+}
+
+.markdown-alert-caution {
+  border-left-color: #f87171;
+  background-color: rgba(248, 113, 113, 0.08);
+}
+.markdown-alert-caution .markdown-alert-header {
+  color: #f87171;
+}
