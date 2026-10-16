@@ -117,6 +117,7 @@ pub fn create_router(state: AppState) -> Router {
         // Enterprise MCP Server Lifecycle & Security Management
         .route("/api/mcp/servers", get(mcp_servers::list_servers).post(mcp_servers::create_server))
         .route("/api/mcp/servers/{id}", get(mcp_servers::get_server).put(mcp_servers::update_server).delete(mcp_servers::delete_server))
+        .route("/api/mcp/servers/{id}/sync", axum::routing::post(mcp_servers::sync_server))
         .route("/api/mcp/servers/test-endpoint", axum::routing::post(mcp_servers::test_endpoint))
 
         // Enterprise MCP 2.1 OAuth & User Preferences (Phase 11)

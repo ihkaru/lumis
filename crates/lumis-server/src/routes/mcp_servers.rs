@@ -39,21 +39,10 @@ async fn extract_tenant_and_role(headers: &HeaderMap, state: &AppState) -> (Stri
     }
 
     if let Ok(claims) = state.claim_translator.extract_claims(&header_map) {
-        let claim_role = if !claims.roles.is_empty() {
-            Some(state.claim_translator.resolve_effective_role(&claims))
-        } else {
-            None
-        };
-
+        let claim_role = if !claims.roles.is_empty() { Some(state.claim_translator.resolve_effective_role(&claims)) } else { None };
         let (user_id, role) = match state.repo.get_user_by_username(&claims.username).await {
-            Ok(Some(u)) => {
-                let r = claim_role.unwrap_or(u.role);
-                (u.id, r)
-            }
-            _ => {
-                let r = claim_role.unwrap_or(EnterpriseRole::Member);
-                (claims.username.clone(), r)
-            }
+            Ok(Some(u)) => (u.id, claim_role.unwrap_or(u.role)),
+            _ => (claims.username.clone(), claim_role.unwrap_or(EnterpriseRole::Member)),
         };
         (claims.tenant_id.unwrap_or_else(|| "default".to_string()), user_id, role)
     } else {
@@ -132,61 +121,27 @@ pub async fn create_server(
         name: payload.name.trim().to_string(),
         display_title: payload.display_title.trim().to_string(),
         description: payload.description,
-        transport_type: payload.transport_type,
-        endpoint_url: payload.endpoint_url,
-        command_bin: payload.command_bin,
-        command_args: payload.command_args,
-        auth_type: payload.auth_type,
-        encrypted_credentials,
-        is_enabled: true,
+        transport_type: payload.transport_type, endpoint_url: payload.endpoint_url,
+        command_bin: payload.command_bin, command_args: payload.command_args,
+        auth_type: payload.auth_type, encrypted_credentials, is_enabled: true,
         risk_tier: payload.risk_tier.unwrap_or(McpRiskTier::Safe),
         scope_type: payload.scope_type.unwrap_or_else(|| "system".to_string()),
-        owner_user_id: payload.owner_user_id,
-        is_mandatory: payload.is_mandatory.unwrap_or(false),
+        owner_user_id: payload.owner_user_id, is_mandatory: payload.is_mandatory.unwrap_or(false),
         allowed_roles: payload.allowed_roles.unwrap_or_else(|| vec!["admin".to_string(), "user".to_string(), "auditor".to_string()]),
-        oauth_config: payload.oauth_config,
-        ssrf_policy: payload.ssrf_policy.unwrap_or_else(|| "strict".to_string()),
-        egress_allowlist: payload.egress_allowlist,
-        sandbox_type: payload.sandbox_type.unwrap_or_else(|| "restricted_process".to_string()),
-        max_memory_mb: payload.max_memory_mb.unwrap_or(256),
-        timeout_seconds: payload.timeout_seconds.unwrap_or(30),
-        dlp_enabled: payload.dlp_enabled.unwrap_or(true),
-        dlp_rules: payload.dlp_rules.unwrap_or_else(|| vec!["credit_card".to_string(), "nik".to_string(), "phone".to_string(), "email".to_string(), "jwt".to_string()]),
-        rate_limit_rpm: payload.rate_limit_rpm.unwrap_or(60),
-        daily_request_limit: payload.daily_request_limit.unwrap_or(1000),
-        kms_provider: payload.kms_provider.unwrap_or_else(|| "local".to_string()),
-        kms_key_id: payload.kms_key_id,
-        created_at: now,
-        updated_at: now,
+        oauth_config: payload.oauth_config, ssrf_policy: payload.ssrf_policy.unwrap_or_else(|| "strict".to_string()),
+        egress_allowlist: payload.egress_allowlist, sandbox_type: payload.sandbox_type.unwrap_or_else(|| "restricted_process".to_string()),
+        max_memory_mb: payload.max_memory_mb.unwrap_or(256), timeout_seconds: payload.timeout_seconds.unwrap_or(30),
+        dlp_enabled: payload.dlp_enabled.unwrap_or(true), dlp_rules: payload.dlp_rules.unwrap_or_else(|| vec!["credit_card".to_string(), "nik".to_string(), "phone".to_string(), "email".to_string(), "jwt".to_string()]),
+        rate_limit_rpm: payload.rate_limit_rpm.unwrap_or(60), daily_request_limit: payload.daily_request_limit.unwrap_or(1000),
+        kms_provider: payload.kms_provider.unwrap_or_else(|| "local".to_string()), kms_key_id: payload.kms_key_id,
+        created_at: now, updated_at: now,
     };
 
     if let Err(e) = state.repo.create_mcp_server(&record).await {
         return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))).into_response();
     }
 
-    let mut tool_records = Vec::with_capacity(discovered.len());
-    for def in &discovered {
-        tool_records.push(McpToolRecord {
-            id: format!("mcp-tool-{}", Uuid::new_v4()),
-            server_id: server_id.clone(),
-            name: def.name.clone(),
-            description: Some(def.description.clone()),
-            input_schema_json: def.input_schema.to_string(),
-            risk_tier: McpRiskTier::Safe,
-            requires_approval: false,
-            updated_at: now,
-        });
-
-        let proxy = Arc::new(RemoteMcpToolProxy::new(
-            def.name.clone(),
-            def.clone(),
-            endpoint_url.clone(),
-            auth_ref.map(|(s, t)| (s.to_string(), t.to_string())),
-            http_client.clone(),
-        ));
-        let _ = state.mcp_registry.register_tool(proxy).await;
-    }
-    let _ = state.repo.sync_mcp_tools(&server_id, &tool_records).await;
+    sync_tools_to_state_and_db(&state, &server_id, &endpoint_url, auth_ref, &discovered, &http_client).await;
 
     let mut resp = record;
     resp.encrypted_credentials = None;
@@ -316,3 +271,68 @@ pub async fn test_endpoint(
         Err(e) => (StatusCode::BAD_GATEWAY, Json(json!({ "error": e.to_string() }))).into_response(),
     }
 }
+
+async fn sync_tools_to_state_and_db(
+    state: &AppState,
+    server_id: &str,
+    endpoint_url: &str,
+    auth_ref: Option<(&str, &str)>,
+    discovered: &[lumis_core::models::McpToolDefinition],
+    http_client: &McpHttpClient,
+) {
+    let now = Utc::now();
+    let mut tool_records = Vec::with_capacity(discovered.len());
+    for def in discovered {
+        tool_records.push(McpToolRecord {
+            id: format!("mcp-tool-{}", Uuid::new_v4()),
+            server_id: server_id.to_string(),
+            name: def.name.clone(),
+            description: Some(def.description.clone()),
+            input_schema_json: def.input_schema.to_string(),
+            risk_tier: McpRiskTier::Safe,
+            requires_approval: false,
+            updated_at: now,
+        });
+
+        let proxy = Arc::new(RemoteMcpToolProxy::new(
+            def.name.clone(),
+            def.clone(),
+            endpoint_url.to_string(),
+            auth_ref.map(|(s, t)| (s.to_string(), t.to_string())),
+            http_client.clone(),
+        ));
+        let _ = state.mcp_registry.register_tool(proxy).await;
+    }
+    let _ = state.repo.sync_mcp_tools(server_id, &tool_records).await;
+}
+
+/// POST /api/mcp/servers/{id}/sync
+pub async fn sync_server(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    headers: HeaderMap,
+) -> impl IntoResponse {
+    let (tenant_id, _, role) = extract_tenant_and_role(&headers, &state).await;
+    if !role.is_at_least(EnterpriseRole::TenantAdmin) {
+        return (StatusCode::FORBIDDEN, Json(json!({ "error": "Forbidden" }))).into_response();
+    }
+    let server = match state.repo.get_mcp_server(&id, &tenant_id).await {
+        Ok(Some(s)) => s,
+        Ok(None) => return (StatusCode::NOT_FOUND, Json(json!({ "error": "Not found" }))).into_response(),
+        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))).into_response(),
+    };
+    let endpoint_url = server.endpoint_url.clone().unwrap_or_default();
+    let auth_ref = match server.auth_type {
+        McpAuthType::Bearer => server.encrypted_credentials.as_deref().map(|t| ("bearer", t)),
+        McpAuthType::Basic => server.encrypted_credentials.as_deref().map(|t| ("basic", t)),
+        _ => None,
+    };
+    let client = McpHttpClient::new();
+    let discovered = match client.ping_and_discover(&endpoint_url, auth_ref).await {
+        Ok(tools) => tools,
+        Err(e) => return (StatusCode::BAD_GATEWAY, Json(json!({ "error": e.to_string() }))).into_response(),
+    };
+    sync_tools_to_state_and_db(&state, &server.id, &endpoint_url, auth_ref, &discovered, &client).await;
+    Json(json!({ "success": true, "tools_count": discovered.len(), "server_id": server.id })).into_response()
+}
+
