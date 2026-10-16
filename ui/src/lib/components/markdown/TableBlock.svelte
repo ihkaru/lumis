@@ -1,4 +1,5 @@
 <script lang="ts">
+  import DOMPurify from "dompurify";
   import ZoomIn from "lucide-svelte/icons/zoom-in";
   import ZoomOut from "lucide-svelte/icons/zoom-out";
   import RotateCcw from "lucide-svelte/icons/rotate-ccw";
@@ -83,7 +84,7 @@
       style="font-size: {(zoomLevel / 100) * 0.8125}rem"
     >
       <div class="table-content min-w-full">
-        {@html html}
+        {@html typeof window !== "undefined" ? DOMPurify.sanitize(html) : html}
       </div>
     </div>
   </div>

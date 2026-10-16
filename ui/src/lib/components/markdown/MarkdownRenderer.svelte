@@ -1,5 +1,6 @@
 <script lang="ts">
   import { marked } from "marked";
+  import DOMPurify from "dompurify";
   import CodeBlock from "./CodeBlock.svelte";
   import LatexRenderer from "./LatexRenderer.svelte";
   import MermaidRenderer from "./MermaidRenderer.svelte";
@@ -142,11 +143,19 @@
 
   function renderMarkdownHtml(mdText: string): string {
     try {
-      return marked.parse(mdText, {
+      const raw = marked.parse(mdText, {
         async: false,
         gfm: true,
         breaks: true,
       }) as string;
+      if (typeof window !== "undefined") {
+        return DOMPurify.sanitize(raw, {
+          USE_PROFILES: { html: true },
+          FORBID_TAGS: ["script", "style"],
+          FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover", "onfocus", "onblur"],
+        });
+      }
+      return raw;
     } catch {
       return mdText;
     }
