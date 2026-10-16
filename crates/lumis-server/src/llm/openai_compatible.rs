@@ -20,12 +20,8 @@ pub struct OpenAiCompatibleDriver {
 
 impl OpenAiCompatibleDriver {
     pub fn new(provider_name: String, base_url: String, api_key: Option<String>) -> Self {
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(180))
-            .tcp_keepalive(Some(std::time::Duration::from_secs(30)))
-            .pool_idle_timeout(Some(std::time::Duration::from_secs(90)))
-            .build()
-            .unwrap_or_default();
+        let client = reqwest::Client::builder().timeout(std::time::Duration::from_secs(180))
+            .tcp_keepalive(Some(std::time::Duration::from_secs(30))).pool_idle_timeout(Some(std::time::Duration::from_secs(90))).build().unwrap_or_default();
 
         Self {
             provider_name,
@@ -157,6 +153,11 @@ impl LlmProviderDriver for OpenAiCompatibleDriver {
                                         return;
                                     }
                                     if let Ok(val) = serde_json::from_str::<serde_json::Value>(data) {
+                                        if let Some(err) = val.get("error") {
+                                            let msg = err.get("message").and_then(|m| m.as_str()).unwrap_or("Upstream provider error");
+                                            let _ = tx.send(Err(LumisError::Internal(format!("Upstream error: {}", msg)))).await;
+                                            return;
+                                        }
                                         let delta = &val["choices"][0]["delta"];
                                         let text_opt = delta["content"].as_str()
                                             .or_else(|| delta["reasoning"].as_str())

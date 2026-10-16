@@ -7,8 +7,8 @@ use serde_json::json;
 use crate::state::AppState;
 use super::assembly::{assemble_chat_context, extract_heuristic_title, format_mcp_tools_for_openai};
 use super::executor_helpers::{
-    check_plan_convergence, compress_observation, extract_manual_skill_names,
-    generate_llm_title, get_max_agentic_turns, heal_or_infer_tool_name, parse_text_tool_calls,
+    build_assistant_metadata, check_plan_convergence, compress_observation, generate_llm_title,
+    get_max_agentic_turns, heal_or_infer_tool_name, parse_text_tool_calls, resolve_execution_skills,
 };
 
 pub fn spawn_chat_completion(
@@ -46,23 +46,8 @@ pub fn spawn_chat_completion(
         };
 
         let tenant_id = user.tenant_id.as_deref().unwrap_or("default");
-        let always_skills = repo.get_always_apply_skills(tenant_id, &user.id).await.unwrap_or_default();
-        let mut primed_skills = always_skills;
-        let manual_skill_names = extract_manual_skill_names(&prompt);
-        for name in &manual_skill_names {
-            if let Ok(Some(s)) = repo.get_skill_by_name(tenant_id, name).await {
-                if !primed_skills.iter().any(|ps| ps.id == s.id) {
-                    primed_skills.push(s);
-                }
-            }
-        }
-        let mut fts_skills = repo.search_skills_fts(tenant_id, &user.id, &prompt, 5).await.unwrap_or_default();
-        if fts_skills.is_empty() {
-            if let Ok(general) = repo.list_skills(tenant_id, &user.id, None, 5, 0).await {
-                fts_skills = general.into_iter().map(|s| lumis_core::models::SkillSearchResult { skill: s, bm25_score: 0.0 }).collect();
-            }
-        }
-        let active_skill_summaries: Vec<_> = fts_skills.into_iter().map(|r| r.skill).collect();
+        let (primed_skills, active_skill_summaries, manual_skill_names) =
+            resolve_execution_skills(&repo, tenant_id, &user.id, &prompt).await;
 
         let mut messages = assemble_chat_context(
             &session,
@@ -101,14 +86,28 @@ pub fn spawn_chat_completion(
                 Ok(receiver) => receiver,
                 Err(e) => {
                     tracing::error!("LLM completion turn failed: {}", e);
-                    let err_event = json!({ "event": "error", "session_id": sess_id, "error": e.to_string() });
-                    let _ = stream_tx.send(bytes::Bytes::from(err_event.to_string()));
-                    return;
+                    if !executed_tools.is_empty() && combined_content.is_empty() {
+                        let fallback = "Hasil eksekusi tool telah diterima. Silakan lanjutkan pertanyaan atau ketik 'Lanjutkan'.";
+                        combined_content.push_str(fallback);
+                        message_parts.push(json!({ "type": "text", "text": fallback }));
+                        let chunk_event = json!({
+                            "event": "chunk",
+                            "session_id": sess_id,
+                            "delta": fallback,
+                            "model_id": model,
+                            "is_done": false,
+                        });
+                        let _ = stream_tx.send(bytes::Bytes::from(chunk_event.to_string()));
+                    }
+                    let done_event = json!({ "event": "chunk", "session_id": sess_id, "delta": "", "model_id": model, "is_done": true });
+                    let _ = stream_tx.send(bytes::Bytes::from(done_event.to_string()));
+                    break;
                 }
             };
 
             let mut turn_text = String::new();
             let mut native_tcs: HashMap<usize, (Option<String>, Option<String>, String)> = HashMap::new();
+            let mut had_chunk_error = false;
 
             while let Some(chunk_res) = rx.recv().await {
                 match chunk_res {
@@ -143,6 +142,7 @@ pub fn spawn_chat_completion(
                     }
                     Err(e) => {
                         tracing::error!("Error receiving chunk: {}", e);
+                        had_chunk_error = true;
                         break;
                     }
                 }
@@ -184,7 +184,20 @@ pub fn spawn_chat_completion(
                     if !combined_content.is_empty() && !combined_content.ends_with('\n') { combined_content.push('\n'); }
                     combined_content.push_str(&turn_text);
                     message_parts.push(json!({ "type": "text", "text": turn_text }));
+                } else if had_chunk_error && combined_content.is_empty() && !executed_tools.is_empty() {
+                    let fallback = "Eksekusi tool selesai, namun terjadi kendala saat menerima sintesis akhir. Ketik 'Lanjutkan' untuk memproses ulang.";
+                    combined_content.push_str(fallback);
+                    message_parts.push(json!({ "type": "text", "text": fallback }));
+                    let chunk_event = json!({
+                        "event": "chunk",
+                        "session_id": sess_id,
+                        "delta": fallback,
+                        "model_id": model,
+                        "is_done": false,
+                    });
+                    let _ = stream_tx.send(bytes::Bytes::from(chunk_event.to_string()));
                 }
+
                 if !existing_tasks.is_empty() && check_plan_convergence(&repo, &sess_id).await {
                     let conv_event = json!({ "event": "plan_converged", "session_id": sess_id, "total_tasks": existing_tasks.len() });
                     let _ = stream_tx.send(bytes::Bytes::from(conv_event.to_string()));
@@ -208,6 +221,8 @@ pub fn spawn_chat_completion(
                         if !combined_content.is_empty() && !combined_content.ends_with('\n') { combined_content.push('\n'); }
                         combined_content.push_str(&halt);
                         message_parts.push(json!({ "type": "text", "text": halt }));
+                        let done_event = json!({ "event": "chunk", "session_id": sess_id, "delta": "", "model_id": model, "is_done": true });
+                        let _ = stream_tx.send(bytes::Bytes::from(done_event.to_string()));
                         break;
                     }
                 }
@@ -219,6 +234,27 @@ pub fn spawn_chat_completion(
                 message_parts.push(json!({ "type": "text", "text": turn_text }));
             }
 
+            // Standard OpenAI Tool Calling Contract:
+            // 1. Push ONE assistant message containing all tool calls for this turn
+            let tool_calls_payload: Vec<ChatMessageToolCall> = detected_calls.iter().map(|(cid, name, args)| {
+                ChatMessageToolCall {
+                    id: cid.clone(),
+                    r#type: "function".to_string(),
+                    function: ChatMessageFunctionCall {
+                        name: name.clone(),
+                        arguments: args.to_string(),
+                    },
+                }
+            }).collect();
+
+            messages.push(ChatMessagePayload {
+                role: "assistant".to_string(),
+                content: turn_text.clone(),
+                tool_calls: Some(tool_calls_payload),
+                tool_call_id: None,
+            });
+
+            // 2. Execute each tool and push corresponding role: "tool" message
             for (cid, tool_name, args) in detected_calls {
                 let tool_part_idx = message_parts.len();
                 message_parts.push(json!({ "type": "tool_call", "call_id": cid.clone(), "tool": tool_name.clone(), "args": args.clone(), "isRunning": false }));
@@ -246,69 +282,30 @@ pub fn spawn_chat_completion(
                 let res_event = json!({ "event": "tool_call_result", "session_id": sess_id, "call_id": cid, "tool": tool_name, "result": output_str, "is_error": is_err });
                 let _ = stream_tx.send(bytes::Bytes::from(res_event.to_string()));
 
-                executed_tools.push(json!({ "tool": tool_name, "args": args, "result": output_str, "error": if is_err { Some(&output_str) } else { None } }));
+                executed_tools.push(json!({ "call_id": cid.clone(), "tool": tool_name, "args": args, "result": output_str, "error": if is_err { Some(&output_str) } else { None } }));
                 if let Some(part) = message_parts.get_mut(tool_part_idx) {
                     part["result"] = json!(output_str);
                     if is_err { part["error"] = json!(output_str); }
                 }
 
                 messages.push(ChatMessagePayload {
-                    role: "assistant".to_string(),
-                    content: turn_text.clone(),
-                    tool_calls: Some(vec![ChatMessageToolCall {
-                        id: cid.clone(),
-                        r#type: "function".to_string(),
-                        function: ChatMessageFunctionCall {
-                            name: tool_name.clone(),
-                            arguments: args.to_string(),
-                        },
-                    }]),
-                    tool_call_id: None,
-                });
-
-                // Compress older historical observations to prevent context window explosion
-                for msg in messages.iter_mut() {
-                    if msg.role == "tool" && msg.content.len() > 2000 {
-                        msg.content = compress_observation(&msg.content, 1500);
-                    }
-                }
-
-                messages.push(ChatMessagePayload {
                     role: "tool".to_string(),
-                    content: output_str.clone(),
+                    content: output_str,
                     tool_calls: None,
                     tool_call_id: Some(cid),
                 });
+            }
 
-                messages.push(ChatMessagePayload {
-                    role: "user".to_string(),
-                    content: format!("[System Tool Output for '{}']: {}\nPlease continue your multi-step task or formulate the final answer.", tool_name, output_str),
-                    tool_calls: None,
-                    tool_call_id: None,
-                });
+            // Compress older historical tool observations
+            for msg in messages.iter_mut() {
+                if msg.role == "tool" && msg.content.len() > 3000 {
+                    msg.content = compress_observation(&msg.content, 2000);
+                }
             }
         }
 
         if !combined_content.is_empty() || !executed_tools.is_empty() {
-            let metadata = {
-                let mut meta = if !executed_tools.is_empty() || !message_parts.is_empty() {
-                    let mut m = json!({ "tool_calls": executed_tools, "parts": message_parts });
-                    if let Some(txt) = message_parts.first().and_then(|p| p.get("text")).and_then(|t| t.as_str()) {
-                        m["pre_content"] = json!(txt);
-                    }
-                    m
-                } else {
-                    json!({})
-                };
-                if !manual_skill_names.is_empty() {
-                    meta["manual_skills"] = json!(manual_skill_names);
-                }
-                if !primed_skills.is_empty() {
-                    let names: Vec<_> = primed_skills.iter().map(|s| s.name.clone()).collect();
-                    meta["always_applied_skills"] = json!(names);
-                }
-                Some(meta)
-            };
+            let metadata = build_assistant_metadata(&executed_tools, &message_parts, &manual_skill_names, &primed_skills);
             let assistant_msg = NewMessage {
                 session_id: sess_id.clone(),
                 role: MessageRole::Assistant,

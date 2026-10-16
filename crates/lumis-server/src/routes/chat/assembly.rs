@@ -2,6 +2,7 @@ use chrono::Utc;
 use lumis_core::models::{
     ChatMessagePayload, McpToolDefinition, Message, MessageRole, Session, Skill, SkillSummary, User, UserMemory,
 };
+use super::executor_helpers::extract_assistant_tool_turns;
 
 pub const DEFAULT_MAX_CONTEXT_TOKENS: usize = 8192;
 
@@ -178,6 +179,61 @@ pub fn assemble_chat_context(
 
     // Traverse from newest to oldest
     for msg in effective_history.iter().rev() {
+        if msg.role == MessageRole::Assistant {
+            if let Some((tool_calls, tool_results)) = extract_assistant_tool_turns(msg) {
+                let pre_content = msg.metadata.get("pre_content")
+                    .and_then(|v: &serde_json::Value| v.as_str())
+                    .unwrap_or("");
+
+                let mut turn_msgs = Vec::new();
+
+                // 1. Assistant message that called the tools
+                turn_msgs.push(ChatMessagePayload {
+                    role: "assistant".to_string(),
+                    content: pre_content.to_string(),
+                    tool_calls: Some(tool_calls),
+                    tool_call_id: None,
+                });
+
+                // 2. Respective Tool messages
+                for (cid, res) in tool_results {
+                    let clean_res = if res.len() > 3000 {
+                        super::executor_helpers::compress_observation(&res, 2000)
+                    } else {
+                        res
+                    };
+                    turn_msgs.push(ChatMessagePayload {
+                        role: "tool".to_string(),
+                        content: clean_res,
+                        tool_calls: None,
+                        tool_call_id: Some(cid),
+                    });
+                }
+
+                // 3. Final assistant text (if any and not just repeating pre_content)
+                let trimmed_content = msg.content.trim();
+                if !trimmed_content.is_empty() && trimmed_content != pre_content.trim() {
+                    turn_msgs.push(ChatMessagePayload {
+                        role: "assistant".to_string(),
+                        content: trimmed_content.to_string(),
+                        tool_calls: None,
+                        tool_call_id: None,
+                    });
+                }
+
+                let total_tokens: usize = turn_msgs.iter().map(|m| (m.content.len() / 4).max(1)).sum();
+                if accumulated_tokens + total_tokens <= history_budget {
+                    accumulated_tokens += total_tokens;
+                    for tm in turn_msgs.into_iter().rev() {
+                        selected_history.push(tm);
+                    }
+                } else {
+                    pruned_any = true;
+                }
+                continue;
+            }
+        }
+
         let role_str = match msg.role {
             MessageRole::User => "user",
             MessageRole::Assistant => "assistant",

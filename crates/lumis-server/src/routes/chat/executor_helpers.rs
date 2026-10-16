@@ -1,7 +1,10 @@
 #![deny(unsafe_code)]
 
 use std::sync::Arc;
-use lumis_core::models::{ChatCompletionRequest, ChatMessagePayload};
+use lumis_core::models::{
+    ChatCompletionRequest, ChatMessageFunctionCall, ChatMessagePayload, ChatMessageToolCall,
+    Message, Skill, SkillSearchResult, SkillSummary,
+};
 use lumis_core::traits::{ChatRepository, LlmProviderDriver};
 
 /// Maximum agentic turns for long-running workflows.
@@ -33,30 +36,16 @@ pub fn compress_observation(text: &str, max_len: usize) -> String {
 pub fn heal_or_infer_tool_name(raw_name: &str, args: &serde_json::Value) -> String {
     let trimmed = raw_name.trim();
     if !trimmed.is_empty() {
-        if trimmed == "get_skill" {
-            return "get_skill_directive".to_string();
-        }
-        return trimmed.to_string();
+        return if trimmed == "get_skill" { "get_skill_directive".to_string() } else { trimmed.to_string() };
     }
-    if args.get("code").is_some() {
-        "execute_code".to_string()
-    } else if args.get("query").is_some() {
-        if args.get("category").is_some() || args.get("limit").is_some() {
-            "search_skills".to_string()
-        } else {
-            "gateway_search_tools".to_string()
-        }
-    } else if args.get("goal").is_some() {
-        "gateway_plan_tasks".to_string()
-    } else if args.get("plan").is_some() {
-        "gateway_execute_plan".to_string()
-    } else if args.get("ticket_id").is_some() {
-        "resolve_approval".to_string()
-    } else if args.get("skill").is_some() || args.get("skill_name").is_some() {
-        "get_skill_directive".to_string()
-    } else {
-        String::new()
-    }
+    if args.get("code").is_some() { "execute_code".to_string() }
+    else if args.get("query").is_some() {
+        if args.get("category").is_some() || args.get("limit").is_some() { "search_skills".to_string() } else { "gateway_search_tools".to_string() }
+    } else if args.get("goal").is_some() { "gateway_plan_tasks".to_string() }
+    else if args.get("plan").is_some() { "gateway_execute_plan".to_string() }
+    else if args.get("ticket_id").is_some() { "resolve_approval".to_string() }
+    else if args.get("skill").is_some() || args.get("skill_name").is_some() { "get_skill_directive".to_string() }
+    else { String::new() }
 }
 
 /// Parses pseudo-XML <tool_call> tags from models that output text rather than native function calling.
@@ -228,3 +217,121 @@ pub async fn generate_llm_title(
 
     Some(final_title)
 }
+
+/// Extracts tool calls and their results from an assistant message's metadata
+/// to support full OpenAI-standard tool replay in multi-turn conversations.
+pub fn extract_assistant_tool_turns(
+    msg: &Message,
+) -> Option<(Vec<ChatMessageToolCall>, Vec<(String, String)>)> {
+    let meta = &msg.metadata;
+    let tc_array = meta.get("tool_calls").and_then(|v: &serde_json::Value| v.as_array())
+        .or_else(|| meta.get("parts").and_then(|v: &serde_json::Value| v.as_array()))?;
+    if tc_array.is_empty() {
+        return None;
+    }
+
+    let mut tool_calls = Vec::new();
+    let mut tool_results = Vec::new();
+
+    for (idx, tc) in tc_array.iter().enumerate() {
+        if let Some(ptype) = tc.get("type").and_then(|t: &serde_json::Value| t.as_str()) {
+            if ptype != "tool_call" {
+                continue;
+            }
+        }
+
+        let tool_name = tc.get("tool")
+            .or_else(|| tc.get("name"))
+            .and_then(|v: &serde_json::Value| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        if tool_name.is_empty() {
+            continue;
+        }
+
+        let call_id = tc.get("call_id")
+            .or_else(|| tc.get("id"))
+            .and_then(|v: &serde_json::Value| v.as_str())
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| format!("call_{}_{}", msg.id, idx));
+
+        let args = tc.get("args")
+            .or_else(|| tc.get("arguments"))
+            .cloned()
+            .unwrap_or(serde_json::json!({}));
+        let args_str = if args.is_string() {
+            args.as_str().unwrap().to_string()
+        } else {
+            args.to_string()
+        };
+
+        let result_str = tc.get("result")
+            .or_else(|| tc.get("output"))
+            .and_then(|v: &serde_json::Value| v.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        tool_calls.push(ChatMessageToolCall {
+            id: call_id.clone(),
+            r#type: "function".to_string(),
+            function: ChatMessageFunctionCall {
+                name: tool_name,
+                arguments: args_str,
+            },
+        });
+
+        tool_results.push((call_id, result_str));
+    }
+
+    if tool_calls.is_empty() {
+        None
+    } else {
+        Some((tool_calls, tool_results))
+    }
+}
+
+/// Resolves active and primed skills for context assembly.
+pub async fn resolve_execution_skills(
+    repo: &Arc<dyn ChatRepository>,
+    tenant_id: &str,
+    user_id: &str,
+    prompt: &str,
+) -> (Vec<Skill>, Vec<SkillSummary>, Vec<String>) {
+    let mut primed = repo.get_always_apply_skills(tenant_id, user_id).await.unwrap_or_default();
+    let manual_names = extract_manual_skill_names(prompt);
+    for name in &manual_names {
+        if let Ok(Some(s)) = repo.get_skill_by_name(tenant_id, name).await {
+            if !primed.iter().any(|ps| ps.id == s.id) { primed.push(s); }
+        }
+    }
+    let mut fts = repo.search_skills_fts(tenant_id, user_id, prompt, 5).await.unwrap_or_default();
+    if fts.is_empty() {
+        if let Ok(gen) = repo.list_skills(tenant_id, user_id, None, 5, 0).await {
+            fts = gen.into_iter().map(|s| SkillSearchResult { skill: s, bm25_score: 0.0 }).collect();
+        }
+    }
+    let summaries: Vec<_> = fts.into_iter().map(|r| r.skill).collect();
+    (primed, summaries, manual_names)
+}
+
+/// Builds assistant metadata JSON payload safely.
+pub fn build_assistant_metadata(
+    executed_tools: &[serde_json::Value],
+    message_parts: &[serde_json::Value],
+    manual_skills: &[String],
+    primed_skills: &[Skill],
+) -> Option<serde_json::Value> {
+    if executed_tools.is_empty() && message_parts.is_empty() { return None; }
+    let mut m = serde_json::json!({ "tool_calls": executed_tools, "parts": message_parts });
+    if let Some(txt) = message_parts.first().and_then(|p| p.get("text")).and_then(|t| t.as_str()) {
+        m["pre_content"] = serde_json::json!(txt);
+    }
+    if !manual_skills.is_empty() { m["manual_skills"] = serde_json::json!(manual_skills); }
+    if !primed_skills.is_empty() {
+        let names: Vec<_> = primed_skills.iter().map(|s| s.name.clone()).collect();
+        m["always_applied_skills"] = serde_json::json!(names);
+    }
+    Some(m)
+}
+
+
