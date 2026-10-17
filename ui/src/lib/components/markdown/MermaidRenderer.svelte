@@ -2,19 +2,16 @@
   import GitGraph from "lucide-svelte/icons/git-graph";
   import Copy from "lucide-svelte/icons/copy";
   import Check from "lucide-svelte/icons/check";
-  import ZoomIn from "lucide-svelte/icons/zoom-in";
-  import ZoomOut from "lucide-svelte/icons/zoom-out";
-  import RotateCcw from "lucide-svelte/icons/rotate-ccw";
-  import ArrowUp from "lucide-svelte/icons/arrow-up";
-  import ArrowDown from "lucide-svelte/icons/arrow-down";
-  import ArrowLeft from "lucide-svelte/icons/arrow-left";
-  import ArrowRight from "lucide-svelte/icons/arrow-right";
   import Maximize2 from "lucide-svelte/icons/maximize-2";
-  import Minimize2 from "lucide-svelte/icons/minimize-2";
   import X from "lucide-svelte/icons/x";
   import Code2 from "lucide-svelte/icons/code-2";
   import Eye from "lucide-svelte/icons/eye";
+  import Contrast from "lucide-svelte/icons/contrast";
+  import Sun from "lucide-svelte/icons/sun";
+  import Moon from "lucide-svelte/icons/moon";
   import mermaid from "mermaid";
+  import DiagramNavControls from "./DiagramNavControls.svelte";
+  import { cleanMermaidSvg, getMermaidConfig } from "./mermaidConfig";
 
   interface Props {
     code: string;
@@ -27,6 +24,7 @@
   let isCopied = $state(false);
   let showRawCode = $state(false);
   let isFullscreen = $state(false);
+  let canvasContrast = $state<"default" | "light" | "deep">("default");
 
   // Pan & Zoom Reactive States
   let scale = $state(1);
@@ -38,91 +36,77 @@
   let initialPanX = 0;
   let initialPanY = 0;
 
-  let isInitialized = false;
+  let isDark = $state(
+    typeof document !== "undefined"
+      ? document.documentElement.classList.contains("dark")
+      : true
+  );
 
-  function ensureInitialized() {
-    if (isInitialized || typeof window === "undefined") return;
-    try {
-      mermaid.initialize({
-        startOnLoad: false,
-        theme: "dark",
-        securityLevel: "loose",
-        suppressErrorRendering: true,
-        fontFamily: "Google Sans Text, system-ui, sans-serif",
-        themeVariables: {
-          darkMode: true,
-          background: "transparent",
-          primaryColor: "#0284c7",
-          primaryTextColor: "#f1f5f9",
-          primaryBorderColor: "#38bdf8",
-          lineColor: "#64748b",
-          secondaryColor: "#1e293b",
-          tertiaryColor: "#0f172a",
-        },
-      });
-      isInitialized = true;
-    } catch {}
+  let canvasClass = $derived.by(() => {
+    if (canvasContrast === "light") return "bg-white text-slate-900 contrast-light";
+    if (canvasContrast === "deep") return "bg-black text-slate-100 contrast-deep";
+    return "bg-slate-950/85 text-slate-200";
+  });
+
+  function toggleContrast() {
+    if (canvasContrast === "default") canvasContrast = "light";
+    else if (canvasContrast === "light") canvasContrast = "deep";
+    else canvasContrast = "default";
   }
 
   async function renderChart() {
     if (typeof window === "undefined" || !code.trim()) return;
-    ensureInitialized();
     try {
       renderError = null;
       const cleanCode = code.trim();
       const uniqueId = `mmd_${Math.random().toString(36).slice(2, 9)}`;
+      const effectiveDark = canvasContrast === "light" ? false : isDark;
+      mermaid.initialize(getMermaidConfig(effectiveDark));
       const { svg } = await mermaid.render(uniqueId, cleanCode);
-      svgHtml = svg;
+      svgHtml = cleanMermaidSvg(svg, canvasContrast === "light");
     } catch (err: any) {
       renderError = err?.message || "Diagram sedang diproses...";
     }
   }
 
   $effect(() => {
-    if (code) {
+    if (code || canvasContrast !== undefined) {
       renderChart();
     }
   });
 
   $effect(() => {
+    if (typeof document === "undefined") return;
+    const observer = new MutationObserver(() => {
+      const nextDark = document.documentElement.classList.contains("dark");
+      if (nextDark !== isDark) {
+        isDark = nextDark;
+        renderChart();
+      }
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  });
+
+  $effect(() => {
     if (typeof window === "undefined") return;
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && isFullscreen) isFullscreen = false;
-    }
+    function handleKey(e: KeyboardEvent) { if (e.key === "Escape" && isFullscreen) isFullscreen = false; }
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   });
 
   async function handleCopy() {
-    try {
-      await navigator.clipboard.writeText(code);
-      isCopied = true;
-      setTimeout(() => (isCopied = false), 1800);
-    } catch {}
+    try { await navigator.clipboard.writeText(code); isCopied = true; setTimeout(() => (isCopied = false), 1800); } catch {}
   }
 
-  function zoomBy(factor: number) {
-    scale = Math.min(Math.max(scale * factor, 0.25), 4.5);
-  }
-
-  function panBy(dx: number, dy: number) {
-    panX += dx;
-    panY += dy;
-  }
-
-  function resetView() {
-    scale = 1;
-    panX = 0;
-    panY = 0;
-  }
+  function zoomBy(factor: number) { scale = Math.min(Math.max(scale * factor, 0.25), 4.5); }
+  function panBy(dx: number, dy: number) { panX += dx; panY += dy; }
+  function resetView() { scale = 1; panX = 0; panY = 0; }
 
   function handlePointerDown(e: PointerEvent) {
-    if (e.button !== 0) return; // primary click only
-    isDragging = true;
-    dragStartX = e.clientX;
-    dragStartY = e.clientY;
-    initialPanX = panX;
-    initialPanY = panY;
+    if (e.button !== 0) return;
+    isDragging = true; dragStartX = e.clientX; dragStartY = e.clientY;
+    initialPanX = panX; initialPanY = panY;
     (e.currentTarget as HTMLElement)?.setPointerCapture?.(e.pointerId);
   }
 
@@ -135,15 +119,12 @@
   function handlePointerUp(e: PointerEvent) {
     if (!isDragging) return;
     isDragging = false;
-    try {
-      (e.currentTarget as HTMLElement)?.releasePointerCapture?.(e.pointerId);
-    } catch {}
+    try { (e.currentTarget as HTMLElement)?.releasePointerCapture?.(e.pointerId); } catch {}
   }
 
   function handleWheel(e: WheelEvent) {
     e.preventDefault();
-    const factor = e.deltaY < 0 ? 1.1 : 0.9;
-    zoomBy(factor);
+    zoomBy(e.deltaY < 0 ? 1.1 : 0.9);
   }
 </script>
 
@@ -165,6 +146,22 @@
 
     <div class="flex items-center gap-0.5">
       {#if svgHtml && !renderError}
+        <!-- Contrast Toggle Button -->
+        <button
+          type="button"
+          onclick={toggleContrast}
+          class="p-1 rounded text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors"
+          title="Ubah Kontras Kanvas ({canvasContrast === 'default' ? 'Standar' : canvasContrast === 'light' ? 'Terang' : 'Hitam'})"
+        >
+          {#if canvasContrast === "light"}
+            <Sun class="h-3 w-3 text-amber-400" />
+          {:else if canvasContrast === "deep"}
+            <Moon class="h-3 w-3 text-cyan-400" />
+          {:else}
+            <Contrast class="h-3 w-3" />
+          {/if}
+        </button>
+
         <!-- Toggle Code / Render -->
         <button
           type="button"
@@ -210,7 +207,7 @@
   <!-- Content Viewport -->
   {#if svgHtml && !renderError && !showRawCode}
     <div
-      class="relative w-full h-[360px] overflow-hidden bg-slate-950/80 {isDragging ? 'cursor-grabbing' : 'cursor-grab'} touch-none"
+      class="relative w-full h-[360px] overflow-hidden {canvasClass} {isDragging ? 'cursor-grabbing' : 'cursor-grab'} touch-none transition-colors duration-200"
       onpointerdown={handlePointerDown}
       onpointermove={handlePointerMove}
       onpointerup={handlePointerUp}
@@ -230,26 +227,8 @@
       </div>
 
       <!-- Navigation & D-Pad Overlay (Bottom Right) -->
-      <div class="absolute bottom-2.5 right-2.5 flex items-center gap-1 z-10 pointer-events-auto">
-        <!-- Directional D-Pad (Up, Down, Left, Right) -->
-        <div class="grid grid-cols-3 gap-0.5 p-1 rounded-md bg-slate-900/85 backdrop-blur-md border border-white/10 shadow-lg text-slate-300">
-          <div></div>
-          <button type="button" onclick={() => panBy(0, 60)} class="p-1 rounded hover:bg-white/15" title="Pan Atas"><ArrowUp class="h-3 w-3" /></button>
-          <div></div>
-          <button type="button" onclick={() => panBy(60, 0)} class="p-1 rounded hover:bg-white/15" title="Pan Kiri"><ArrowLeft class="h-3 w-3" /></button>
-          <button type="button" onclick={resetView} class="p-1 rounded hover:bg-white/15 font-mono text-[9px] text-center" title="Reset">{Math.round(scale * 100)}%</button>
-          <button type="button" onclick={() => panBy(-60, 0)} class="p-1 rounded hover:bg-white/15" title="Pan Kanan"><ArrowRight class="h-3 w-3" /></button>
-          <div></div>
-          <button type="button" onclick={() => panBy(0, -60)} class="p-1 rounded hover:bg-white/15" title="Pan Bawah"><ArrowDown class="h-3 w-3" /></button>
-          <div></div>
-        </div>
-
-        <!-- Zoom Controls -->
-        <div class="flex flex-col gap-0.5 p-1 rounded-md bg-slate-900/85 backdrop-blur-md border border-white/10 shadow-lg text-slate-300">
-          <button type="button" onclick={() => zoomBy(1.2)} class="p-1 rounded hover:bg-white/15" title="Zoom In"><ZoomIn class="h-3 w-3" /></button>
-          <button type="button" onclick={() => zoomBy(0.8)} class="p-1 rounded hover:bg-white/15" title="Zoom Out"><ZoomOut class="h-3 w-3" /></button>
-          <button type="button" onclick={resetView} class="p-1 rounded hover:bg-white/15" title="Reset View"><RotateCcw class="h-2.5 w-2.5" /></button>
-        </div>
+      <div class="absolute bottom-2.5 right-2.5 z-10 pointer-events-auto">
+        <DiagramNavControls {scale} step={60} onPan={panBy} onZoom={zoomBy} onReset={resetView} />
       </div>
     </div>
   {:else}
@@ -267,19 +246,35 @@
         <GitGraph class="h-4 w-4 text-primary" />
         <span class="font-semibold text-sm text-slate-100">Mermaid Diagram Canvas - Fullscreen</span>
       </div>
-      <button
-        type="button"
-        onclick={() => (isFullscreen = false)}
-        class="p-1.5 rounded hover:bg-white/10 text-slate-300 hover:text-white transition-colors"
-        title="Tutup Fullscreen (Esc)"
-      >
-        <X class="h-4 w-4" />
-      </button>
+      <div class="flex items-center gap-1.5">
+        <button
+          type="button"
+          onclick={toggleContrast}
+          class="p-1.5 rounded hover:bg-white/10 text-slate-300 hover:text-white transition-colors"
+          title="Ubah Kontras Kanvas"
+        >
+          {#if canvasContrast === "light"}
+            <Sun class="h-4 w-4 text-amber-400" />
+          {:else if canvasContrast === "deep"}
+            <Moon class="h-4 w-4 text-cyan-400" />
+          {:else}
+            <Contrast class="h-4 w-4" />
+          {/if}
+        </button>
+        <button
+          type="button"
+          onclick={() => (isFullscreen = false)}
+          class="p-1.5 rounded hover:bg-white/10 text-slate-300 hover:text-white transition-colors"
+          title="Tutup Fullscreen (Esc)"
+        >
+          <X class="h-4 w-4" />
+        </button>
+      </div>
     </div>
 
     <!-- Fullscreen Interactive Canvas -->
     <div
-      class="relative flex-1 w-full rounded-lg border border-white/10 bg-slate-900/60 overflow-hidden shadow-2xl {isDragging ? 'cursor-grabbing' : 'cursor-grab'} touch-none"
+      class="relative flex-1 w-full rounded-lg border border-white/10 {canvasClass} overflow-hidden shadow-2xl {isDragging ? 'cursor-grabbing' : 'cursor-grab'} touch-none transition-colors duration-200"
       onpointerdown={handlePointerDown}
       onpointermove={handlePointerMove}
       onpointerup={handlePointerUp}
@@ -298,33 +293,27 @@
       </div>
 
       <!-- Navigation & D-Pad in Fullscreen -->
-      <div class="absolute bottom-4 right-4 flex items-center gap-1.5 z-10 pointer-events-auto">
-        <div class="grid grid-cols-3 gap-0.5 p-1.5 rounded-lg bg-slate-900/90 backdrop-blur-md border border-white/15 shadow-xl text-slate-200">
-          <div></div>
-          <button type="button" onclick={() => panBy(0, 100)} class="p-1.5 rounded hover:bg-white/15" title="Pan Atas"><ArrowUp class="h-3.5 w-3.5" /></button>
-          <div></div>
-          <button type="button" onclick={() => panBy(100, 0)} class="p-1.5 rounded hover:bg-white/15" title="Pan Kiri"><ArrowLeft class="h-3.5 w-3.5" /></button>
-          <button type="button" onclick={resetView} class="p-1 rounded hover:bg-white/15 font-mono text-[10px] text-center" title="Reset">{Math.round(scale * 100)}%</button>
-          <button type="button" onclick={() => panBy(-100, 0)} class="p-1.5 rounded hover:bg-white/15" title="Pan Kanan"><ArrowRight class="h-3.5 w-3.5" /></button>
-          <div></div>
-          <button type="button" onclick={() => panBy(0, -100)} class="p-1.5 rounded hover:bg-white/15" title="Pan Bawah"><ArrowDown class="h-3.5 w-3.5" /></button>
-          <div></div>
-        </div>
-        <div class="flex flex-col gap-0.5 p-1.5 rounded-lg bg-slate-900/90 backdrop-blur-md border border-white/15 shadow-xl text-slate-200">
-          <button type="button" onclick={() => zoomBy(1.25)} class="p-1.5 rounded hover:bg-white/15" title="Zoom In"><ZoomIn class="h-3.5 w-3.5" /></button>
-          <button type="button" onclick={() => zoomBy(0.8)} class="p-1.5 rounded hover:bg-white/15" title="Zoom Out"><ZoomOut class="h-3.5 w-3.5" /></button>
-          <button type="button" onclick={resetView} class="p-1.5 rounded hover:bg-white/15" title="Reset View"><RotateCcw class="h-3 w-3" /></button>
-        </div>
+      <div class="absolute bottom-4 right-4 z-10 pointer-events-auto">
+        <DiagramNavControls {scale} step={100} onPan={panBy} onZoom={zoomBy} onReset={resetView} />
       </div>
     </div>
   </div>
 {/if}
 
 <style>
-  :global(.mermaid-svg-container svg) {
-    max-width: none !important;
-    height: auto;
-    display: block;
-    margin: 0 auto;
-  }
+  :global(.mermaid-svg-container svg) { max-width: none !important; height: auto; display: block; margin: 0 auto; font-family: "Google Sans Text", system-ui, sans-serif !important; }
+  :global(.mermaid-svg-container svg text) { font-family: "Google Sans Text", system-ui, sans-serif !important; }
+  :global(.mermaid-svg-container svg .node text),
+  :global(.mermaid-svg-container svg .label text),
+  :global(.mermaid-svg-container svg text.actor),
+  :global(.mermaid-svg-container svg .actor text),
+  :global(.mermaid-svg-container svg .messageText),
+  :global(.mermaid-svg-container svg .er.entityLabel),
+  :global(.mermaid-svg-container svg .classText) { font-weight: 500; }
+  :global(.mermaid-svg-container svg .edgeLabel rect) { fill: #090d16 !important; opacity: 0.95; }
+  :global(.mermaid-svg-container svg .edgeLabel text) { fill: #f1f5f9 !important; }
+  :global(.mermaid-svg-container svg .cluster text) { fill: #38bdf8 !important; font-weight: 600; }
+  :global(.contrast-light .mermaid-svg-container svg text) { fill: #0f172a !important; }
+  :global(.contrast-light .mermaid-svg-container svg .edgeLabel rect) { fill: #ffffff !important; }
+  :global(.contrast-light .mermaid-svg-container svg .edgeLabel text) { fill: #0f172a !important; }
 </style>

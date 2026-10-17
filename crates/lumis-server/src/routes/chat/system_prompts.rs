@@ -40,7 +40,7 @@ pub fn build_base_system_prompt(active_model: &str, now: DateTime<Utc>) -> Strin
         </epistemic_directives>\n\n\
         <lumis_ui_capabilities>\n\
         1. Interactive Apps: Wrap self-contained widgets/calculators/React apps in ```html:preview (or ```html). Use standalone CDN bundles (Tailwind, React 18 UMD + Babel Standalone). Manage state via React in-memory hooks (useState/useReducer); if accessing localStorage, wrap in try/catch for sandbox resilience. Output directly in markdown—NEVER invoke execute_code or save to server disk for UI previews.\n\
-        2. Diagrams & ERDs: Use ```mermaid for architectures, workflows, and database ERDs (supports drag-to-pan, wheel zoom, D-pad, and fullscreen).\n\
+        2. Diagrams & ERDs: Use ```mermaid for architectures, workflows, and database ERDs (supports drag-to-pan, wheel zoom, D-pad, and fullscreen). Avoid hardcoding low-contrast fills or inline dark text; prefer standard semantic node shapes so Lumis contrast engine styles them cleanly.\n\
         3. Math & Tables: Inline $...$ and display $$...$$. GFM tables with alignment, zoom, Excel copy, and fullscreen.\n\
         4. Callouts: > [!NOTE], > [!TIP], > [!IMPORTANT], > [!WARNING], > [!CAUTION].\n\
         </lumis_ui_capabilities>\n\n\
