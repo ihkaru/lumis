@@ -1,6 +1,8 @@
 <script lang="ts">
   import Zap from "lucide-svelte/icons/zap";
   import Eye from "lucide-svelte/icons/eye";
+  import AlertCircle from "lucide-svelte/icons/alert-circle";
+  import RotateCcw from "lucide-svelte/icons/rotate-ccw";
   import MarkdownRenderer from "../markdown/MarkdownRenderer.svelte";
   import ToolCard from "./ToolCard.svelte";
   import CitationsView, { type Citation } from "./CitationsView.svelte";
@@ -24,7 +26,7 @@
     onPrevBranch?: () => void;
     onNextBranch?: () => void;
     onOpenArtifact?: (artifact: ArtifactSpecification) => void;
-    onRegenerate?: () => void;
+    onRegenerate?: (modelId?: string) => void;
     onFork?: () => void;
   }
 
@@ -61,6 +63,13 @@
   let researchSteps = $derived(
     (message.metadata?.research_steps as ResearchStep[]) || []
   );
+
+  let failover = $derived(
+    message.metadata?.failover as { from: string; from_name?: string; to: string; to_name?: string; reason?: string } | undefined
+  );
+
+  let statusLabel = $derived((message.metadata?.status_label as string) || "Sedang memproses respons...");
+  let errorMessage = $derived((message.metadata?.error_message as string) || "");
 
   let fullCopyText = $derived.by(() => {
     if (parts.length > 0) {
@@ -125,11 +134,19 @@
 
     <!-- Assistant Response Stream (Borderless, Flat Modern Layout) -->
     <div class="w-full text-foreground [overflow-wrap:anywhere] space-y-3 pt-0.5">
+      <!-- Failover Notification Badge -->
+      {#if failover}
+        <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/25 text-[11px] text-amber-600 dark:text-amber-400 font-sans select-none">
+          <Zap class="w-3.5 h-3.5 shrink-0 text-amber-500" />
+          <span>Dialihkan ke <strong>{failover.to_name || failover.to}</strong> ({failover.reason || "Upstream timeout"})</span>
+        </div>
+      {/if}
+
       <!-- Initial generation indicator while waiting for tokens -->
       {#if isStreaming && parts.length === 0 && !parsed.cleanText && !preContent && toolCalls.length === 0 && (!tasks || tasks.length === 0)}
         <div class="inline-flex items-center gap-2 text-xs text-muted-foreground animate-pulse py-1">
-          <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
-          <span>Sedang memproses respons...</span>
+          <span class="w-2 h-2 rounded-full bg-primary animate-ping"></span>
+          <span>{statusLabel}</span>
         </div>
       {/if}
 
@@ -222,6 +239,49 @@
               </Button>
             </div>
           {/each}
+        </div>
+      {/if}
+
+      <!-- Explicit Error & 1-Click Recovery Options (Never Silent) -->
+      {#if !isStreaming && (errorMessage || (!parts.length && !parsed.cleanText && !preContent && !toolCalls.length && (!tasks || tasks.length === 0)))}
+        <div class="p-3.5 rounded-xl border border-destructive/30 bg-destructive/5 text-destructive space-y-2.5 max-w-lg">
+          <div class="flex items-start gap-2 text-xs">
+            <AlertCircle class="w-4 h-4 shrink-0 mt-0.5 text-destructive" />
+            <div>
+              <p class="font-medium text-foreground">{errorMessage || "Model upstream tidak merespons atau sedang sibuk."}</p>
+              <p class="text-[11px] text-muted-foreground mt-0.5">Silakan coba lagi atau kirim ulang dengan model rekomendasi:</p>
+            </div>
+          </div>
+          {#if onRegenerate}
+            <div class="flex flex-wrap items-center gap-2 pt-1">
+              <Button
+                variant="outline"
+                size="sm"
+                class="h-7 text-xs gap-1.5 text-foreground hover:bg-muted cursor-pointer"
+                onclick={() => onRegenerate?.()}
+              >
+                <RotateCcw class="w-3 h-3" />
+                <span>Coba Lagi</span>
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                class="h-7 text-xs gap-1.5 cursor-pointer font-sans"
+                onclick={() => onRegenerate?.("cbai/kimi-k2.5")}
+              >
+                <Zap class="w-3 h-3 text-amber-500" />
+                <span>Coba Kimi K2.5</span>
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                class="h-7 text-xs gap-1.5 cursor-pointer font-sans"
+                onclick={() => onRegenerate?.("cbai/glm-5.2")}
+              >
+                <span>Coba GLM 5.2</span>
+              </Button>
+            </div>
+          {/if}
         </div>
       {/if}
     </div>

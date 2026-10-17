@@ -14,7 +14,7 @@
     onSelectPrompt: (prompt: string) => void;
     onEditPrompt: (prompt: string) => void;
     onOpenArtifact: (artifact: ArtifactSpecification) => void;
-    onRegenerate: () => void;
+    onRegenerate: (modelId?: string) => void;
   }
 
   let {

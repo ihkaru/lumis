@@ -38,11 +38,15 @@ export function processStreamEvent(raw: string, state: StreamState): {
             parts.push({ type: "text", text: data.delta });
           }
         }
+        const meta = { ...(messages[lastIdx].metadata || {}), parts };
+        if (data.delta) {
+          delete (meta as any).status_label;
+        }
         messages[lastIdx] = {
           ...messages[lastIdx],
           content: messages[lastIdx].content + data.delta,
           model_id: messages[lastIdx].model_id || data.model_id,
-          metadata: { ...(messages[lastIdx].metadata || {}), parts },
+          metadata: meta,
         };
       } else {
         const parts: MessagePart[] = data.delta ? [{ type: "text", text: data.delta }] : [];
@@ -58,6 +62,39 @@ export function processStreamEvent(raw: string, state: StreamState): {
       }
       shouldScroll = true;
       if (data.is_done) isGenerating = false;
+    } else if (data.event === "status" && data.session_id === state.activeSessionId) {
+      const lastIdx = messages.length - 1;
+      if (lastIdx >= 0 && messages[lastIdx].role === "assistant") {
+        messages[lastIdx] = {
+          ...messages[lastIdx],
+          model_id: data.model_id || messages[lastIdx].model_id,
+          metadata: {
+            ...(messages[lastIdx].metadata || {}),
+            status_label: data.message,
+          },
+        };
+      }
+      shouldScroll = true;
+    } else if (data.event === "model_failover" && data.session_id === state.activeSessionId) {
+      const lastIdx = messages.length - 1;
+      if (lastIdx >= 0 && messages[lastIdx].role === "assistant") {
+        messages[lastIdx] = {
+          ...messages[lastIdx],
+          model_id: data.to_model,
+          metadata: {
+            ...(messages[lastIdx].metadata || {}),
+            status_label: `Dialihkan ke ${data.to_model_name || data.to_model}...`,
+            failover: {
+              from: data.from_model,
+              from_name: data.from_model_name,
+              to: data.to_model,
+              to_name: data.to_model_name,
+              reason: data.reason,
+            },
+          },
+        };
+      }
+      shouldScroll = true;
     } else if (data.event === "tool_call_start" && data.session_id === state.activeSessionId) {
       const lastIdx = messages.length - 1;
       const tc = {
@@ -146,6 +183,18 @@ export function processStreamEvent(raw: string, state: StreamState): {
     } else if (data.event === "error" && data.session_id === state.activeSessionId) {
       errorMessage = data.error;
       isGenerating = false;
+      const lastIdx = messages.length - 1;
+      if (lastIdx >= 0 && messages[lastIdx].role === "assistant") {
+        messages[lastIdx] = {
+          ...messages[lastIdx],
+          metadata: {
+            ...(messages[lastIdx].metadata || {}),
+            error_message: data.error,
+            can_retry: true,
+            suggested_model: data.suggested_model,
+          },
+        };
+      }
     } else if ((data.event === "title_generated" || data.event === "title") && data.session_id) {
       sessions = sessions.map((s) => (s.id === data.session_id ? { ...s, title: data.title } : s));
     }

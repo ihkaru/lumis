@@ -297,9 +297,9 @@
           onSelectPrompt={(t) => (promptText = t)}
           onEditPrompt={(t) => (promptText = t)}
           onOpenArtifact={(art) => (activeArtifact = art)}
-          onRegenerate={() => {
+          onRegenerate={(retryModel) => {
             const lastUserMsg = [...messages].reverse().find((x) => x.role === "user");
-            if (lastUserMsg) handleSend(lastUserMsg.content, [], chatMode, selectedModelId);
+            if (lastUserMsg) handleSend(lastUserMsg.content, [], chatMode, retryModel || selectedModelId);
           }}
         />
 

@@ -1,6 +1,5 @@
-use std::collections::HashMap;
 use lumis_core::models::{
-    ChatCompletionRequest, ChatMessageFunctionCall, ChatMessagePayload, ChatMessageToolCall,
+    ChatMessageFunctionCall, ChatMessagePayload, ChatMessageToolCall,
     CursorQuery, McpToolCallRequest, MessageRole, NewMessage, User,
 };
 use serde_json::json;
@@ -10,6 +9,7 @@ use super::executor_helpers::{
     build_assistant_metadata, check_plan_convergence, compress_observation, generate_llm_title,
     get_max_agentic_turns, heal_or_infer_tool_name, parse_text_tool_calls, resolve_execution_skills,
 };
+use super::model_fallback::{collect_stream_turn, execute_chat_with_watchdog, get_model_display_name};
 
 pub fn spawn_chat_completion(
     state: AppState,
@@ -69,78 +69,63 @@ pub fn spawn_chat_completion(
         let mut turn = 0;
         let mut last_call_sig = (String::new(), String::new());
         let mut repeat_count = 0;
+        let mut active_model = model.clone();
+        let mut failover_from: Option<String> = None;
 
         while turn < max_turns {
             turn += 1;
-            let req = ChatCompletionRequest {
-                model: model.clone(),
-                messages: messages.clone(),
-                temperature: Some(0.7),
-                max_tokens: None,
-                stream: true,
-                tools: openai_tools.clone(),
-                tool_choice: None,
-            };
+            let stream_res = execute_chat_with_watchdog(
+                &router,
+                &stream_tx,
+                &sess_id,
+                &active_model,
+                &messages,
+                openai_tools.clone(),
+            ).await;
 
-            let mut rx = match router.complete_chat(&req).await {
-                Ok(receiver) => receiver,
+            let (first_chunk, rx) = match stream_res {
+                Ok(s) => {
+                    if s.actual_model != active_model {
+                        if failover_from.is_none() {
+                            failover_from = Some(active_model.clone());
+                        }
+                        active_model = s.actual_model;
+                    }
+                    (s.first_chunk, s.rx)
+                }
                 Err(e) => {
-                    tracing::error!("LLM completion turn failed: {}", e);
+                    tracing::error!("LLM completion failed across all cascade fallbacks: {}", e);
                     let last_is_tool = !message_parts.is_empty() && message_parts.last().and_then(|p| p.get("type")).and_then(|t| t.as_str()) == Some("tool_call");
                     if !executed_tools.is_empty() && last_is_tool {
                         let fallback = "Hasil eksekusi tool telah diterima. Silakan ketik 'Lanjutkan' untuk merangkum hasil pencarian.";
                         if !combined_content.is_empty() && !combined_content.ends_with('\n') { combined_content.push('\n'); }
                         combined_content.push_str(fallback);
                         message_parts.push(json!({ "type": "text", "text": fallback }));
-                        let chunk_event = json!({ "event": "chunk", "session_id": sess_id, "delta": fallback, "model_id": model, "is_done": false });
+                        let chunk_event = json!({ "event": "chunk", "session_id": sess_id, "delta": fallback, "model_id": active_model, "is_done": false });
                         let _ = stream_tx.send(bytes::Bytes::from(chunk_event.to_string()));
+                    } else {
+                        let err_event = json!({
+                            "event": "error",
+                            "session_id": sess_id,
+                            "error": e.to_string(),
+                            "can_retry": true,
+                            "suggested_model": "cbai/glm-5.2"
+                        });
+                        let _ = stream_tx.send(bytes::Bytes::from(err_event.to_string()));
                     }
-                    let done_event = json!({ "event": "chunk", "session_id": sess_id, "delta": "", "model_id": model, "is_done": true });
+                    let done_event = json!({ "event": "chunk", "session_id": sess_id, "delta": "", "model_id": active_model, "is_done": true });
                     let _ = stream_tx.send(bytes::Bytes::from(done_event.to_string()));
                     break;
                 }
             };
 
-            let mut turn_text = String::new();
-            let mut native_tcs: HashMap<usize, (Option<String>, Option<String>, String)> = HashMap::new();
-
-            while let Some(chunk_res) = rx.recv().await {
-                match chunk_res {
-                    Ok(chunk) => {
-                        if let Some(tcs) = chunk.tool_calls {
-                            for tc in tcs {
-                                let entry = native_tcs.entry(tc.index).or_insert((None, None, String::new()));
-                                if tc.id.is_some() { entry.0 = tc.id; }
-                                if let Some(ref n) = tc.name {
-                                    if !n.is_empty() {
-                                        let name_str = entry.1.get_or_insert_with(String::new);
-                                        name_str.push_str(n);
-                                    }
-                                }
-                                if let Some(arg_delta) = tc.arguments { entry.2.push_str(&arg_delta); }
-                            }
-                        }
-                        if !chunk.content.is_empty() {
-                            turn_text.push_str(&chunk.content);
-                            if !turn_text.contains("<tool_call") && native_tcs.is_empty() {
-                                let chunk_event = json!({
-                                    "event": "chunk",
-                                    "session_id": sess_id,
-                                    "delta": chunk.content,
-                                    "model_id": model,
-                                    "is_done": false,
-                                });
-                                let _ = stream_tx.send(bytes::Bytes::from(chunk_event.to_string()));
-                            }
-                        }
-                        if chunk.is_done { break; }
-                    }
-                    Err(e) => {
-                        tracing::error!("Error receiving chunk: {}", e);
-                        break;
-                    }
-                }
-            }
+            let (turn_text, native_tcs) = collect_stream_turn(
+                first_chunk,
+                rx,
+                &stream_tx,
+                &sess_id,
+                &active_model,
+            ).await;
 
             let mut detected_calls = Vec::new();
             if !native_tcs.is_empty() {
@@ -293,24 +278,35 @@ pub fn spawn_chat_completion(
                 }
             }
 
-            let status_event = json!({ "event": "chunk", "session_id": sess_id, "delta": "", "status": "Menganalisis hasil...", "model_id": model, "is_done": false });
+            let status_event = json!({ "event": "chunk", "session_id": sess_id, "delta": "", "status": "Menganalisis hasil...", "model_id": active_model, "is_done": false });
             let _ = stream_tx.send(bytes::Bytes::from(status_event.to_string()));
         }
 
         if !combined_content.is_empty() || !executed_tools.is_empty() {
-            let metadata = build_assistant_metadata(&executed_tools, &message_parts, &manual_skill_names, &primed_skills);
+            let mut metadata = build_assistant_metadata(&executed_tools, &message_parts, &manual_skill_names, &primed_skills);
+            if let Some(ref from_m) = failover_from {
+                let mut meta_val = metadata.unwrap_or_else(|| json!({}));
+                meta_val["failover"] = json!({
+                    "from_model": from_m,
+                    "from_name": get_model_display_name(from_m),
+                    "to_model": active_model,
+                    "to_name": get_model_display_name(&active_model),
+                    "reason": "Model awal tidak merespons (TTFT watchdog timeout)",
+                });
+                metadata = Some(meta_val);
+            }
             let assistant_msg = NewMessage {
                 session_id: sess_id.clone(),
                 role: MessageRole::Assistant,
                 content: combined_content.clone(),
-                model_id: Some(model.clone()),
+                model_id: Some(active_model.clone()),
                 token_count: None,
                 metadata,
             };
             let _ = repo.append_message(&assistant_msg).await;
 
             if session.title == "Percakapan Baru" || session.title.trim().is_empty() {
-                let new_title = match generate_llm_title(&router, &model, &prompt, &combined_content).await {
+                let new_title = match generate_llm_title(&router, &active_model, &prompt, &combined_content).await {
                     Some(t) if !t.is_empty() => t,
                     _ => extract_heuristic_title(&prompt),
                 };
