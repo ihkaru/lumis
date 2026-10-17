@@ -27,6 +27,8 @@ export function getMermaidConfig(isDark: boolean): MermaidConfig {
           edgeLabelBackground: "#090d16",
           attributeBackgroundColorOdd: "#1e293b",
           attributeBackgroundColorEven: "#0f172a",
+          rowOdd: "#1e293b",
+          rowEven: "#0f172a",
           entityBorder: "#38bdf8",
           entityBkg: "#0f172a",
           entityTextColor: "#f8fafc",
@@ -67,6 +69,8 @@ export function getMermaidConfig(isDark: boolean): MermaidConfig {
           edgeLabelBackground: "#ffffff",
           attributeBackgroundColorOdd: "#f8fafc",
           attributeBackgroundColorEven: "#f1f5f9",
+          rowOdd: "#ffffff",
+          rowEven: "#f1f5f9",
           entityBorder: "#0284c7",
           entityBkg: "#ffffff",
           entityTextColor: "#0f172a",
@@ -170,11 +174,11 @@ export function cleanMermaidSvg(rawSvg: string, isLightCanvas: boolean): string 
       return `${p1}${adaptColorForDarkMode(col)}${p3}`;
     });
   } else {
+    // In light canvas mode, do NOT replace white/light fills with currentColor (which is dark slate #0f172a)!
+    // Light fills are correct and provide 18:1 contrast against dark text.
     cleaned = cleaned
-      .replace(/fill="#ffffff"/gi, 'fill="currentColor"')
-      .replace(/fill="#fff"/gi, 'fill="currentColor"')
-      .replace(/fill="#f8fafc"/gi, 'fill="currentColor"')
-      .replace(/fill="#f1f5f9"/gi, 'fill="currentColor"');
+      .replace(/fill="#000000"/gi, 'fill="#0f172a"')
+      .replace(/fill="#000"/gi, 'fill="#0f172a"');
   }
   return cleaned;
 }
