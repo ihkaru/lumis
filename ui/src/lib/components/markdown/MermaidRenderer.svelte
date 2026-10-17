@@ -304,16 +304,29 @@
   :global(.mermaid-svg-container svg) { max-width: none !important; height: auto; display: block; margin: 0 auto; font-family: "Google Sans Text", system-ui, sans-serif !important; }
   :global(.mermaid-svg-container svg text) { font-family: "Google Sans Text", system-ui, sans-serif !important; }
   :global(.mermaid-svg-container svg .node text),
+  :global(.mermaid-svg-container svg .nodeLabel),
+  :global(.mermaid-svg-container svg span.nodeLabel),
   :global(.mermaid-svg-container svg .label text),
   :global(.mermaid-svg-container svg text.actor),
   :global(.mermaid-svg-container svg .actor text),
   :global(.mermaid-svg-container svg .messageText),
   :global(.mermaid-svg-container svg .er.entityLabel),
   :global(.mermaid-svg-container svg .classText) { font-weight: 500; }
+  :global(.mermaid-svg-container svg .node text),
+  :global(.mermaid-svg-container svg .nodeLabel),
+  :global(.mermaid-svg-container svg span.nodeLabel),
+  :global(.mermaid-svg-container svg .label text) { color: #f8fafc !important; fill: #f8fafc !important; }
   :global(.mermaid-svg-container svg .edgeLabel rect) { fill: #090d16 !important; opacity: 0.95; }
-  :global(.mermaid-svg-container svg .edgeLabel text) { fill: #f1f5f9 !important; }
+  :global(.mermaid-svg-container svg .edgeLabel text),
+  :global(.mermaid-svg-container svg .edgeLabel .nodeLabel),
+  :global(.mermaid-svg-container svg .edgeLabel span) { fill: #f1f5f9 !important; color: #f1f5f9 !important; }
   :global(.mermaid-svg-container svg .cluster text) { fill: #38bdf8 !important; font-weight: 600; }
-  :global(.contrast-light .mermaid-svg-container svg text) { fill: #0f172a !important; }
+  :global(.contrast-light .mermaid-svg-container svg text),
+  :global(.contrast-light .mermaid-svg-container svg .nodeLabel),
+  :global(.contrast-light .mermaid-svg-container svg span.nodeLabel),
+  :global(.contrast-light .mermaid-svg-container svg .label text) { fill: #0f172a !important; color: #0f172a !important; }
   :global(.contrast-light .mermaid-svg-container svg .edgeLabel rect) { fill: #ffffff !important; }
-  :global(.contrast-light .mermaid-svg-container svg .edgeLabel text) { fill: #0f172a !important; }
+  :global(.contrast-light .mermaid-svg-container svg .edgeLabel text),
+  :global(.contrast-light .mermaid-svg-container svg .edgeLabel .nodeLabel),
+  :global(.contrast-light .mermaid-svg-container svg .edgeLabel span) { fill: #0f172a !important; color: #0f172a !important; }
 </style>

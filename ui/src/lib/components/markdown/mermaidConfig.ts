@@ -11,7 +11,7 @@ export function getMermaidConfig(isDark: boolean): MermaidConfig {
       ? {
           darkMode: true,
           background: "transparent",
-          primaryColor: "#0284c7",
+          primaryColor: "#1e293b",
           primaryTextColor: "#f8fafc",
           primaryBorderColor: "#38bdf8",
           lineColor: "#94a3b8",
@@ -91,6 +91,62 @@ export function getMermaidConfig(isDark: boolean): MermaidConfig {
   };
 }
 
+const NAMED_LIGHT_COLORS: Record<string, string> = {
+  white: "#ffffff",
+  lightgray: "#d3d3d3",
+  lightgrey: "#d3d3d3",
+  yellow: "#ffff00",
+  lightyellow: "#ffffe0",
+  lightblue: "#add8e6",
+  lightcyan: "#e0ffff",
+  lightgreen: "#90ee90",
+  pink: "#ffc0cb",
+  lightpink: "#ffb6c1",
+  beige: "#f5f5dc",
+  ivory: "#fffff0",
+  floralwhite: "#fffaf0",
+  wheat: "#f5deb3",
+  papayawhip: "#ffefd5",
+  blanchedalmond: "#ffebcd",
+  cornsilk: "#fff8dc",
+  lavender: "#e6e6fa",
+  ghostwhite: "#f8f8ff",
+  aliceblue: "#f0f8ff",
+  honeydew: "#f0fff0",
+  mintcream: "#f5fffa",
+  azure: "#f0ffff",
+  seashell: "#fff5ee",
+  linen: "#faf0e6",
+  oldlace: "#fdf5e6",
+  snow: "#fffafa",
+};
+
+export function adaptColorForDarkMode(rawColor: string): string {
+  let hex = rawColor.trim().toLowerCase();
+  if (NAMED_LIGHT_COLORS[hex]) {
+    hex = NAMED_LIGHT_COLORS[hex];
+  }
+  let clean = hex.replace("#", "").trim();
+  if (clean.length === 3) {
+    clean = clean.split("").map((c) => c + c).join("");
+  }
+  if (clean.length !== 6) return rawColor;
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
+  if (isNaN(r) || isNaN(g) || isNaN(b)) return rawColor;
+
+  const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  if (lum > 0.65) {
+    // Blend 18% original hue with 82% slate-900 (#0f172a: 15, 23, 42)
+    const nr = Math.round(r * 0.18 + 15 * 0.82);
+    const ng = Math.round(g * 0.18 + 23 * 0.82);
+    const nb = Math.round(b * 0.18 + 42 * 0.82);
+    return `#${nr.toString(16).padStart(2, "0")}${ng.toString(16).padStart(2, "0")}${nb.toString(16).padStart(2, "0")}`;
+  }
+  return rawColor;
+}
+
 export function cleanMermaidSvg(rawSvg: string, isLightCanvas: boolean): string {
   let cleaned = rawSvg;
   if (!isLightCanvas) {
@@ -98,7 +154,21 @@ export function cleanMermaidSvg(rawSvg: string, isLightCanvas: boolean): string 
       .replace(/fill="#333333"/gi, 'fill="currentColor"')
       .replace(/fill="#333"/gi, 'fill="currentColor"')
       .replace(/fill="#000000"/gi, 'fill="currentColor"')
-      .replace(/fill="#fff5ad"/gi, 'fill="#1e293b"');
+      .replace(/fill="#fff5ad"/gi, 'fill="#1e293b"')
+      .replace(/stroke="#000000"/gi, 'stroke="#64748b"')
+      .replace(/stroke="#000"/gi, 'stroke="#64748b"')
+      .replace(/stroke="#333333"/gi, 'stroke="#64748b"')
+      .replace(/stroke="#333"/gi, 'stroke="#64748b"')
+      .replace(/stroke:\s*#(?:000000|000|333333|333)\b/gi, 'stroke:#64748b');
+
+    // Adapt light pastel fills in style blocks and inline attributes to dark pastel tones
+    cleaned = cleaned.replace(/(fill\s*:\s*)(#[0-9a-fA-F]{3,8}|[a-zA-Z]+)(?=[\s;}"'])/g, (match, prefix, col) => {
+      return `${prefix}${adaptColorForDarkMode(col)}`;
+    });
+    cleaned = cleaned.replace(/(fill\s*=\s*["'])(#[0-9a-fA-F]{3,8}|[a-zA-Z]+)(["'])/g, (match, p1, col, p3) => {
+      if (col === "currentColor" || col === "none") return match;
+      return `${p1}${adaptColorForDarkMode(col)}${p3}`;
+    });
   } else {
     cleaned = cleaned
       .replace(/fill="#ffffff"/gi, 'fill="currentColor"')
