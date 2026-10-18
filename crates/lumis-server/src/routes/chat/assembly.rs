@@ -87,7 +87,7 @@ pub fn assemble_chat_context(
                 let schema_brief = t.input_schema.to_string();
                 system_text.push_str(&format!("- `{}`: {}\n  Parameters: {}\n", t.name, t.description, schema_brief));
             }
-            system_text.push_str("\nWhen asked to perform a search, calculation, database query, or API call:\n1. If function calling is supported, call the tool directly.\n2. Otherwise, emit:\n<tool_call>\n{\"name\": \"<tool_name>\", \"arguments\": { ... }}\n</tool_call>\nDo NOT claim you lack tools or cannot execute them when tools are listed above.\n</tools_capability>\n");
+            system_text.push_str("\nWhen asked to perform an external search, database query, or external API call:\n1. If function calling is supported, call the tool directly.\n2. Otherwise, emit:\n<tool_call>\n{\"name\": \"<tool_name>\", \"arguments\": { ... }}\n</tool_call>\nDo NOT claim you lack tools or cannot execute them when tools are listed above.\nUI & Calculator Directive: When the user asks for a calculator, interactive tool, widget, stepper, or plan, NEVER call execute_code or gateway_plan_tasks, and NEVER write files to disk. Always emit ```openui (or ```html:preview) directly in your markdown response.\n</tools_capability>\n");
         }
     }
 
