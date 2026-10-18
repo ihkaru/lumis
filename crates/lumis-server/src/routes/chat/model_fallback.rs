@@ -138,7 +138,7 @@ pub async fn execute_chat_with_watchdog(
             tool_choice: None,
         };
 
-        let connect_res = tokio::time::timeout(Duration::from_secs(8), router.complete_chat(&req)).await;
+        let connect_res = tokio::time::timeout(Duration::from_secs(30), router.complete_chat(&req)).await;
         let mut rx = match connect_res {
             Ok(Ok(receiver)) => receiver,
             Ok(Err(e)) => {

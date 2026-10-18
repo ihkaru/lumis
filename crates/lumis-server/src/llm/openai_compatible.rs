@@ -2,12 +2,13 @@ use std::time::Instant;
 use async_trait::async_trait;
 use lumis_core::error::{LumisError, Result};
 use lumis_core::models::{
-    ChatChunk, ChatCompletionRequest, ModelCapabilities, ModelDescriptor, ProviderHealth,
+    ChatChunk, ChatCompletionRequest, ChatMessagePayload, ModelCapabilities, ModelDescriptor, ProviderHealth,
     ProviderHealthStatus, ToolCallChunk,
 };
 use lumis_core::traits::LlmProviderDriver;
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use tokio::sync::mpsc;
+use super::model_metadata::{determine_model_tier, format_model_display_name, format_model_provider, is_verified_model};
 
 /// Universal OpenAI-compatible HTTP inference driver.
 /// Operates seamlessly with OpenAI, Azure OpenAI, vLLM, Ollama, DeepSeek, LiteLLM, Groq, and Cloudflare AI Gateway.
@@ -41,6 +42,50 @@ impl OpenAiCompatibleDriver {
             }
         }
         headers
+    }
+
+    fn adapt_messages_for_upstream(messages: &[ChatMessagePayload]) -> Vec<serde_json::Value> {
+        let mut adapted = Vec::new();
+        let mut system_parts = Vec::new();
+
+        for msg in messages {
+            if msg.role == "system" {
+                let trimmed = msg.content.trim();
+                if !trimmed.is_empty() {
+                    system_parts.push(trimmed);
+                }
+            }
+        }
+
+        if !system_parts.is_empty() {
+            let combined = system_parts.join("\n\n");
+            adapted.push(serde_json::json!({
+                "role": "user",
+                "content": format!("[SYSTEM DIRECTIVE]\n{}\n[END SYSTEM DIRECTIVE]", combined)
+            }));
+            adapted.push(serde_json::json!({
+                "role": "assistant",
+                "content": "Understood. I will strictly follow all system directives, rules, and enterprise constraints."
+            }));
+        }
+
+        for msg in messages {
+            if msg.role != "system" {
+                let mut v = serde_json::json!({
+                    "role": msg.role,
+                    "content": msg.content,
+                });
+                if let Some(ref tcs) = msg.tool_calls {
+                    v["tool_calls"] = serde_json::json!(tcs);
+                }
+                if let Some(ref cid) = msg.tool_call_id {
+                    v["tool_call_id"] = serde_json::json!(cid);
+                }
+                adapted.push(v);
+            }
+        }
+
+        adapted
     }
 }
 
@@ -87,10 +132,11 @@ impl LlmProviderDriver for OpenAiCompatibleDriver {
     ) -> Result<mpsc::Receiver<Result<ChatChunk>>> {
         let url = format!("{}/chat/completions", self.base_url);
         let (tx, rx) = mpsc::channel(64);
+        let adapted_messages = Self::adapt_messages_for_upstream(&request.messages);
 
         let mut body = serde_json::json!({
             "model": request.model,
-            "messages": request.messages,
+            "messages": adapted_messages,
             "temperature": request.temperature.unwrap_or(0.7),
             "max_tokens": request.max_tokens,
             "stream": true,
@@ -270,16 +316,7 @@ impl LlmProviderDriver for OpenAiCompatibleDriver {
 
                     let is_reasoning = caps.as_ref().map(|c| c.reasoning).unwrap_or(false);
                     let is_vision = caps.as_ref().map(|c| c.vision).unwrap_or(false);
-
-                    let tier = if is_reasoning {
-                        "Reasoning".to_string()
-                    } else if is_vision {
-                        "Advanced".to_string()
-                    } else if id.contains("free") {
-                        "Basic".to_string()
-                    } else {
-                        "Standard".to_string()
-                    };
+                    let tier = determine_model_tier(id, is_reasoning, is_vision);
 
                     let name = format_model_display_name(id);
                     let provider = format_model_provider(id, owned_by.as_deref());
@@ -302,42 +339,3 @@ impl LlmProviderDriver for OpenAiCompatibleDriver {
         Ok(models)
     }
 }
-
-fn is_verified_model(id: &str) -> bool {
-    matches!(
-        id,
-        "cbai/glm-5.2"
-            | "cbai/glm-5v-turbo"
-            | "cbai/minimax-m3"
-            | "cbai/kimi-k2.6"
-            | "cbai/kimi-k2.5"
-            | "openrouter-free"
-            | "my9model-free"
-    )
-}
-
-fn format_model_display_name(id: &str) -> String {
-    match id {
-        "my9model-free" => "Nemotron 3 Ultra (Free Gateway)".to_string(),
-        "openrouter-free" => "Ling 3.1 Flash (OpenRouter)".to_string(),
-        "cbai/glm-5.2" => "GLM 5.2 (Flagship Reasoning)".to_string(),
-        "cbai/glm-5v-turbo" => "GLM 5V Turbo (Vision)".to_string(),
-        "cbai/minimax-m3" => "MiniMax M3 (1M Long-Context)".to_string(),
-        "cbai/kimi-k2.6" => "Kimi K2.6 (Moonshot AI)".to_string(),
-        "cbai/kimi-k2.5" => "Kimi K2.5 (High Speed)".to_string(),
-        other => other.to_string(),
-    }
-}
-
-fn format_model_provider(id: &str, owned_by: Option<&str>) -> String {
-    if id.starts_with("cbai/") || owned_by == Some("cbai") {
-        "CodeBuddy AI".to_string()
-    } else if owned_by == Some("combo") || id.starts_with("my9model") {
-        "9Router Gateway".to_string()
-    } else if let Some(owner) = owned_by {
-        owner.to_string()
-    } else {
-        "OpenAI Compatible".to_string()
-    }
-}
-
