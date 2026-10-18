@@ -24,7 +24,7 @@ Dokumen ini adalah peta jalan strategis multi-fase untuk mengembangkan **Lumis**
 
 ---
 
-## 📊 Matriks 14 Fase Pengembangan Lumis
+## 📊 Matriks 15 Fase Pengembangan Lumis
 
 ```mermaid
 flowchart TD
@@ -41,6 +41,7 @@ flowchart TD
     P11 --> P12["Phase 12: shadcn-svelte & High Refresh Rate Engine"]
     P12 --> P13["Phase 13: Interactive Artifacts & Split-Pane Canvas"]
     P13 --> P14["Phase 14: Zero-Fork Architecture & Seamless Upgrades"]
+    P14 --> P15["Phase 15: Intelligent Generative UI & OpenUI Engine"]
 ```
 
 | Fase | Dokumen Roadmap | Standar Legacy Didukung | Standar Modern 2026 Didukung |
@@ -59,6 +60,7 @@ flowchart TD
 | **12** | [Phase 12: shadcn-svelte & High Refresh Rate](12_PHASE_12_SHADCN_SVELTE_AND_HIGH_REFRESH_RATE_ENGINE.md) | Custom ad-hoc UI, CPU-bound 60Hz reflows | shadcn-svelte (bits-ui), Lucide icons, 120Hz/144Hz GPU Compositor |
 | **13** | [Phase 13: Interactive Artifacts & Canvas](13_PHASE_13_INTERACTIVE_ARTIFACTS_AND_CANVAS_ENGINE.md) | Static code snippet previews, destructive edits | Sandboxed Iframe Canvas, Zero CSS Bleed, DAG Message Forking |
 | **14** | [Phase 14: Zero-Fork Seamless Upgrades](14_PHASE_14_ZERO_FORK_ENTERPRISE_UPGRADE_AND_DISTRIBUTION.md) | Forked source modifications, destructive DDL | Zero-Fork Overlay, Runtime Branding Injection, Expand-Contract DDL |
+| **15** | [Phase 15: Generative UI & OpenUI](15_PHASE_15_INTELLIGENT_GENERATIVE_UI_AND_OPENUI_ENGINE.md) | Server script tools, heavy iframe widgets | Native OpenUI DSL (`openui-lang`), Client AST Parser, Svelte 5 Runes |
 
 ---
 

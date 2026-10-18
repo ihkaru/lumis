@@ -4,6 +4,7 @@
 [![Backend: Rust](https://img.shields.io/badge/Backend-Rust%201.93-orange.svg?logo=rust)](https://www.rust-lang.org)
 [![Frontend: Svelte 5](https://img.shields.io/badge/Frontend-Svelte%205%20Runes-ff3e00.svg?logo=svelte)](https://svelte.dev)
 [![Runtime: Bun](https://img.shields.io/badge/Runtime-Bun%201.4-black.svg?logo=bun)](https://bun.sh)
+[![Generative UI: OpenUI](https://img.shields.io/badge/Generative%20UI-OpenUI%20DSL-8a2be2.svg)](ui/src/lib/components/openui/)
 [![Architecture: SOLID & EIP](https://img.shields.io/badge/Architecture-Interface--First%20DIP-emerald.svg)](docs/ALGORITHMS_AND_OPTIMIZATIONS.md)
 [![Database: Pluggable](https://img.shields.io/badge/Database-SQLite%20%7C%20Postgres-purple.svg)](crates/lumis-db)
 [![Zero Mocks](https://img.shields.io/badge/Zero--Mock-Enforced-success.svg)](scripts/governance-check.sh)
@@ -29,11 +30,13 @@ flowchart TD
         G --> H["Pluggable Relational Driver<br>(SQLite WAL / PostgreSQL)"]
     end
 
-    subgraph Canvas["Interactive Artifacts Engine"]
+    subgraph Canvas["Interactive Artifacts & Generative UI"]
         D --> I["Artifact Stream Parser<br>(XML-Tagged CommonMark)"]
         I --> J["Split-Pane Canvas UI<br>(shadcn-svelte + 120Hz GPU)"]
         J --> K["Zero-Bleed Sandboxed Iframe<br>(sandbox='allow-scripts')"]
         K -->|PostMessage IPC| D
+        D --> N["OpenUI Reactive Engine<br>(Svelte 5 AST + openui-lang)"]
+        N --> O["Inline Interactive Widgets<br>(Sliders, Calculators, Steppers)"]
     end
 
     subgraph Upstream["AI Gateway & MCP Ecosystem"]
@@ -54,7 +57,12 @@ flowchart TD
    - Organisasi pengadopsi tidak perlu memodifikasi kode inti atau menghadapi *merge conflicts*. Cukup gunakan container image resmi dan kustomisasi via overlay runtime (`/api/config/branding` dan `/api/system/doctor`).
 4. **Model-Enabled Interactive Artifacts & Split-Pane Canvas**:
    - Preview HTML, SVG, dan kode yang dieksekusi dalam iframe sandboxed terisolasi (*zero CSS bleed*) dengan jembatan komunikasi PostMessage RPC tanpa kebocoran API key.
-5. **Standar Algoritma Mutakhir ($\mathcal{O}(1)$ & $\mathcal{O}(\log N)$)**:
+5. **Native Intelligent Generative UI (OpenUI Engine)**:
+   - AI menghasilkan antarmuka interaktif inline langsung di dalam percakapan chat melalui OpenUI DSL (`openui-lang 1.0`) tanpa overhead pemanggilan script eksternal.
+   - Evaluator Svelte 5 murni di sisi browser mengurai AST dengan reaktivitas dua arah (`$variables`), 50+ fungsi matematika/format bawaan (`@Round`, `@Sum`, `@Percent`, dll.), dan aksi klien (`@Set`, `@Reset`, `@CopyToClipboard`, `@ToAssistant`).
+   - Primitif antarmuka resmi berbasis `shadcn-svelte` (Card, Col, Row, Grid, Slider, Input, SegmentedControl, Stat, Table) dengan animasi GPU 120Hz/144Hz.
+   - Mendukung toggle dwitampilan (Live Interactive UI vs OpenUI DSL Code), tombol salin 1-klik, dan modal popout ekspansi ke Fullscreen Canvas.
+6. **Standar Algoritma Mutakhir ($\mathcal{O}(1)$ & $\mathcal{O}(\log N)$)**:
    - **Zero-Copy SSE Token Streaming**: Menggunakan `bytes::Bytes` dan Tokio broadcast channel.
    - **Keyset / Cursor-Based Pagination**: $\mathcal{O}(\log N)$ composite index seek.
    - **SIMD Aho-Corasick Guardrail**: Throughput pemindaian PII 2.4 GB/s per core.
@@ -69,12 +77,37 @@ flowchart TD
 | **Token SSE Stream** | $\mathcal{O}(N^2)$ string copy | **$\mathcal{O}(1)$ `bytes::Bytes` ref** | Mencegah OOM saat 1000+ streaming paralel |
 | **Pagination Chat** | $\mathcal{O}(K)$ scan B-tree leaf | **$\mathcal{O}(\log N)$ Keyset seek** | Query tetap <0.1ms di halaman ke-10.000 |
 | **PII & DLP Filter** | $\mathcal{O}(M \times N)$ regex loop | **$\mathcal{O}(N + Z)$ SIMD Aho-Corasick** | Throughput 2.4 GB/s per core |
+| **Generative UI AST** | Render script server / Heavy Iframe | **Client AST Parse & Svelte Runes** | $\mathcal{O}(1)$ state reaktif lokal, 0ms server latency |
 | **Frontend UI DOM** | $\mathcal{O}(N)$ Virtual DOM diff | **$\mathcal{O}(1)$ Svelte 5 Runes** | 0 lag render pada pesan ribuan token |
 | **Emergency Lockdown**| Polling database lambat | **$\mathcal{O}(1)$ Atomic Flag Check** | <1ms global killswitch activation |
 
 ---
 
-## 🗺️ Master Roadmap 14-Fase Enterprise
+## 🎨 Contoh Intelligent Generative UI (`openui-lang`)
+
+Model AI di Lumis dapat langsung merender kalkulator atau widget interaktif tanpa kode backend:
+
+````openui
+$bill = 500000
+$people = 4
+$tipPct = 10
+$tipAmount = @Round(($bill * $tipPct) / 100)
+$grandTotal = $bill + $tipAmount
+$perPerson = @Round($grandTotal / $people)
+
+Card(
+  Col(
+    Row(Input($bill, label="Total Tagihan (Rp)", type="number")),
+    Row(Slider($people, min=1, max=20, label="Jumlah Orang")),
+    Row(Slider($tipPct, min=0, max=30, label="Tip (%)")),
+    Row(Stat(label="Patungan per Orang", value=$perPerson, format="currency"))
+  )
+)
+````
+
+---
+
+## 🗺️ Master Roadmap 15-Fase Enterprise
 
 | Fase | Fokus Arsitektur | Status |
 | :---: | :--- | :---: |
@@ -92,8 +125,9 @@ flowchart TD
 | **Phase 12** | shadcn-svelte Standard & 120Hz/144Hz Native Refresh Rate | [✓] Selesai |
 | **Phase 13** | Interactive Artifacts, Canvas & Secure IPC Bridge | [✓] Selesai |
 | **Phase 14** | Zero-Fork Enterprise Upgrade & Pre-flight Diagnostics | [✓] Selesai |
+| **Phase 15** | Native Intelligent Generative UI & OpenUI Engine | [✓] Selesai |
 
-*Lihat dokumentasi lengkap di [docs/roadmap/00_ROADMAP_OVERVIEW.md](docs/roadmap/00_ROADMAP_OVERVIEW.md).*
+*Lihat dokumentasi lengkap di [docs/roadmap/00_ROADMAP_OVERVIEW.md](docs/roadmap/00_ROADMAP_OVERVIEW.md) dan [docs/roadmap/15_PHASE_15_INTELLIGENT_GENERATIVE_UI_AND_OPENUI_ENGINE.md](docs/roadmap/15_PHASE_15_INTELLIGENT_GENERATIVE_UI_AND_OPENUI_ENGINE.md).*
 
 ---
 

@@ -54,6 +54,7 @@ Setiap pengembangan fitur wajib merujuk dan memperbarui dokumen roadmap di `docs
 - [Phase 5: Enterprise Knowledge Vault & Hybrid RAG](docs/roadmap/05_PHASE_5_ENTERPRISE_RAG_AND_KNOWLEDGE_VAULT.md)
 - [Phase 6: Multi-Model Routing & Private Fallback](docs/roadmap/06_PHASE_6_MODEL_FAILOVER_AND_PRIVATE_VLLM.md)
 - [Phase 7: Centralized SIEM Auditing & Compliance](docs/roadmap/07_PHASE_7_SIEM_AUDIT_LOGGING_AND_COMPLIANCE.md)
+- [Phase 15: Native Intelligent Generative UI & OpenUI Engine](docs/roadmap/15_PHASE_15_INTELLIGENT_GENERATIVE_UI_AND_OPENUI_ENGINE.md)
 
 ---
 

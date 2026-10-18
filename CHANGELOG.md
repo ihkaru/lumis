@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.0] - 2026-10-18
+
+### Added
+- **Phase 15: Native Intelligent Generative UI & OpenUI Engine**:
+  - Client-side Pratt recursive descent AST parser and tokenizer for `openui-lang 1.0` in Svelte 5.
+  - Reactive two-way state binding with `$variables` and automatic hoisted expression re-evaluation.
+  - Zero-server client execution of actions (`@Set`, `@Reset`, `@CopyToClipboard`, `@ToAssistant`) and 50+ built-in mathematical, string, array, and formatting functions (`@Round`, `@Sum`, `@Percent`, `@Each`, etc.).
+  - Official `shadcn-svelte` styled primitives (`Card`, `Col`, `Row`, `Grid`, `Slider`, `Input`, `SegmentedControl`, `Checkbox`, `Table`, `Stat`, `Button`) with GPU-composited 120Hz/144Hz animations.
+  - Dual-view mode (Live Interactive UI vs OpenUI DSL Code view), 1-click clipboard copy, and Expand to Fullscreen Canvas popout modal.
+- **Strict LLM Prompt Guard & Tool Calling Constraint**:
+  - Added directive in chat assembly and system prompts prohibiting LLMs from calling backend execution tools (`execute_code`, `gateway_plan_tasks`) when users request inline calculators, steppers, or widgets.
+  - Injected concrete split bill calculator syntax into LLM system prompts for zero-shot accuracy.
+
 ## [1.0.0] - 2026-10-13
 
 ### Added
