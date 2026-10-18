@@ -214,6 +214,14 @@ pub async fn seed_default_enterprise_skills(
             "management",
             false,
         ),
+        (
+            "openui-builder",
+            "Interactive OpenUI & Generative Widget Architect",
+            "Spesifikasi deklaratif OpenUI AST untuk pembuatan kalkulator interaktif, dashboard KPI, formulir, slider, stepper, dan widget reaktif tanpa server execution.",
+            "# OpenUI Builder Directive\nGunakan format ```openui untuk merancang UI interaktif client-side deklaratif:\n1. Root First: Awali dengan `root = Col(...)` atau `root = Card(...)` pada baris pertama untuk optimal progressive streaming.\n2. State Bindings: Deklarasikan state reaktif dengan literal `$var = val` (misal `$guests = 4`, `$bill = 500000`). Hubungkan dengan komponen input: `Slider($var, min, max, step, label)`, `Input($var, label, type)`, `SegmentedControl($var, options)`, `Checkbox($var, label)`.\n3. Positional Arguments: Tulis argumen posisi murni, DILARANG sintaks titik dua (colon). Contoh: `Title(\"Judul\", \"lg\")`.\n4. Client-side Calculations: Gunakan fungsi @ (@Round, @Clamp, @Format, @Percent, @Sum, @Avg, @Plural, @Join, @Toggle, @Default). Gunakan ternary `cond ? a : b` untuk logika kondisional.\n5. Event Actions: Hubungkan tombol dengan `@Set($var, val)`, `@Reset($var)`, `@CopyToClipboard(...)`, `@ToAssistant(\"...\")`.\n6. Defensif: Bungkus input angka dengan `@Clamp(@Default($var, min), min, max)` untuk mencegah pembagian nol atau NaN.",
+            "frontend",
+            false,
+        ),
     ];
 
     for (name, title, desc, body, cat, always) in seeds {

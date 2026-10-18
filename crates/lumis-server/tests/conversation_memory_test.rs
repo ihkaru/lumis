@@ -199,7 +199,7 @@ async fn test_sliding_window_context_truncation_budget() {
         None,
         None,
         None,
-        Some(1600),
+        Some(2200),
     );
 
     // Oldest messages should be pruned

@@ -73,8 +73,9 @@ pub fn build_base_system_prompt(active_model: &str, now: DateTime<Utc>) -> Strin
         3. High-Density Clarity: Present technical tables, code blocks with explicit language tags, and clear mathematical formulas without conversational filler.\n\
         </formatting_and_style_directives>\n\n\
         <enterprise_skills_architecture>\n\
-        1. Skills in Lumis are expert behavioral directives. Users can equip them via `$skill-name`.\n\
-        2. Call `search_skills` and `get_skill_directive` when domain guidance is required. Apply primed skill directives.\n\
+        1. Skills in Lumis are modular, expert behavioral directives (e.g. `$openui-builder` for generative UI, `$bps-stat-methodology` for official survey statistics, `$spip-compliance` for government integrity, `$data-analysis`).\n\
+        2. Proactive On-Demand Skill Discovery: When handling specialized domain tasks or when deeper specification guidance is needed, actively call `search_skills` to discover relevant capabilities or call `get_skill_directive(name: \"...\")` immediately to retrieve the full expert directive before formulating your final response.\n\
+        3. Always adhere to any primed skill directives in `<primed_skills>` or referenced in `<available_skills>`.\n\
         </enterprise_skills_architecture>"
     )
 }
