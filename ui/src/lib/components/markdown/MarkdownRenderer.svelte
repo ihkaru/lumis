@@ -6,6 +6,7 @@
   import CodeBlock from "./CodeBlock.svelte";
   import MermaidRenderer from "./MermaidRenderer.svelte";
   import HtmlPreviewBlock from "./HtmlPreviewBlock.svelte";
+  import OpenUiBlock from "../openui/OpenUiBlock.svelte";
   import ReasoningBox from "../message/ReasoningBox.svelte";
   import TableBlock from "./TableBlock.svelte";
 
@@ -99,6 +100,12 @@
       return c.includes("<!DOCTYPE") || (c.includes("<html") && c.includes("</html>")) || (c.includes("<script") && c.includes("</" + "script>"));
     }
     return false;
+  }
+
+  function isOpenUiBlock(block: Block): boolean {
+    if (!block.lang) return false;
+    const l = block.lang.toLowerCase();
+    return l === "openui" || l === "ui" || l === "openui:canvas" || l === "ui:canvas";
   }
 
   function pushMarkdownOrInteractiveHtml(text: string, acc: Block[]) {
@@ -225,6 +232,8 @@
     {:else if block.type === "code"}
       {#if block.lang === "mermaid"}
         <MermaidRenderer code={block.content} />
+      {:else if isOpenUiBlock(block)}
+        <OpenUiBlock code={block.content} {isStreaming} />
       {:else if isInteractiveHtml(block)}
         <HtmlPreviewBlock code={block.content} lang={block.lang} />
       {:else}
