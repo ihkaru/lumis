@@ -98,3 +98,39 @@ pub async fn ensure_federated_user(
 
     Ok(user)
 }
+
+/// Determines if a user prompt is asking for an interactive UI widget, calculator, slider, or simulator.
+pub fn is_ui_or_calculator_request(prompt: &str) -> bool {
+    let lower = prompt.to_lowercase();
+    let keywords = [
+        "kalkulator", "calculator", "split bill", "slider", "widget",
+        "stepper", "openui", "buatkan ui", "bikin ui", "generate ui",
+        "interactive ui", "form interaktif", "antarmuka interaktif",
+        "buat kalkulator", "bikin kalkulator", "hitung patungan",
+        "simulasi", "checklist interaktif", "tampilkan ui", "komponen ui",
+        "buatkan form", "bikin form", "kalkulasi interaktif",
+    ];
+    keywords.iter().any(|&k| lower.contains(k))
+}
+
+/// Filters out backend code execution and plan execution tools when a UI widget is requested,
+/// ensuring the LLM emits OpenUI directly without attempting to write files to server disk.
+pub fn filter_tools_for_prompt(
+    tools: Vec<lumis_core::models::McpToolDefinition>,
+    prompt: &str,
+) -> Vec<lumis_core::models::McpToolDefinition> {
+    if is_ui_or_calculator_request(prompt) {
+        tools
+            .into_iter()
+            .filter(|t| {
+                t.name != "execute_code"
+                    && t.name != "gateway_plan_tasks"
+                    && t.name != "gateway_execute_plan"
+                    && t.name != "execute_in_situ_query"
+            })
+            .collect()
+    } else {
+        tools
+    }
+}
+

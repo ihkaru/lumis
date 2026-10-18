@@ -14,7 +14,15 @@ export class OpenUiParser {
       if (!line || line.startsWith("#") || line.startsWith("//")) continue;
 
       const eqIdx = line.indexOf("=");
-      if (eqIdx === -1) continue;
+      if (eqIdx === -1) {
+        try {
+          const expr = this.parseExpression(line);
+          statements.push({ target: "root", isState: false, expr });
+        } catch {
+          // Tolerant to streaming incomplete lines
+        }
+        continue;
+      }
 
       const left = line.slice(0, eqIdx).trim();
       const right = line.slice(eqIdx + 1).trim();

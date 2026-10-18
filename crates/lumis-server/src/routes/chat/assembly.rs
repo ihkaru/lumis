@@ -23,11 +23,15 @@ pub fn format_mcp_tools_for_openai(tools: &[McpToolDefinition]) -> Vec<serde_jso
                     "properties": {}
                 });
             }
+            let mut desc = t.description.clone();
+            if t.name == "execute_code" || t.name == "gateway_plan_tasks" {
+                desc.push_str(" (STRICT: NEVER call for UI widgets, calculators, sliders, forms, or HTML previews; emit ```openui directly).");
+            }
             serde_json::json!({
                 "type": "function",
                 "function": {
                     "name": sanitized_name,
-                    "description": t.description,
+                    "description": desc,
                     "parameters": schema,
                 }
             })
@@ -248,6 +252,15 @@ pub fn assemble_chat_context(
         tool_calls: None,
         tool_call_id: None,
     });
+
+    if super::helpers::is_ui_or_calculator_request(current_query) {
+        messages.push(ChatMessagePayload {
+            role: "system".to_string(),
+            content: "[System UI Directive: The user is requesting an interactive UI widget or calculator. You must directly output an interactive ```openui block (or ```html:preview block) in your markdown response. Do NOT call code execution tools, do NOT create files on server disk, and do NOT output conversational apologies. Render the complete interactive widget inline using openui-lang.]".to_string(),
+            tool_calls: None,
+            tool_call_id: None,
+        });
+    }
 
     // 4. Current User Prompt
     messages.push(ChatMessagePayload {

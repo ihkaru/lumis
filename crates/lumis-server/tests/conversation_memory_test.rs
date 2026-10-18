@@ -188,7 +188,7 @@ async fn test_sliding_window_context_truncation_budget() {
         });
     }
 
-    // Set a tight budget (1100 tokens, fitting system prompt ~850 tokens + 1-2 recent messages)
+    // Set a tight budget (1600 tokens, fitting system prompt + 1-2 recent messages)
     let assembled = assemble_chat_context(
         &session,
         &user,
@@ -199,7 +199,7 @@ async fn test_sliding_window_context_truncation_budget() {
         None,
         None,
         None,
-        Some(1100),
+        Some(1600),
     );
 
     // Oldest messages should be pruned

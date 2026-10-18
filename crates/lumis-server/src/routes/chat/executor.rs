@@ -39,6 +39,7 @@ pub fn spawn_chat_completion(
 
         let user_memories = repo.list_user_memories(&user.id).await.unwrap_or_default();
         let active_tools = state.mcp_registry.list_tools(user.role).await;
+        let active_tools = super::helpers::filter_tools_for_prompt(active_tools, &prompt);
         let openai_tools = if !active_tools.is_empty() {
             Some(format_mcp_tools_for_openai(&active_tools))
         } else {

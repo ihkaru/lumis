@@ -20,7 +20,14 @@ export class OpenUiEvaluator {
     }
 
     // 2. Resolve root expression
-    const rootExpr = ctx.definitions.get(program.rootTarget);
+    let rootExpr = ctx.definitions.get(program.rootTarget);
+    if (!rootExpr) {
+      rootExpr = ctx.definitions.get("app")
+        ?? ctx.definitions.get("main")
+        ?? ctx.definitions.get("calculator")
+        ?? ctx.definitions.get("ui")
+        ?? Array.from(ctx.definitions.values()).pop();
+    }
     if (!rootExpr) return null;
 
     this.visitedDefs.clear();
