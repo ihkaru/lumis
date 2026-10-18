@@ -87,7 +87,7 @@ pub fn assemble_chat_context(
                 let schema_brief = t.input_schema.to_string();
                 system_text.push_str(&format!("- `{}`: {}\n  Parameters: {}\n", t.name, t.description, schema_brief));
             }
-            system_text.push_str("\nWhen asked to perform an external search, database query, or external API call:\n1. If function calling is supported, call the tool directly.\n2. Otherwise, emit:\n<tool_call>\n{\"name\": \"<tool_name>\", \"arguments\": { ... }}\n</tool_call>\nDo NOT claim you lack tools or cannot execute them when tools are listed above.\nUI Directive: OpenUI (`openui-lang`) is the default standard for all inline UI in Lumis. Do NOT call code execution tools for inline UI unless explicitly told otherwise by the user.\n</tools_capability>\n");
+            system_text.push_str("\nWhen asked to perform an external search, database query, or external API call:\n1. If function calling is supported, call the tool directly.\n2. Otherwise, emit:\n<tool_call>\n{\"name\": \"<tool_name>\", \"arguments\": { ... }}\n</tool_call>\nDo NOT claim you lack tools or cannot execute them when tools are listed above.\nOrder of Precedence: Always perform Skill Discovery (`search_skills` / `get_skill_directive`) BEFORE formulating a multi-step plan (`gateway_plan_tasks`) or invoking external execution tools. If the user's task is to create an interactive UI, widget, form, or calculator, use OpenUI directly (```openui)—do NOT invoke `gateway_plan_tasks` or code execution tools.\n</tools_capability>\n");
         }
     }
 

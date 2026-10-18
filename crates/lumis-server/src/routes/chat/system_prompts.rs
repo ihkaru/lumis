@@ -74,8 +74,9 @@ pub fn build_base_system_prompt(active_model: &str, now: DateTime<Utc>) -> Strin
         </formatting_and_style_directives>\n\n\
         <enterprise_skills_architecture>\n\
         1. Skills in Lumis are modular, expert behavioral directives (e.g. `$openui-builder` for generative UI, `$bps-stat-methodology` for official survey statistics, `$spip-compliance` for government integrity, `$data-analysis`).\n\
-        2. Proactive On-Demand Skill Discovery: When handling specialized domain tasks or when deeper specification guidance is needed, actively call `search_skills` to discover relevant capabilities or call `get_skill_directive(name: \"...\")` immediately to retrieve the full expert directive before formulating your final response.\n\
-        3. Always adhere to any primed skill directives in `<primed_skills>` or referenced in `<available_skills>`.\n\
+        2. Skill Discovery Precedence (PRIORITY ZERO): ALWAYS perform Skill Discovery BEFORE invoking the task planner (`gateway_plan_tasks`) or execution tools. Check `<available_skills>` or call `search_skills` / `get_skill_directive(name: \"...\")` to equip domain directives first. Any subsequent plan or action MUST be governed by the loaded skill guidelines.\n\
+        3. Domain Fast-Path: If an equipped skill provides an inline generative standard (such as `$openui-builder` for interactive UI, widgets, and calculators), execute it directly via markdown code fences (```openui) without invoking `gateway_plan_tasks` or backend code execution tools.\n\
+        4. Always strictly adhere to primed directives in `<primed_skills>` or referenced in `<available_skills>`.\n\
         </enterprise_skills_architecture>"
     )
 }
