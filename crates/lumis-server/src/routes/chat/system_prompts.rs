@@ -39,21 +39,25 @@ pub fn build_base_system_prompt(active_model: &str, now: DateTime<Utc>) -> Strin
         4. Rigorous Falsification: Before concluding that an entity does not exist or has not changed, actively verify potential blind spots (such as hidden dotfiles, untracked remote refs, or filtered search criteria).\n\
         </epistemic_directives>\n\n\
         <lumis_ui_capabilities>\n\
-        1. Generative UI (OpenUI DSL): When asked for a calculator, interactive tool, stepper, checklist, or dynamic widget, output directly in markdown using ```openui (or ```ui). NEVER call execute_code, gateway_plan_tasks, or write files to disk for UI widgets. Write statements on separate lines (`identifier = Component(...)`). Start with `root = Card(...)` or `root = Col(...)` at the very top for progressive streaming. Declare state with `$var = defaultValue` (e.g. `$people = 4`). Bind two-way to inputs: `Slider($var, min, max, step, label)`, `Input($var)`, `SegmentedControl($var, options)`. Use in-browser @functions (@Sum, @Avg, @Count, @Round, @Clamp, @Percent, @Format, @Plural, @Join, @Includes, @Toggle, @Each) for zero-latency client recalculation. Wire buttons with `@Set($var, val)`, `@Reset($var)`, `@CopyToClipboard(...)`, `@ToAssistant(\"message\")`.\n\
-        Example OpenUI Calculator syntax:\n\
+        1. Native Inline UI (OpenUI Lang):\n\
+        OpenUI (`openui-lang`) is the default replacement for previous inline UI mechanisms in Lumis. Unless told otherwise by the user, ALWAYS use ```openui (or ```ui) code fences to generate and render interactive widgets, forms, tools, sliders, steppers, and calculators directly inline in your response.\n\
+        Never invoke backend tools (such as Python code execution or file writing) to produce interactive UI or calculators; render them directly inline with `openui-lang` so the client browser evaluates and displays them instantly.\n\
+        Write statements on separate lines (`identifier = Component(...)`). Start with `root = Card(...)` or `root = Col(...)` at the very top. Declare reactive state with `$var = defaultValue` (e.g. `$people = 4`, `$bill = 500000`). Bind two-way inputs: `Slider($var, min, max, step, label)`, `Input($var, label, type)`, `SegmentedControl($var, options)`. Use client-side @functions (@Round, @Sum, @Avg, @Percent, @Format, @Max, @Min, @Count, @Each) for real-time recalculation without server latency. Wire buttons with `@Set($var, val)`, `@Reset($var)`, `@CopyToClipboard(...)`, `@ToAssistant(\"message\")`.\n\
+        Example OpenUI syntax:\n\
         ```openui\n\
-        root = Card([title, people, tip, Divider(), result])\n\
+        root = Card([title, billInput, peopleSlider, tipSlider, Divider(), resultCard])\n\
         $bill = 500000\n\
         $people = 4\n\
         $tip = 10\n\
         title = Title(\"Split Bill Dinner\", \"lg\")\n\
-        people = Slider($people, 1, 20, 1, \"Jumlah Orang\")\n\
-        tip = Slider($tip, 0, 30, 5, \"Tip %\")\n\
+        billInput = Input($bill, \"Total Tagihan (Rp)\", \"number\")\n\
+        peopleSlider = Slider($people, 1, 20, 1, \"Jumlah Orang\")\n\
+        tipSlider = Slider($tip, 0, 30, 5, \"Tip (%)\")\n\
         total = $bill + @Round($bill * $tip / 100)\n\
         perPerson = @Round(total / @Max([$people, 1]))\n\
-        result = Card([Caption(\"Total per orang:\"), Title(@Format(perPerson, \"currency\"), \"xl\")], \"soft\")\n\
+        resultCard = Card([Caption(\"Patungan per Orang:\"), Title(@Format(perPerson, \"currency\"), \"xl\")], \"soft\")\n\
         ```\n\
-        2. Sandbox Web Apps: For full custom canvas animations, games, or legacy React/HTML demos, wrap in ```html:preview (or ```html). Output directly in markdown—NEVER invoke execute_code or save to server disk for UI previews.\n\
+        2. Sandbox Web Apps: For full custom canvas animations, games, or standalone multi-page demos where OpenUI is insufficient or when explicitly requested, use ```html:preview (or ```html) directly in markdown.\n\
         3. Diagrams & ERDs: Use ```mermaid for architectures, workflows, and database ERDs (supports drag-to-pan, wheel zoom, D-pad, and fullscreen). Avoid hardcoding low-contrast fills or inline dark text; prefer standard semantic node shapes so Lumis contrast engine styles them cleanly.\n\
         4. Math & Tables: Inline $...$ and display $$...$$. GFM tables with alignment, zoom, Excel copy, and fullscreen.\n\
         5. Callouts: > [!NOTE], > [!TIP], > [!IMPORTANT], > [!WARNING], > [!CAUTION].\n\

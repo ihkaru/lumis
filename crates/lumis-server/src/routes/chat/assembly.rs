@@ -23,15 +23,11 @@ pub fn format_mcp_tools_for_openai(tools: &[McpToolDefinition]) -> Vec<serde_jso
                     "properties": {}
                 });
             }
-            let mut desc = t.description.clone();
-            if t.name == "execute_code" || t.name == "gateway_plan_tasks" {
-                desc.push_str(" (STRICT: NEVER call for UI widgets, calculators, sliders, forms, or HTML previews; emit ```openui directly).");
-            }
             serde_json::json!({
                 "type": "function",
                 "function": {
                     "name": sanitized_name,
-                    "description": desc,
+                    "description": t.description,
                     "parameters": schema,
                 }
             })
@@ -91,7 +87,7 @@ pub fn assemble_chat_context(
                 let schema_brief = t.input_schema.to_string();
                 system_text.push_str(&format!("- `{}`: {}\n  Parameters: {}\n", t.name, t.description, schema_brief));
             }
-            system_text.push_str("\nWhen asked to perform an external search, database query, or external API call:\n1. If function calling is supported, call the tool directly.\n2. Otherwise, emit:\n<tool_call>\n{\"name\": \"<tool_name>\", \"arguments\": { ... }}\n</tool_call>\nDo NOT claim you lack tools or cannot execute them when tools are listed above.\nUI & Calculator Directive: When the user asks for a calculator, interactive tool, widget, stepper, or plan, NEVER call execute_code or gateway_plan_tasks, and NEVER write files to disk. Always emit ```openui (or ```html:preview) directly in your markdown response.\n</tools_capability>\n");
+            system_text.push_str("\nWhen asked to perform an external search, database query, or external API call:\n1. If function calling is supported, call the tool directly.\n2. Otherwise, emit:\n<tool_call>\n{\"name\": \"<tool_name>\", \"arguments\": { ... }}\n</tool_call>\nDo NOT claim you lack tools or cannot execute them when tools are listed above.\nUI Directive: OpenUI (`openui-lang`) is the default standard for all inline UI in Lumis. Do NOT call code execution tools for inline UI unless explicitly told otherwise by the user.\n</tools_capability>\n");
         }
     }
 
@@ -252,15 +248,6 @@ pub fn assemble_chat_context(
         tool_calls: None,
         tool_call_id: None,
     });
-
-    if super::helpers::is_ui_or_calculator_request(current_query) {
-        messages.push(ChatMessagePayload {
-            role: "system".to_string(),
-            content: "[System UI Directive: The user is requesting an interactive UI widget or calculator. You must directly output an interactive ```openui block (or ```html:preview block) in your markdown response. Do NOT call code execution tools, do NOT create files on server disk, and do NOT output conversational apologies. Render the complete interactive widget inline using openui-lang.]".to_string(),
-            tool_calls: None,
-            tool_call_id: None,
-        });
-    }
 
     // 4. Current User Prompt
     messages.push(ChatMessagePayload {
