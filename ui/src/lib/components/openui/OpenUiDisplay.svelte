@@ -37,6 +37,14 @@
   <span class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium border {node.props.color === 'success' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : node.props.color === 'info' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : node.props.color === 'warning' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : node.props.color === 'danger' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-secondary text-secondary-foreground border-border/50'}">
     {node.props.text}
   </span>
+{:else if node.type === "Metric" || node.type === "Stat"}
+  <div class="flex flex-col rounded-lg border border-border/60 bg-card/60 p-3 shadow-2xs backdrop-blur-xs min-w-[130px] flex-1">
+    <span class="text-[11px] font-medium text-muted-foreground uppercase tracking-wider font-sans">{node.props.label}</span>
+    <span class="mt-1 text-xl font-bold tracking-tight text-foreground font-sans">{node.props.value}</span>
+    {#if node.props.description}
+      <span class="mt-0.5 text-[11px] text-muted-foreground/85 font-sans">{node.props.description}</span>
+    {/if}
+  </div>
 {:else if node.type === "Label"}
   <label for={node.props.forId} class="text-xs font-medium text-foreground inline-flex items-center gap-1">
     {node.props.text}

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { UiNode } from "./types";
   import OpenUiNode from "./OpenUiNode.svelte";
+  import { Sparkles, RotateCcw, Check } from "lucide-svelte";
 
   interface Props {
     node: any;
@@ -27,7 +28,9 @@
         <div class="space-y-3">
           <div class="flex items-center justify-between text-xs text-muted-foreground font-medium">
             <span>Pertanyaan / Depan</span>
-            <span class="rounded bg-primary/10 px-2 py-0.5 text-primary text-[10px]">Klik untuk balik ⟲</span>
+            <span class="inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-primary text-[10px]">
+              Klik untuk balik <RotateCcw class="size-3" />
+            </span>
           </div>
           <div class="py-2 text-foreground">
             <OpenUiNode node={node.props.front} state={uiState} {onStateChange} />
@@ -37,7 +40,9 @@
         <div class="space-y-3" style="transform: rotateY(180deg);">
           <div class="flex items-center justify-between text-xs text-emerald-400 font-medium">
             <span>Jawaban / Belakang</span>
-            <span class="rounded bg-emerald-500/10 px-2 py-0.5 text-emerald-400 text-[10px]">Terbalik ✓</span>
+            <span class="inline-flex items-center gap-1 rounded bg-emerald-500/10 px-2 py-0.5 text-emerald-400 text-[10px]">
+              Terbalik <Check class="size-3" />
+            </span>
           </div>
           <div class="py-2 text-foreground">
             <OpenUiNode node={node.props.back} state={uiState} {onStateChange} />
@@ -51,7 +56,9 @@
   </div>
 {:else if node.type === "Confetti"}
   <div class="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-center space-y-1.5 animate-pulse">
-    <div class="text-xl select-none">🎉 ✨ 🎊</div>
+    <div class="flex items-center justify-center gap-1.5 text-emerald-400">
+      <Sparkles class="size-5" />
+    </div>
     <div class="text-xs font-semibold text-emerald-400">Selamat! Pencapaian Terbuka!</div>
     <div class="text-[11px] text-muted-foreground">Target dan kriteria berhasil dipenuhi dengan sempurna.</div>
   </div>

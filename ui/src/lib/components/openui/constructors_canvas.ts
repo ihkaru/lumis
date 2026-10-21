@@ -4,11 +4,13 @@ export function constructCanvasNode(name: string, args: any[]): UiNode | null {
   const props: Record<string, any> = {};
 
   switch (name) {
-    case "Canvas": {
+    case "Canvas":
+    case "Svg": {
       props.width = typeof args[0] === "number" ? args[0] : 400;
       props.height = typeof args[1] === "number" ? args[1] : 250;
-      const children = Array.isArray(args[2]) ? args[2] : args[2] ? [args[2]] : [];
-      return { type: name, props, children };
+      const rest = args.slice(2);
+      const children = rest.length === 1 && Array.isArray(rest[0]) ? rest[0] : rest.filter(Boolean);
+      return { type: "Canvas", props, children };
     }
 
     case "Rect":
@@ -45,30 +47,50 @@ export function constructCanvasNode(name: string, args: any[]): UiNode | null {
       props.strokeWidth = typeof args[3] === "number" ? args[3] : 2;
       return { type: name, props, children: [] };
 
-    case "SvgText":
+    case "SvgText": {
       props.x = typeof args[0] === "number" ? args[0] : 0;
       props.y = typeof args[1] === "number" ? args[1] : 0;
       props.text = args[2] ?? "";
-      props.fontSize = typeof args[3] === "number" ? args[3] : 12;
-      props.fill = args[4] ?? "currentColor";
-      return { type: name, props, children: [] };
+      let fontSize = 12;
+      let fill = "currentColor";
+      if (typeof args[3] === "number") {
+        fontSize = args[3];
+        if (args[4]) fill = args[4];
+      } else if (typeof args[3] === "string") {
+        if (args[3].startsWith("#") || args[3].startsWith("rgb")) {
+          fill = args[3];
+          if (typeof args[4] === "number") fontSize = args[4];
+        } else if (["xs", "sm", "md", "lg", "xl"].includes(args[3])) {
+          fontSize = args[3] === "xs" ? 10 : args[3] === "sm" ? 12 : args[3] === "md" ? 14 : args[3] === "lg" ? 18 : 24;
+          if (args[4]) fill = args[4];
+        } else {
+          fill = args[3];
+        }
+      }
+      props.fontSize = fontSize;
+      props.fill = fill;
+      return { type: "SvgText", props, children: [] };
+    }
 
-    case "Group": {
+    case "Group":
+    case "G": {
       const children = Array.isArray(args[0]) ? args[0] : args[0] ? [args[0]] : [];
       props.transform = args[1] ?? "";
-      return { type: name, props, children };
+      return { type: "Group", props, children };
     }
 
     case "FlashCard":
+    case "Flashcard":
       props.front = args[0];
       props.back = args[1];
       props.isFlipped = args[2] ?? false;
-      return { type: name, props, children: [] };
+      return { type: "FlashCard", props, children: [] };
 
     case "Confetti":
+    case "Celebration":
       props.active = args[0] ?? true;
       props.duration = typeof args[1] === "number" ? args[1] : 3000;
-      return { type: name, props, children: [] };
+      return { type: "Confetti", props, children: [] };
 
     case "Audio":
       props.src = args[0] ?? "";

@@ -37,6 +37,8 @@
     "Text",
     "Caption",
     "Badge",
+    "Metric",
+    "Stat",
     "Label",
     "Link",
     "Code",
@@ -66,17 +68,20 @@
 
   const CANVAS_TYPES = new Set([
     "Canvas",
+    "Svg",
     "Rect",
     "Circle",
     "Line",
     "Path",
     "SvgText",
     "Group",
+    "G",
   ]);
 
   const PLAY_TYPES = new Set([
     "FlashCard",
     "Confetti",
+    "Celebration",
     "Audio",
   ]);
 </script>

@@ -131,6 +131,15 @@ export function constructUiNode(
       props.icon = args[2];
       break;
 
+    case "Metric":
+    case "Stat":
+      props.label = args[0] ?? "";
+      props.value = args[1] ?? "";
+      props.description = args[2] ?? "";
+      props.delta = args[3];
+      props.trend = args[4];
+      break;
+
     case "Button":
       props.label = args[0] ?? "";
       props.action = args[1];

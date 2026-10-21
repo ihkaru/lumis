@@ -1,19 +1,21 @@
 import type { AstExpr, AstProgram, AstStatement } from "./types";
 import { tokenize, type Token } from "./tokenizer";
+import { splitStatements, findAssignment } from "./parser_stmts";
 
 export class OpenUiParser {
   private tokens: Token[] = [];
   private idx = 0;
+  private rawInput = "";
 
   public parseProgram(source: string): AstProgram {
-    const rawStmts = this.splitStatements(source);
+    const rawStmts = splitStatements(source);
     const statements: AstStatement[] = [];
 
     for (const rawStmt of rawStmts) {
       const stmt = rawStmt.trim();
       if (!stmt) continue;
 
-      const assign = this.findAssignment(stmt);
+      const assign = findAssignment(stmt);
       if (assign) {
         const isState = assign.left.startsWith("$");
         const target = isState ? assign.left.slice(1) : assign.left;
@@ -36,88 +38,27 @@ export class OpenUiParser {
     return { statements, rootTarget: "root" };
   }
 
-  private splitStatements(source: string): string[] {
-    const statements: string[] = [];
-    let current = "", depth = 0, inString = false, stringChar = "", inComment = false;
-
-    for (let i = 0; i < source.length; i++) {
-      const char = source[i], nextChar = source[i + 1];
-      if (inComment) {
-        if (char === "\n") inComment = false;
-        continue;
-      }
-      if (!inString && (char === "#" || (char === "/" && nextChar === "/"))) {
-        inComment = true;
-        continue;
-      }
-      if (inString) {
-        current += char;
-        if (char === "\\" && i + 1 < source.length) current += source[++i];
-        else if (char === stringChar) inString = false;
-        continue;
-      }
-      if (char === '"' || char === "'") {
-        inString = true;
-        stringChar = char;
-        current += char;
-        continue;
-      }
-      if (char === "(" || char === "[" || char === "{") {
-        depth++;
-        current += char;
-      } else if (char === ")" || char === "]" || char === "}") {
-        if (depth > 0) depth--;
-        current += char;
-      } else if ((char === "\n" || char === ";") && depth === 0) {
-        if (current.trim()) statements.push(current.trim());
-        current = "";
-      } else {
-        current += char;
-      }
-    }
-    if (current.trim()) statements.push(current.trim());
-    return statements;
-  }
-
-  private findAssignment(stmt: string): { left: string; right: string } | null {
-    let depth = 0, inString = false, stringChar = "";
-
-    for (let i = 0; i < stmt.length; i++) {
-      const char = stmt[i];
-      if (inString) {
-        if (char === "\\" && i + 1 < stmt.length) i++;
-        else if (char === stringChar) inString = false;
-        continue;
-      }
-      if (char === '"' || char === "'") {
-        inString = true;
-        stringChar = char;
-        continue;
-      }
-      if (char === "(" || char === "[" || char === "{") { depth++; continue; }
-      if (char === ")" || char === "]" || char === "}") { if (depth > 0) depth--; continue; }
-
-      if (depth === 0 && char === "=") {
-        const prev = i > 0 ? stmt[i - 1] : "";
-        const next = i + 1 < stmt.length ? stmt[i + 1] : "";
-        if (next === "=" || next === ">" || prev === "=" || prev === "!" || prev === "<" || prev === ">") continue;
-
-        const left = stmt.slice(0, i).trim();
-        const right = stmt.slice(i + 1).trim();
-        if (/^\$?[a-zA-Z_][a-zA-Z0-9_]*$/.test(left)) return { left, right };
-      }
-    }
-    return null;
-  }
-
   public parseExpression(input: string): AstExpr {
+    this.rawInput = input;
     this.tokens = tokenize(input);
     this.idx = 0;
-    return this.parseTernary();
+    return this.parsePipeList();
+  }
+
+  private parsePipeList(): AstExpr {
+    const first = this.parseTernary();
+    if (this.matchOp("|")) {
+      const elements: AstExpr[] = [first];
+      do {
+        elements.push(this.parseTernary());
+      } while (this.matchOp("|"));
+      return { type: "array", elements };
+    }
+    return first;
   }
 
   private parseTernary(): AstExpr {
-    let expr = this.parseLogicalOr();
+    const expr = this.parseLogicalOr();
     if (this.matchPunct("?")) {
       const trueExpr = this.parseTernary();
       this.consumePunct(":");
@@ -210,7 +151,7 @@ export class OpenUiParser {
         const args: AstExpr[] = [];
         if (!this.checkPunct(")")) {
           do {
-            args.push(this.parseTernary());
+            args.push(this.parsePipeList());
           } while (this.matchPunct(","));
         }
         this.consumePunct(")");
@@ -224,7 +165,58 @@ export class OpenUiParser {
     return expr;
   }
 
+  private tryParsePhrase(): AstExpr | null {
+    const curr = this.peek();
+    if (!curr || (curr.type !== "ident" && curr.type !== "number" && curr.type !== "string")) {
+      return null;
+    }
+
+    let endIdx = this.idx;
+    let hasForbidden = false;
+
+    while (endIdx < this.tokens.length) {
+      const tok = this.tokens[endIdx];
+      if (tok.type === "punct" && [",", ")", "]", "}", "{", ";", "?", ":"].includes(tok.value)) break;
+      if (tok.type === "op" && ["|", "==", "!=", "<=", ">=", "&&", "||"].includes(tok.value)) break;
+      if (tok.type === "state_var" || tok.type === "builtin") {
+        hasForbidden = true;
+        break;
+      }
+      if (tok.type === "punct" && ["(", ".", "[", "{"].includes(tok.value)) {
+        hasForbidden = true;
+        break;
+      }
+      endIdx++;
+    }
+
+    if (hasForbidden || endIdx - this.idx < 2) return null;
+
+    let hasAdjacent = false;
+    for (let i = this.idx; i < endIdx - 1; i++) {
+      const t1 = this.tokens[i];
+      const t2 = this.tokens[i + 1];
+      const isWord1 = t1.type === "ident" || t1.type === "number" || t1.type === "string";
+      const isWord2 = t2.type === "ident" || t2.type === "number" || t2.type === "string";
+      if (isWord1 && isWord2) {
+        hasAdjacent = true;
+        break;
+      }
+    }
+
+    if (hasAdjacent) {
+      const startChar = this.tokens[this.idx].start ?? 0;
+      const endChar = this.tokens[endIdx - 1].end ?? this.rawInput.length;
+      const phrase = this.rawInput.slice(startChar, endChar).trim();
+      this.idx = endIdx;
+      return { type: "literal", value: phrase };
+    }
+    return null;
+  }
+
   private parsePrimary(): AstExpr {
+    const phrase = this.tryParsePhrase();
+    if (phrase) return phrase;
+
     const t = this.next();
     if (!t) return { type: "literal", value: null };
 
@@ -244,7 +236,7 @@ export class OpenUiParser {
       const elements: AstExpr[] = [];
       if (!this.checkPunct("]")) {
         do {
-          elements.push(this.parseTernary());
+          elements.push(this.parsePipeList());
         } while (this.matchPunct(","));
       }
       this.consumePunct("]");
@@ -266,7 +258,7 @@ export class OpenUiParser {
     }
 
     if (t.type === "punct" && t.value === "(") {
-      const inner = this.parseTernary();
+      const inner = this.parsePipeList();
       this.consumePunct(")");
       return inner;
     }

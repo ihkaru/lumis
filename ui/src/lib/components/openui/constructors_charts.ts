@@ -1,50 +1,73 @@
 import type { UiNode } from "./types";
 
+function normalizeSeriesData(arg0: any, arg1: any): { data: any[]; isZipped: boolean } {
+  if (Array.isArray(arg0) && Array.isArray(arg1)) {
+    const data = arg0.map((label, i) => ({
+      x: String(label),
+      y: Number(arg1[i]) || 0,
+      label: String(label),
+      value: Number(arg1[i]) || 0,
+    }));
+    return { data, isZipped: true };
+  }
+  return { data: Array.isArray(arg0) ? arg0 : [], isZipped: false };
+}
+
 export function constructChartNode(name: string, args: any[]): UiNode | null {
   const props: Record<string, any> = {};
 
   switch (name) {
-    case "LineChart":
-      props.data = Array.isArray(args[0]) ? args[0] : [];
-      props.xKey = args[1] ?? "x";
-      props.yKey = args[2] ?? "y";
+    case "LineChart": {
+      const { data, isZipped } = normalizeSeriesData(args[0], args[1]);
+      props.data = data;
+      props.xKey = isZipped ? "x" : args[1] ?? "x";
+      props.yKey = isZipped ? "y" : args[2] ?? "y";
       props.color = args[3] ?? "primary";
       props.showAxes = args[4] ?? true;
-      props.title = args[5];
+      props.title = isZipped ? (typeof args[2] === "string" ? args[2] : args[5]) : args[5];
       return { type: name, props, children: [] };
+    }
 
-    case "BarChart":
-      props.data = Array.isArray(args[0]) ? args[0] : [];
-      props.xKey = args[1] ?? "x";
-      props.yKey = args[2] ?? "y";
+    case "BarChart": {
+      const { data, isZipped } = normalizeSeriesData(args[0], args[1]);
+      props.data = data;
+      props.xKey = isZipped ? "x" : args[1] ?? "x";
+      props.yKey = isZipped ? "y" : args[2] ?? "y";
       props.horizontal = args[3] ?? false;
       props.color = args[4] ?? "primary";
-      props.title = args[5];
+      props.title = isZipped ? (typeof args[2] === "string" ? args[2] : args[5]) : args[5];
       return { type: name, props, children: [] };
+    }
 
-    case "PieChart":
-      props.data = Array.isArray(args[0]) ? args[0] : [];
-      props.labelKey = args[1] ?? "label";
-      props.valueKey = args[2] ?? "value";
-      props.title = args[3];
+    case "PieChart": {
+      const { data, isZipped } = normalizeSeriesData(args[0], args[1]);
+      props.data = data;
+      props.labelKey = isZipped ? "label" : args[1] ?? "label";
+      props.valueKey = isZipped ? "value" : args[2] ?? "value";
+      props.title = isZipped ? (typeof args[2] === "string" ? args[2] : args[3]) : args[3];
       return { type: name, props, children: [] };
+    }
 
-    case "DonutChart":
-      props.data = Array.isArray(args[0]) ? args[0] : [];
-      props.labelKey = args[1] ?? "label";
-      props.valueKey = args[2] ?? "value";
+    case "DonutChart": {
+      const { data, isZipped } = normalizeSeriesData(args[0], args[1]);
+      props.data = data;
+      props.labelKey = isZipped ? "label" : args[1] ?? "label";
+      props.valueKey = isZipped ? "value" : args[2] ?? "value";
       props.innerRadius = typeof args[3] === "number" ? args[3] : 50;
-      props.title = args[4];
+      props.title = isZipped ? (typeof args[2] === "string" ? args[2] : args[4]) : args[4];
       return { type: name, props, children: [] };
+    }
 
-    case "AreaChart":
-      props.data = Array.isArray(args[0]) ? args[0] : [];
-      props.xKey = args[1] ?? "x";
-      props.yKey = args[2] ?? "y";
+    case "AreaChart": {
+      const { data, isZipped } = normalizeSeriesData(args[0], args[1]);
+      props.data = data;
+      props.xKey = isZipped ? "x" : args[1] ?? "x";
+      props.yKey = isZipped ? "y" : args[2] ?? "y";
       props.color = args[3] ?? "primary";
       props.fillOpacity = typeof args[4] === "number" ? args[4] : 0.25;
-      props.title = args[5];
+      props.title = isZipped ? (typeof args[2] === "string" ? args[2] : args[5]) : args[5];
       return { type: name, props, children: [] };
+    }
 
     case "Carousel": {
       const children = Array.isArray(args[0]) ? args[0] : args[0] ? [args[0]] : [];

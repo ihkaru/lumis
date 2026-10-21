@@ -2,6 +2,8 @@ export interface Token {
   type: "string" | "number" | "bool" | "null" | "ident" | "state_var" | "builtin" | "op" | "punct";
   value: any;
   pos: number;
+  start?: number;
+  end?: number;
 }
 
 export function tokenize(input: string): Token[] {
@@ -14,6 +16,29 @@ export function tokenize(input: string): Token[] {
     if (/\s/.test(ch)) {
       i++;
       continue;
+    }
+
+    const start = i;
+
+    // Hex colors or comments
+    if (ch === "#") {
+      if (i + 1 < input.length && /[a-fA-F0-9]/.test(input[i + 1])) {
+        let hex = "#";
+        i++;
+        while (i < input.length && /[a-fA-F0-9]/.test(input[i])) {
+          hex += input[i];
+          i++;
+        }
+        tokens.push({ type: "string", value: hex, pos: i, start, end: i });
+        continue;
+      } else {
+        // Comment until newline
+        i++;
+        while (i < input.length && input[i] !== "\n") {
+          i++;
+        }
+        continue;
+      }
     }
 
     // Strings
@@ -33,11 +58,11 @@ export function tokenize(input: string): Token[] {
         i++;
       }
       if (i < input.length) i++; // consume closing quote
-      tokens.push({ type: "string", value: str, pos: i });
+      tokens.push({ type: "string", value: str, pos: i, start, end: i });
       continue;
     }
 
-    // Numbers
+    // Numbers & Percentages
     if (/[0-9]/.test(ch) || (ch === "-" && /[0-9]/.test(input[i + 1] || ""))) {
       let numStr = ch;
       i++;
@@ -45,7 +70,12 @@ export function tokenize(input: string): Token[] {
         numStr += input[i];
         i++;
       }
-      tokens.push({ type: "number", value: parseFloat(numStr), pos: i });
+      if (i < input.length && input[i] === "%") {
+        i++;
+        tokens.push({ type: "string", value: numStr + "%", pos: i, start, end: i });
+      } else {
+        tokens.push({ type: "number", value: parseFloat(numStr), pos: i, start, end: i });
+      }
       continue;
     }
 
@@ -57,7 +87,7 @@ export function tokenize(input: string): Token[] {
         name += input[i];
         i++;
       }
-      tokens.push({ type: "builtin", value: name, pos: i });
+      tokens.push({ type: "builtin", value: name, pos: i, start, end: i });
       continue;
     }
 
@@ -69,7 +99,7 @@ export function tokenize(input: string): Token[] {
         varName += input[i];
         i++;
       }
-      tokens.push({ type: "state_var", value: varName, pos: i });
+      tokens.push({ type: "state_var", value: varName, pos: i, start, end: i });
       continue;
     }
 
@@ -80,30 +110,30 @@ export function tokenize(input: string): Token[] {
         ident += input[i];
         i++;
       }
-      if (ident === "true") tokens.push({ type: "bool", value: true, pos: i });
-      else if (ident === "false") tokens.push({ type: "bool", value: false, pos: i });
-      else if (ident === "null") tokens.push({ type: "null", value: null, pos: i });
-      else tokens.push({ type: "ident", value: ident, pos: i });
+      if (ident === "true") tokens.push({ type: "bool", value: true, pos: i, start, end: i });
+      else if (ident === "false") tokens.push({ type: "bool", value: false, pos: i, start, end: i });
+      else if (ident === "null") tokens.push({ type: "null", value: null, pos: i, start, end: i });
+      else tokens.push({ type: "ident", value: ident, pos: i, start, end: i });
       continue;
     }
 
     // Multi-char operators
     const two = input.slice(i, i + 2);
     if (["==", "!=", "<=", ">=", "&&", "||"].includes(two)) {
-      tokens.push({ type: "op", value: two, pos: i });
+      tokens.push({ type: "op", value: two, pos: i, start, end: i + 2 });
       i += 2;
       continue;
     }
 
     // Single-char operators and punctuation
-    if (["+", "-", "*", "/", "%", "<", ">", "!"].includes(ch)) {
-      tokens.push({ type: "op", value: ch, pos: i });
+    if (["+", "-", "*", "/", "%", "<", ">", "!", "|"].includes(ch)) {
+      tokens.push({ type: "op", value: ch, pos: i, start, end: i + 1 });
       i++;
       continue;
     }
 
     if (["(", ")", "[", "]", "{", "}", ",", ":", "?", "."].includes(ch)) {
-      tokens.push({ type: "punct", value: ch, pos: i });
+      tokens.push({ type: "punct", value: ch, pos: i, start, end: i + 1 });
       i++;
       continue;
     }
