@@ -1,27 +1,20 @@
 pub fn is_verified_model(id: &str) -> bool {
-    if id == "my9model-cooldown" {
+    let trimmed = id.trim();
+    if trimmed.is_empty() || trimmed.contains("cooldown") {
         return false;
     }
-    id.starts_with("muse/")
-        || id.starts_with("cbai/")
-        || id.starts_with("my9model")
-        || id.starts_with("openrouter")
-        || matches!(
-            id,
-            "cbai/glm-5.2"
-                | "cbai/glm-5v-turbo"
-                | "cbai/minimax-m3"
-                | "cbai/kimi-k2.6"
-                | "cbai/kimi-k2.5"
-                | "openrouter-free"
-                | "my9model-free"
-                | "my9model-smart"
-                | "my9model-fast"
-        )
+    if let Ok(allowed) = std::env::var("ALLOWED_MODELS") {
+        let list: Vec<&str> = allowed.split(',').map(|s| s.trim()).filter(|s| !s.is_empty()).collect();
+        if !list.is_empty() {
+            return list.contains(&trimmed);
+        }
+    }
+    true
 }
 
 pub fn format_model_display_name(id: &str) -> String {
-    match id {
+    let trimmed = id.trim();
+    match trimmed {
         "my9model-free" => "Nemotron 3 Ultra (Free Gateway)".to_string(),
         "openrouter-free" => "Ling 3.1 Flash (OpenRouter)".to_string(),
         "my9model-smart" => "Nemotron 3 Smart".to_string(),
@@ -33,41 +26,119 @@ pub fn format_model_display_name(id: &str) -> String {
         "cbai/kimi-k2.5" => "Kimi K2.5 (High Speed)".to_string(),
         "muse/muse-spark-1.3-contributor" => "Muse Spark 1.3 Contributor (Deep Reasoning)".to_string(),
         "muse/muse-spark-1.3" => "Muse Spark 1.3 (Balanced)".to_string(),
-        "muse/muse-spark-1.2-contributor" => "Muse Spark 1.2 Contributor".to_string(),
-        "muse/muse-spark-1.2" => "Muse Spark 1.2".to_string(),
-        "muse/muse-spark-1.1" => "Muse Spark 1.1".to_string(),
         "muse/muse-wonder-1.0" => "Muse Wonder 1.0 (Flagship)".to_string(),
         "muse/sam-3.1" => "SAM 3.1 (Meta Vision)".to_string(),
-        other => {
-            if let Some(stripped) = other.strip_prefix("muse/") {
-                format!("Muse {}", stripped)
-            } else {
-                other.to_string()
+        other => dynamic_format_model_title(other),
+    }
+}
+
+fn dynamic_format_model_title(raw_id: &str) -> String {
+    let (provider, model_part) = match raw_id.split_once('/') {
+        Some((p, m)) => (Some(p), m),
+        None => (None, raw_id),
+    };
+
+    let clean_model = if let Some(p) = provider {
+        let prefix_dash = format!("{}-", p);
+        model_part.strip_prefix(&prefix_dash).unwrap_or(model_part)
+    } else {
+        model_part
+    };
+
+    let words: Vec<String> = clean_model
+        .split(|c| c == '-' || c == '_')
+        .filter(|w| !w.is_empty())
+        .map(|w| {
+            let mut chars = w.chars();
+            match chars.next() {
+                None => String::new(),
+                Some(f) => f.to_uppercase().collect::<String>() + chars.as_str(),
             }
+        })
+        .collect();
+
+    let title = words.join(" ");
+    if let Some(p) = provider {
+        let provider_title = match p.to_lowercase().as_str() {
+            "cbai" => "CodeBuddy".to_string(),
+            "muse" => "Muse".to_string(),
+            other => {
+                let mut c = other.chars();
+                match c.next() {
+                    Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+                    None => other.to_string(),
+                }
+            }
+        };
+        if !title.to_lowercase().starts_with(&provider_title.to_lowercase()) {
+            format!("{} {}", provider_title, title)
+        } else {
+            title
         }
+    } else {
+        title
     }
 }
 
 pub fn format_model_provider(id: &str, owned_by: Option<&str>) -> String {
-    if id.starts_with("muse/") || owned_by == Some("muse") {
-        "Meta Muse AI".to_string()
-    } else if id.starts_with("cbai/") || owned_by == Some("cbai") {
-        "CodeBuddy AI".to_string()
-    } else if owned_by == Some("combo") || id.starts_with("my9model") {
+    if let Some(owner) = owned_by.filter(|o| !o.trim().is_empty()) {
+        match owner.to_lowercase().as_str() {
+            "combo" => "9Router Gateway".to_string(),
+            "muse" => "Meta Muse AI".to_string(),
+            "cbai" => "CodeBuddy AI".to_string(),
+            "openai" => "OpenAI".to_string(),
+            "anthropic" => "Anthropic".to_string(),
+            "openrouter" => "OpenRouter".to_string(),
+            other => {
+                let mut c = other.chars();
+                match c.next() {
+                    Some(f) => format!("{} AI", f.to_uppercase().collect::<String>() + c.as_str()),
+                    None => "AI Gateway".to_string(),
+                }
+            }
+        }
+    } else if let Some((prefix, _)) = id.split_once('/') {
+        match prefix.to_lowercase().as_str() {
+            "cbai" => "CodeBuddy AI".to_string(),
+            "muse" => "Meta Muse AI".to_string(),
+            other => {
+                let mut c = other.chars();
+                match c.next() {
+                    Some(f) => format!("{} AI", f.to_uppercase().collect::<String>() + c.as_str()),
+                    None => "AI Gateway".to_string(),
+                }
+            }
+        }
+    } else if id.starts_with("my9model") {
         "9Router Gateway".to_string()
-    } else if let Some(owner) = owned_by {
-        owner.to_string()
     } else {
         "OpenAI Compatible".to_string()
     }
 }
 
 pub fn determine_model_tier(id: &str, is_reasoning: bool, is_vision: bool) -> String {
-    if is_reasoning || id.contains("contributor") || id.contains("wonder") {
+    let lower = id.to_lowercase();
+    if is_reasoning
+        || lower.contains("reasoning")
+        || lower.contains("think")
+        || lower.contains("thought")
+        || lower.contains("r1")
+        || lower.contains("o1")
+        || lower.contains("o3")
+        || lower.contains("contributor")
+        || lower.contains("wonder")
+        || lower.contains("qwq")
+    {
         "Reasoning".to_string()
-    } else if is_vision || id.contains("sam") {
+    } else if is_vision
+        || lower.contains("vision")
+        || lower.contains("image")
+        || lower.contains("visual")
+        || lower.contains("sam")
+        || lower.contains("vl")
+    {
         "Advanced".to_string()
-    } else if id.contains("free") {
+    } else if lower.contains("free") || lower.contains("basic") {
         "Basic".to_string()
     } else {
         "Standard".to_string()

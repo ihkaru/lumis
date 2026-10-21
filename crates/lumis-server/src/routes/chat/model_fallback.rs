@@ -45,68 +45,64 @@ pub fn record_model_failure(model: &str) {
     entry.1 = Instant::now();
 }
 
-pub fn get_model_display_name(model_id: &str) -> &'static str {
-    match model_id {
-        "my9model-free" => "Nemotron 3 Ultra (Free Gateway)",
-        "openrouter-free" => "Ling 3.1 Flash (OpenRouter)",
-        "my9model-smart" => "Nemotron 3 Smart",
-        "my9model-fast" => "Nemotron 3 Fast",
-        "cbai/kimi-k2.5" => "Kimi K2.5 (High Speed)",
-        "cbai/kimi-k2.6" => "Kimi K2.6 (Moonshot AI)",
-        "cbai/glm-5.2" => "GLM 5.2 (Flagship Reasoning)",
-        "cbai/glm-5v-turbo" => "GLM 5V Turbo (Vision)",
-        "cbai/minimax-m3" => "MiniMax M3 (1M Long-Context)",
-        "muse/muse-spark-1.3-contributor" => "Muse Spark 1.3 Contributor (Deep Reasoning)",
-        "muse/muse-spark-1.3" => "Muse Spark 1.3 (Balanced)",
-        "muse/muse-wonder-1.0" => "Muse Wonder 1.0 (Flagship)",
-        "muse/sam-3.1" => "SAM 3.1 (Meta Vision)",
-        _ => "AI Model",
-    }
+pub fn get_model_display_name(model_id: &str) -> String {
+    crate::llm::model_metadata::format_model_display_name(model_id)
 }
 
 pub fn resolve_model_cascade(primary_model: &str) -> Vec<String> {
     let mut cascade = vec![primary_model.to_string()];
-    let fallbacks: &[&str] = match primary_model {
-        "muse/muse-spark-1.3-contributor" => &["muse/muse-spark-1.3", "muse/muse-wonder-1.0", "openrouter-free", "my9model-free"],
-        "muse/muse-spark-1.3" => &["muse/muse-spark-1.3-contributor", "openrouter-free", "my9model-free"],
-        "muse/muse-wonder-1.0" => &["muse/muse-spark-1.3-contributor", "openrouter-free", "my9model-free"],
-        "my9model-free" => &["openrouter-free", "muse/muse-spark-1.3", "cbai/kimi-k2.5"],
-        "openrouter-free" => &["my9model-free", "muse/muse-spark-1.3", "cbai/kimi-k2.5"],
-        "my9model-smart" => &["cbai/kimi-k2.6", "cbai/glm-5.2", "muse/muse-spark-1.3-contributor"],
-        "my9model-fast" => &["cbai/kimi-k2.5", "my9model-free", "muse/muse-spark-1.3"],
-        "cbai/kimi-k2.6" => &["cbai/glm-5.2", "muse/muse-spark-1.3-contributor", "openrouter-free"],
-        "cbai/kimi-k2.5" => &["openrouter-free", "muse/muse-spark-1.3", "my9model-free"],
-        "cbai/glm-5.2" => &["cbai/kimi-k2.6", "muse/muse-spark-1.3-contributor", "openrouter-free"],
-        "cbai/minimax-m3" => &["muse/muse-spark-1.3-contributor", "openrouter-free", "cbai/glm-5.2"],
-        "cbai/glm-5v-turbo" => &["muse/sam-3.1", "muse/muse-spark-1.3-contributor", "openrouter-free"],
-        _ => {
-            if primary_model.starts_with("muse/") {
-                &["openrouter-free", "my9model-free"]
-            } else {
-                &["my9model-free", "openrouter-free"]
+    let default_model = std::env::var("DEFAULT_MODEL").unwrap_or_else(|_| "my9model-free".to_string());
+
+    if let Ok(env_fallbacks) = std::env::var("DEFAULT_FALLBACK_MODELS") {
+        for fb in env_fallbacks.split(',').map(|s| s.trim()).filter(|s| !s.is_empty()) {
+            if !cascade.iter().any(|m| m == fb) {
+                cascade.push(fb.to_string());
             }
         }
-    };
+    }
 
-    for fb in fallbacks {
-        if !cascade.iter().any(|m| m == fb) {
+    for suffix in &["-contributor", "-fast", "-smart", "-turbo", "-distill"] {
+        if let Some(base) = primary_model.strip_suffix(suffix) {
+            if !cascade.iter().any(|m| m == base) {
+                cascade.push(base.to_string());
+            }
+        }
+    }
+
+    for fb in &["openrouter-free", default_model.as_str()] {
+        if !cascade.iter().any(|m| m == *fb) {
             cascade.push(fb.to_string());
         }
     }
+
     cascade
 }
 
 pub fn get_ttft_duration(model: &str) -> Duration {
-    match model {
-        "muse/muse-spark-1.3-contributor"
-        | "muse/muse-spark-1.3"
-        | "muse/muse-wonder-1.0" => {
-            Duration::from_millis(15_000)
-        }
-        "cbai/glm-5.2" | "cbai/minimax-m3" | "cbai/kimi-k2.6" | "my9model-smart" => {
-            Duration::from_millis(10_000)
-        }
-        _ => Duration::from_millis(7_500),
+    let lower = model.to_lowercase();
+    let is_reasoning = lower.contains("reasoning")
+        || lower.contains("think")
+        || lower.contains("thought")
+        || lower.contains("r1")
+        || lower.contains("o1")
+        || lower.contains("o3")
+        || lower.contains("spark")
+        || lower.contains("contributor")
+        || lower.contains("wonder")
+        || lower.contains("qwq");
+
+    if is_reasoning {
+        let ms = std::env::var("TTFT_REASONING_TIMEOUT_MS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(15_000);
+        Duration::from_millis(ms)
+    } else {
+        let ms = std::env::var("TTFT_DEFAULT_TIMEOUT_MS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(10_000);
+        Duration::from_millis(ms)
     }
 }
 

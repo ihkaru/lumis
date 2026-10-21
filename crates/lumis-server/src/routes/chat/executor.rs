@@ -104,12 +104,13 @@ pub fn spawn_chat_completion(
                         let chunk_event = json!({ "event": "chunk", "session_id": sess_id, "delta": fallback, "model_id": active_model, "is_done": false });
                         let _ = stream_tx.send(bytes::Bytes::from(chunk_event.to_string()));
                     } else {
+                        let default_model = std::env::var("DEFAULT_MODEL").unwrap_or_else(|_| "my9model-free".to_string());
                         let err_event = json!({
                             "event": "error",
                             "session_id": sess_id,
                             "error": e.to_string(),
                             "can_retry": true,
-                            "suggested_model": "cbai/glm-5.2"
+                            "suggested_model": default_model
                         });
                         let _ = stream_tx.send(bytes::Bytes::from(err_event.to_string()));
                     }

@@ -72,32 +72,13 @@
       if (!matchSearch) return false;
 
       if (selectedCategory === "reasoning") {
-        return (
-          m.capabilities?.reasoning ||
-          m.tier === "Reasoning" ||
-          m.id.includes("5.2") ||
-          m.id.includes("r1") ||
-          m.id.includes("spark") ||
-          m.id.includes("contributor")
-        );
+        return m.capabilities?.reasoning || m.tier === "Reasoning";
       }
       if (selectedCategory === "vision") {
-        return (
-          m.capabilities?.vision ||
-          m.tier === "Advanced" ||
-          m.id.includes("5v") ||
-          m.id.includes("m3") ||
-          m.id.includes("k2") ||
-          m.id.includes("sam")
-        );
+        return m.capabilities?.vision || m.tier === "Advanced";
       }
       if (selectedCategory === "combo") {
-        return (
-          m.owned_by === "combo" ||
-          m.owned_by === "openrouter" ||
-          m.id.includes("free") ||
-          m.id.includes("openrouter")
-        );
+        return m.tier === "Basic" || m.owned_by === "combo" || m.id.includes("free");
       }
       return true;
     })
@@ -107,15 +88,30 @@
     const trimmed = customModelInput.trim();
     if (trimmed) {
       if (!models.some((m) => m.id === trimmed)) {
+        const lower = trimmed.toLowerCase();
+        const isReasoning = lower.includes("reasoning")
+          || lower.includes("think")
+          || lower.includes("r1")
+          || lower.includes("o1")
+          || lower.includes("o3")
+          || lower.includes("spark")
+          || lower.includes("contributor");
+        const isVision = lower.includes("vision") || lower.includes("vl") || lower.includes("sam");
+        const providerName = trimmed.includes("/")
+          ? trimmed.split("/")[0].toUpperCase() + " AI"
+          : "Custom Gateway";
+
         models = [...models, {
-          id: trimmed, name: trimmed,
-          provider: trimmed.startsWith("muse/") ? "Meta Muse AI" : "Custom Model",
-          tier: trimmed.includes("spark") || trimmed.includes("contributor") ? "Reasoning" : "Standard",
-          is_default: false, can_access: true,
+          id: trimmed,
+          name: trimmed,
+          provider: providerName,
+          tier: isReasoning ? "Reasoning" : isVision ? "Advanced" : "Standard",
+          is_default: false,
+          can_access: true,
           capabilities: {
-            vision: trimmed.includes("vision") || trimmed.includes("sam") || trimmed.includes("spark"),
+            vision: isVision,
             tools: true,
-            reasoning: trimmed.includes("contributor") || trimmed.includes("spark") || trimmed.includes("r1"),
+            reasoning: isReasoning,
           },
         }];
       }

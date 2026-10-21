@@ -1,17 +1,9 @@
 use chrono::{DateTime, Utc};
+use crate::llm::model_metadata::format_model_display_name;
 
-/// Format active model ID to display identity
-pub fn format_model_identity(model_id: &str) -> &'static str {
-    match model_id {
-        "cbai/glm-5.2" => "GLM 5.2 (Zhipu AI Flagship)",
-        "cbai/glm-5v-turbo" => "GLM 5V Turbo (Multimodal Vision)",
-        "cbai/minimax-m3" => "MiniMax M3 (1M Long-Context)",
-        "cbai/kimi-k2.6" => "Kimi K2.6 (Moonshot AI)",
-        "cbai/kimi-k2.5" => "Kimi K2.5 (High Speed)",
-        "openrouter-free" => "Ling 3.1 Flash (OpenRouter)",
-        "my9model-free" | "my9model-smart" | "my9model-fast" => "NVIDIA Nemotron 3 Ultra (9Router Gateway)",
-        _ => "Enterprise AI Gateway",
-    }
+/// Format active model ID to display identity dynamically without hardcoding
+pub fn format_model_identity(model_id: &str) -> String {
+    format_model_display_name(model_id)
 }
 
 /// Builds the high-density base system prompt containing:
