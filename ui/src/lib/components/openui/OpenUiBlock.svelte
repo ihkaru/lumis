@@ -30,14 +30,43 @@
   const parser = new OpenUiParser();
   const evaluator = new OpenUiEvaluator();
 
+  function handleStateChange(key: string, value: any) {
+    runtimeState[key] = value;
+    stateVersion += 1;
+  }
+
+  // Pre-seed initial state safely inside effect without triggering Svelte 5 derivation mutation
+  $effect(() => {
+    if (!code || !code.trim()) return;
+    try {
+      const program = parser.parseProgram(code);
+      let updated = false;
+      for (const stmt of program.statements) {
+        if (stmt.isState && !(stmt.target in runtimeState)) {
+          const val = evaluator.evalExpr(
+            stmt.expr,
+            { state: runtimeState, initialState: ctx.initialState, definitions: new Map() },
+            new Map()
+          );
+          runtimeState[stmt.target] = val;
+          ctx.initialState[stmt.target] = JSON.parse(JSON.stringify(val ?? null));
+          updated = true;
+        }
+      }
+      if (updated) {
+        stateVersion += 1;
+      }
+    } catch {}
+  });
+
   const ctx: OpenUiContext = {
     get state() {
       return runtimeState;
     },
     initialState: {},
     definitions: new Map(),
+    setState: handleStateChange,
     onToAssistant: (prompt: string, contextData?: any) => {
-      // Dispatch custom DOM event to chat input if available
       if (typeof window !== "undefined") {
         window.dispatchEvent(
           new CustomEvent("lumis:to_assistant", {
@@ -49,6 +78,8 @@
     onCopy: async (text: string) => {
       if (typeof navigator !== "undefined" && navigator.clipboard) {
         await navigator.clipboard.writeText(text);
+        isCopied = true;
+        setTimeout(() => (isCopied = false), 1800);
       }
     },
   };
@@ -64,11 +95,6 @@
       return null;
     }
   });
-
-  function handleStateChange(key: string, value: any) {
-    runtimeState[key] = value;
-    stateVersion += 1;
-  }
 
   async function handleCopy() {
     try {

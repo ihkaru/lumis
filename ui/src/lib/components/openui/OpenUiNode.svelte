@@ -118,6 +118,7 @@
     </div>
     <input
       type="range"
+      id={"openui_slider_" + (node.props.bindingVar || "val")}
       min={node.props.min}
       max={node.props.max}
       step={node.props.step}
@@ -133,6 +134,7 @@
     {/if}
     <input
       type={node.props.type || "text"}
+      id={"openui_input_" + (node.props.bindingVar || "text")}
       placeholder={node.props.placeholder}
       value={state[node.props.bindingVar] ?? node.props.value}
       oninput={(e) => handleInputChange(e, node.props.bindingVar, node.props.type)}
@@ -158,6 +160,7 @@
   <label class="inline-flex items-center gap-2 cursor-pointer select-none">
     <input
       type="checkbox"
+      id={"openui_check_" + (node.props.bindingVar || "check")}
       checked={!!(state[node.props.bindingVar] ?? node.props.checked)}
       onchange={() => handleCheckboxToggle(node.props.bindingVar)}
       class="h-4 w-4 rounded-sm border-border bg-background text-primary focus:ring-0"

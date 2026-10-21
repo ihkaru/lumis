@@ -9,10 +9,14 @@ export class OpenUiEvaluator {
     // 1. Initialize state variables if not already initialized
     for (const stmt of program.statements) {
       if (stmt.isState) {
-        if (!(stmt.target in ctx.state)) {
+        if (!(stmt.target in ctx.state) && !(stmt.target in ctx.initialState)) {
           const val = this.evalExpr(stmt.expr, ctx, new Map());
-          ctx.state[stmt.target] = val;
           ctx.initialState[stmt.target] = JSON.parse(JSON.stringify(val ?? null));
+          if (ctx.setState) {
+            ctx.setState(stmt.target, val);
+          } else {
+            ctx.state[stmt.target] = val;
+          }
         }
       } else {
         ctx.definitions.set(stmt.target, stmt.expr);
@@ -170,7 +174,11 @@ export class OpenUiEvaluator {
       return () => {
         if (targetVar) {
           const val = this.evalExpr(call.args[1], ctx, scope);
-          ctx.state[targetVar] = val;
+          if (ctx.setState) {
+            ctx.setState(targetVar, val);
+          } else {
+            ctx.state[targetVar] = val;
+          }
         }
       };
     }
@@ -180,7 +188,12 @@ export class OpenUiEvaluator {
       return () => {
         for (const va of varArgs) {
           if (va.name in ctx.initialState) {
-            ctx.state[va.name] = JSON.parse(JSON.stringify(ctx.initialState[va.name]));
+            const val = JSON.parse(JSON.stringify(ctx.initialState[va.name]));
+            if (ctx.setState) {
+              ctx.setState(va.name, val);
+            } else {
+              ctx.state[va.name] = val;
+            }
           }
         }
       };

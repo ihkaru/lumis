@@ -84,4 +84,42 @@ t4 = Text("Filtered Count: " + @Count(@Filter(nums, "", ">", 15)))`;
     expect(children[1].props.text).toBe("Avg: 20");
     expect(children[2].props.text).toContain("$1,250.50");
   });
+
+  it("should trigger setState on @Set and @Reset action", () => {
+    const code = `root = Card([btn, rst])
+$count = 10
+btn = Button("Add", @Set($count, $count + 5))
+rst = Button("Reset", @Reset($count))`;
+
+    const parser = new OpenUiParser();
+    const program = parser.parseProgram(code);
+
+    let updatedKey = "";
+    let updatedVal: any = null;
+    const ctx: OpenUiContext = {
+      state: { count: 10 },
+      initialState: { count: 10 },
+      definitions: new Map(),
+      setState: (k, v) => {
+        updatedKey = k;
+        updatedVal = v;
+        ctx.state[k] = v;
+      },
+    };
+
+    const evaluator = new OpenUiEvaluator();
+    const ui = evaluator.evaluateProgram(program, ctx);
+    const btn = (ui?.children?.[0] as any)?.props;
+    btn.action();
+
+    expect(updatedKey).toBe("count");
+    expect(updatedVal).toBe(15);
+    expect(ctx.state["count"]).toBe(15);
+
+    const rst = (ui?.children?.[1] as any)?.props;
+    rst.action();
+    expect(updatedKey).toBe("count");
+    expect(updatedVal).toBe(10);
+    expect(ctx.state["count"]).toBe(10);
+  });
 });

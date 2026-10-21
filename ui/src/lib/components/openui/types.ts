@@ -32,6 +32,7 @@ export interface OpenUiContext {
   state: Record<string, any>;
   initialState: Record<string, any>;
   definitions: Map<string, AstExpr>;
+  setState?: (key: string, value: any) => void;
   onToAssistant?: (prompt: string, context?: any) => void;
   onOpenUrl?: (url: string) => void;
   onCopy?: (text: string) => void;

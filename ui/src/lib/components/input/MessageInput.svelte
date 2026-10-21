@@ -93,6 +93,19 @@
     if (e.dataTransfer && e.dataTransfer.files.length > 0) handleAddFiles(Array.from(e.dataTransfer.files));
   }
 
+  $effect(() => {
+    if (typeof window === "undefined") return;
+    function handleToAssistant(e: CustomEvent<{ prompt: string }>) {
+      if (e.detail?.prompt) {
+        promptText = e.detail.prompt;
+        textareaRef?.focus();
+        autoResizeTextarea();
+      }
+    }
+    window.addEventListener("lumis:to_assistant" as any, handleToAssistant);
+    return () => window.removeEventListener("lumis:to_assistant" as any, handleToAssistant);
+  });
+
   function handleSubmit() {
     if ((!promptText.trim() && attachedFiles.length === 0) || isGenerating) return;
     const textToSend = promptText.trim();
