@@ -19,45 +19,81 @@ export function constructUiNode(
   const props: Record<string, any> = { bindingVar };
   let children: any[] = [];
 
+  const extractChildren = (rawArgs: any[]): { children: any[]; rest: any[] } => {
+    if (Array.isArray(rawArgs[0])) {
+      return { children: rawArgs[0], rest: rawArgs.slice(1) };
+    }
+    const nodes: any[] = [];
+    const rest: any[] = [];
+    for (const a of rawArgs) {
+      if (a && typeof a === "object" && "type" in a) {
+        nodes.push(a);
+      } else if (Array.isArray(a)) {
+        nodes.push(...a);
+      } else if (nodes.length === 0 && (typeof a === "string" || typeof a === "number" || typeof a === "boolean")) {
+        nodes.push(a);
+      } else {
+        rest.push(a);
+      }
+    }
+    return { children: nodes.length > 0 ? nodes : (rawArgs[0] ? [rawArgs[0]] : []), rest };
+  };
+
   switch (name) {
-    case "Col":
-      children = Array.isArray(args[0]) ? args[0] : args[0] ? [args[0]] : [];
-      props.gap = args[1] ?? 3;
-      props.align = args[2] ?? "stretch";
+    case "Col": {
+      const { children: c, rest } = extractChildren(args);
+      children = c;
+      props.gap = typeof rest[0] === "number" ? rest[0] : 3;
+      props.align = typeof rest[1] === "string" ? rest[1] : "stretch";
       break;
+    }
 
-    case "Row":
-      children = Array.isArray(args[0]) ? args[0] : args[0] ? [args[0]] : [];
-      props.gap = args[1] ?? 2;
-      props.align = args[2] ?? "center";
-      props.justify = args[3] ?? "start";
-      props.wrap = args[4] ?? false;
+    case "Row": {
+      const { children: c, rest } = extractChildren(args);
+      children = c;
+      props.gap = typeof rest[0] === "number" ? rest[0] : 2;
+      props.align = typeof rest[1] === "string" ? rest[1] : "center";
+      props.justify = typeof rest[2] === "string" ? rest[2] : "start";
+      props.wrap = typeof rest[3] === "boolean" ? rest[3] : false;
       break;
+    }
 
-    case "Card":
-      children = Array.isArray(args[0]) ? args[0] : args[0] ? [args[0]] : [];
-      props.variant = args[1] ?? "outline";
-      props.padding = args[2] ?? 4;
-      props.gap = args[3] ?? 3;
+    case "Card": {
+      const { children: c, rest } = extractChildren(args);
+      children = c;
+      props.variant = typeof rest[0] === "string" ? rest[0] : "outline";
+      props.padding = typeof rest[1] === "number" ? rest[1] : 4;
+      props.gap = typeof rest[2] === "number" ? rest[2] : 3;
       break;
+    }
 
-    case "Grid":
-      children = Array.isArray(args[0]) ? args[0] : args[0] ? [args[0]] : [];
-      props.columns = args[1] ?? 2;
-      props.minChildWidth = args[2] ?? 160;
-      props.gap = args[3] ?? 3;
+    case "Grid": {
+      const { children: c, rest } = extractChildren(args);
+      children = c;
+      props.columns = typeof rest[0] === "number" ? rest[0] : 2;
+      props.minChildWidth = typeof rest[1] === "number" ? rest[1] : 160;
+      props.gap = typeof rest[2] === "number" ? rest[2] : 3;
       break;
+    }
 
-    case "Box":
-      children = Array.isArray(args[0]) ? args[0] : args[0] ? [args[0]] : [];
-      props.direction = args[1] ?? "col";
-      props.gap = args[2] ?? 2;
-      props.padding = args[3] ?? 0;
-      props.background = args[4];
-      props.radius = args[5] ?? "md";
-      props.border = args[6] ?? false;
-      props.width = args[7];
-      props.height = args[8];
+    case "Box": {
+      const { children: c, rest } = extractChildren(args);
+      children = c;
+      props.direction = typeof rest[0] === "string" ? rest[0] : "col";
+      props.gap = typeof rest[1] === "number" ? rest[1] : 2;
+      props.padding = typeof rest[2] === "number" ? rest[2] : 0;
+      props.background = rest[3];
+      props.radius = rest[4] ?? "md";
+      props.border = rest[5] ?? false;
+      props.width = rest[6];
+      props.height = rest[7];
+      break;
+    }
+
+    case "Subtitle":
+      props.text = args[0] ?? "";
+      props.size = args[1] ?? "sm";
+      props.color = "muted";
       break;
 
     case "Title":

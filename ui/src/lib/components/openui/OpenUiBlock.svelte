@@ -65,6 +65,7 @@
     },
     initialState: {},
     definitions: new Map(),
+    parser,
     setState: handleStateChange,
     onToAssistant: (prompt: string, contextData?: any) => {
       if (typeof window !== "undefined") {

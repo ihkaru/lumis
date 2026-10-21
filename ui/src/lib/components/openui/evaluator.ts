@@ -51,6 +51,9 @@ export class OpenUiEvaluator {
 
     switch (expr.type) {
       case "literal":
+        if (typeof expr.value === "string" && (expr.value.includes("$") || expr.value.includes("@"))) {
+          return this.interpolateString(expr.value, ctx, scope);
+        }
         return expr.value;
 
       case "state_var":
@@ -242,5 +245,39 @@ export class OpenUiEvaluator {
 
     // 4. Component constructor -> returns UiNode
     return constructUiNode(name, call.args, (e, c, s) => this.evalExpr(e, c, s), ctx, scope);
+  }
+
+  private interpolateString(str: string, ctx: OpenUiContext, scope: Map<string, any>): string {
+    let res = str;
+    const atRegex = /@([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/g;
+    let match: RegExpExecArray | null;
+
+    while ((match = atRegex.exec(res)) !== null) {
+      const startIdx = match.index;
+      let depth = 1, endIdx = -1;
+      for (let i = startIdx + match[0].length; i < res.length; i++) {
+        if (res[i] === "(") depth++;
+        else if (res[i] === ")") {
+          depth--;
+          if (depth === 0) { endIdx = i + 1; break; }
+        }
+      }
+
+      if (endIdx !== -1 && ctx.parser) {
+        const exprCode = res.slice(startIdx, endIdx);
+        try {
+          const subAst = ctx.parser.parseExpression(exprCode);
+          const evalStr = String(this.evalExpr(subAst, ctx, scope) ?? "");
+          res = res.slice(0, startIdx) + evalStr + res.slice(endIdx);
+          atRegex.lastIndex = startIdx + evalStr.length;
+        } catch {}
+      }
+    }
+
+    return res.replace(/\$([a-zA-Z_][a-zA-Z0-9_]*)/g, (match, varName) => {
+      if (varName in ctx.state) return String(ctx.state[varName]);
+      if (varName in ctx.initialState) return String(ctx.initialState[varName]);
+      return match;
+    });
   }
 }

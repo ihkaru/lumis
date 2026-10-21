@@ -6,40 +6,108 @@ export class OpenUiParser {
   private idx = 0;
 
   public parseProgram(source: string): AstProgram {
-    const lines = source.split("\n");
+    const rawStmts = this.splitStatements(source);
     const statements: AstStatement[] = [];
 
-    for (const rawLine of lines) {
-      const line = rawLine.trim();
-      if (!line || line.startsWith("#") || line.startsWith("//")) continue;
+    for (const rawStmt of rawStmts) {
+      const stmt = rawStmt.trim();
+      if (!stmt) continue;
 
-      const eqIdx = line.indexOf("=");
-      if (eqIdx === -1) {
+      const assign = this.findAssignment(stmt);
+      if (assign) {
+        const isState = assign.left.startsWith("$");
+        const target = isState ? assign.left.slice(1) : assign.left;
         try {
-          const expr = this.parseExpression(line);
+          const expr = this.parseExpression(assign.right);
+          statements.push({ target, isState, expr });
+        } catch {
+          // Tolerant to streaming incomplete lines
+        }
+      } else {
+        try {
+          const expr = this.parseExpression(stmt);
           statements.push({ target: "root", isState: false, expr });
         } catch {
           // Tolerant to streaming incomplete lines
         }
-        continue;
-      }
-
-      const left = line.slice(0, eqIdx).trim();
-      const right = line.slice(eqIdx + 1).trim();
-      if (!left || !right) continue;
-
-      const isState = left.startsWith("$");
-      const target = isState ? left.slice(1) : left;
-
-      try {
-        const expr = this.parseExpression(right);
-        statements.push({ target, isState, expr });
-      } catch {
-        // Tolerant to streaming incomplete lines
       }
     }
 
     return { statements, rootTarget: "root" };
+  }
+
+  private splitStatements(source: string): string[] {
+    const statements: string[] = [];
+    let current = "", depth = 0, inString = false, stringChar = "", inComment = false;
+
+    for (let i = 0; i < source.length; i++) {
+      const char = source[i], nextChar = source[i + 1];
+      if (inComment) {
+        if (char === "\n") inComment = false;
+        continue;
+      }
+      if (!inString && (char === "#" || (char === "/" && nextChar === "/"))) {
+        inComment = true;
+        continue;
+      }
+      if (inString) {
+        current += char;
+        if (char === "\\" && i + 1 < source.length) current += source[++i];
+        else if (char === stringChar) inString = false;
+        continue;
+      }
+      if (char === '"' || char === "'") {
+        inString = true;
+        stringChar = char;
+        current += char;
+        continue;
+      }
+      if (char === "(" || char === "[" || char === "{") {
+        depth++;
+        current += char;
+      } else if (char === ")" || char === "]" || char === "}") {
+        if (depth > 0) depth--;
+        current += char;
+      } else if ((char === "\n" || char === ";") && depth === 0) {
+        if (current.trim()) statements.push(current.trim());
+        current = "";
+      } else {
+        current += char;
+      }
+    }
+    if (current.trim()) statements.push(current.trim());
+    return statements;
+  }
+
+  private findAssignment(stmt: string): { left: string; right: string } | null {
+    let depth = 0, inString = false, stringChar = "";
+
+    for (let i = 0; i < stmt.length; i++) {
+      const char = stmt[i];
+      if (inString) {
+        if (char === "\\" && i + 1 < stmt.length) i++;
+        else if (char === stringChar) inString = false;
+        continue;
+      }
+      if (char === '"' || char === "'") {
+        inString = true;
+        stringChar = char;
+        continue;
+      }
+      if (char === "(" || char === "[" || char === "{") { depth++; continue; }
+      if (char === ")" || char === "]" || char === "}") { if (depth > 0) depth--; continue; }
+
+      if (depth === 0 && char === "=") {
+        const prev = i > 0 ? stmt[i - 1] : "";
+        const next = i + 1 < stmt.length ? stmt[i + 1] : "";
+        if (next === "=" || next === ">" || prev === "=" || prev === "!" || prev === "<" || prev === ">") continue;
+
+        const left = stmt.slice(0, i).trim();
+        const right = stmt.slice(i + 1).trim();
+        if (/^\$?[a-zA-Z_][a-zA-Z0-9_]*$/.test(left)) return { left, right };
+      }
+    }
+    return null;
   }
 
   public parseExpression(input: string): AstExpr {

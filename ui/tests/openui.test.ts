@@ -178,4 +178,59 @@ askBtn = Button("Tanya Asisten", @ToAssistant("Jelaskan hasil"))
     askBtn.props.action();
     expect(dispatchedPrompt).toBe("Jelaskan hasil");
   });
+
+  it("should parse and render multiline nested AST with variadic containers and string interpolation", () => {
+    const code = `
+$plafon = 500000000
+$tenor = 10
+root = Col(
+  Card(
+    Title("Simulasi Cicilan KPR", "lg"),
+    Subtitle("Estimasi angsuran metode flat"),
+    Slider($plafon, 100000000, 2000000000, 10000000, "Plafon"),
+    Text("Plafon: Rp @Format(@Clamp(@Default($plafon, 500000000), 100000000, 2000000000))"),
+    Text("Tenor: $tenor tahun")
+  ),
+  Card(
+    Title("Ringkasan", "md"),
+    Row(
+      Button("Reset", @Set($plafon, 500000000)),
+      Button("Tanya", @ToAssistant("Konsultasi"))
+    )
+  )
+)
+`;
+
+    const parser = new OpenUiParser();
+    const program = parser.parseProgram(code);
+
+    expect(program.statements.length).toBe(3);
+
+    const state = { plafon: 750000000, tenor: 15 };
+    const ctx: OpenUiContext = {
+      state,
+      initialState: { plafon: 500000000, tenor: 10 },
+      definitions: new Map(),
+      parser,
+      setState: (k, v) => { state[k as keyof typeof state] = v; },
+    };
+
+    const evaluator = new OpenUiEvaluator();
+    const ui = evaluator.evaluateProgram(program, ctx);
+
+    expect(ui).not.toBeNull();
+    expect(ui?.type).toBe("Col");
+    expect(ui?.children?.length).toBe(2);
+
+    const card1 = ui?.children?.[0] as any;
+    expect(card1.type).toBe("Card");
+    expect(card1.children.length).toBe(5);
+    expect(card1.children[0].type).toBe("Title");
+    expect(card1.children[1].type).toBe("Subtitle");
+    expect(card1.children[2].type).toBe("Slider");
+
+    // Test string interpolation
+    expect(card1.children[3].props.text).toContain("750,000,000");
+    expect(card1.children[4].props.text).toBe("Tenor: 15 tahun");
+  });
 });

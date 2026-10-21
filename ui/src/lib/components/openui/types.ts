@@ -36,4 +36,5 @@ export interface OpenUiContext {
   onToAssistant?: (prompt: string, context?: any) => void;
   onOpenUrl?: (url: string) => void;
   onCopy?: (text: string) => void;
+  parser?: { parseExpression: (input: string) => AstExpr };
 }

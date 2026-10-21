@@ -74,6 +74,10 @@
   <h3 class="font-sans font-semibold tracking-tight text-foreground {node.props.size === 'lg' ? 'text-xl' : node.props.size === 'xl' ? 'text-2xl' : 'text-base'}">
     {node.props.text}
   </h3>
+{:else if node.type === "Subtitle"}
+  <p class="text-xs sm:text-sm text-muted-foreground font-sans">
+    {node.props.text}
+  </p>
 {:else if node.type === "Text"}
   <p class="text-sm leading-relaxed text-foreground/90 font-sans {node.props.weight === 'semibold' ? 'font-semibold' : ''} {node.props.color === 'muted' ? 'text-muted-foreground' : ''}">
     {#if Array.isArray(node.props.text)}
