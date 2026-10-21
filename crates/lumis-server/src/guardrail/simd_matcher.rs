@@ -50,11 +50,22 @@ impl SimdGuardrailMatcher {
 
     fn check_injection(&self, text: &str) -> Option<String> {
         let lower = text.to_lowercase();
-        if let Some(m) = self.injection_automaton.find(&lower) {
-            Some(self.injection_patterns[m.pattern()].clone())
-        } else {
-            None
+        for m in self.injection_automaton.find_iter(&lower) {
+            let start_ok = m.start() == 0
+                || !lower[..m.start()]
+                    .chars()
+                    .next_back()
+                    .is_some_and(|c| c.is_alphanumeric());
+            let end_ok = m.end() == lower.len()
+                || !lower[m.end()..]
+                    .chars()
+                    .next()
+                    .is_some_and(|c| c.is_alphanumeric());
+            if start_ok && end_ok {
+                return Some(self.injection_patterns[m.pattern()].clone());
+            }
         }
+        None
     }
 }
 

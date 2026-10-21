@@ -68,4 +68,13 @@ fn test_simd_prompt_injection_blocking() {
         }
         GuardrailVerdict::Blocked { .. } => panic!("Expected Pass verdict with PII masking"),
     }
+
+    // 4. Substring boundary test: Indonesian "dan model" must NOT trigger "dan mode"
+    let verdict = matcher.inspect("Siapakah kamu dan model apa yang kamu gunakan?");
+    match verdict {
+        GuardrailVerdict::Pass { .. } => {}
+        GuardrailVerdict::Blocked { rule_matched, .. } => {
+            panic!("False positive triggered on safe phrase: {}", rule_matched);
+        }
+    }
 }

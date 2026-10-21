@@ -175,20 +175,26 @@ pub async fn send_message(
         }
     };
 
-    match state.repo.get_session(&session_id).await {
+    let session_model = match state.repo.get_session(&session_id).await {
         Ok(Some(existing_sess)) => {
             if let Some(ref m_id) = payload.model_id {
                 if m_id != &existing_sess.model_id {
                     let _ = state.repo.update_session_model(&session_id, m_id).await;
                 }
+                Some(m_id.clone())
+            } else {
+                Some(existing_sess.model_id)
             }
         }
         Ok(None) => {
+            let initial_model = payload.model_id.clone().unwrap_or_else(|| {
+                std::env::var("DEFAULT_MODEL").unwrap_or_else(|_| "my9model-free".to_string())
+            });
             let auto_session = NewSession {
                 id: Some(session_id.clone()),
                 user_id: current_user.id.clone(),
                 title: "Percakapan Baru".to_string(),
-                model_id: payload.model_id.clone().unwrap_or_else(|| "my9model-free".to_string()),
+                model_id: initial_model.clone(),
                 system_prompt: None,
             };
             if let Err(e) = state.repo.create_session(&auto_session).await {
@@ -200,6 +206,7 @@ pub async fn send_message(
                 )
                     .into_response();
             }
+            Some(initial_model)
         }
         Err(e) => {
             return (
@@ -210,14 +217,22 @@ pub async fn send_message(
             )
                 .into_response();
         }
-    }
+    };
+
+    let model = payload
+        .model_id
+        .clone()
+        .or(session_model)
+        .unwrap_or_else(|| {
+            std::env::var("DEFAULT_MODEL").unwrap_or_else(|_| "my9model-free".to_string())
+        });
 
     // 4. Append User Message
     let user_msg = NewMessage {
         session_id: session_id.clone(),
         role: MessageRole::User,
         content: sanitized_content.clone(),
-        model_id: payload.model_id.clone(),
+        model_id: Some(model.clone()),
         token_count: Some(estimated_tokens as u32),
         metadata: None,
     };
@@ -258,10 +273,6 @@ pub async fn send_message(
         .send(bytes::Bytes::from(event_payload.to_string()));
 
     // 7. If an LLM inference router is active, trigger streaming completion in background
-    let model = payload.model_id.clone().unwrap_or_else(|| {
-        std::env::var("DEFAULT_MODEL").unwrap_or_else(|_| "my9model-free".to_string())
-    });
-
     super::executor::spawn_chat_completion(
         state.clone(),
         session_id.clone(),
