@@ -156,6 +156,47 @@ export function constructUiNode(
       props.placeholder = args[3] ?? "";
       break;
 
+    case "TextArea":
+      props.value = args[0] ?? "";
+      props.placeholder = args[1] ?? "";
+      props.label = args[2] ?? "";
+      props.rows = typeof args[3] === "number" ? args[3] : 3;
+      break;
+
+    case "Select":
+      props.value = args[0] ?? "";
+      props.options = Array.isArray(args[1]) ? args[1] : [];
+      props.label = args[2] ?? "";
+      break;
+
+    case "RadioGroup":
+      props.value = args[0] ?? "";
+      props.options = Array.isArray(args[1]) ? args[1] : [];
+      props.label = args[2] ?? "";
+      break;
+
+    case "Link":
+      props.text = args[0] ?? "";
+      props.url = args[1] ?? "#";
+      break;
+
+    case "Code":
+      props.text = args[0] ?? "";
+      props.language = args[1] ?? "";
+      break;
+
+    case "Quote":
+      props.text = args[0] ?? "";
+      props.author = args[1] ?? "";
+      break;
+
+    case "Image":
+      props.src = args[0] ?? "";
+      props.alt = args[1] ?? "";
+      props.width = args[2];
+      props.height = args[3];
+      break;
+
     case "SegmentedControl":
       props.value = args[0] ?? "";
       props.options = Array.isArray(args[1]) ? args[1] : [];

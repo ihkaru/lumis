@@ -233,4 +233,64 @@ root = Col(
     expect(card1.children[3].props.text).toContain("750,000,000");
     expect(card1.children[4].props.text).toBe("Tenor: 15 tahun");
   });
+
+  it("should evaluate expanded components including TextArea, Select, RadioGroup, Link, Code, Quote, Image, and Box", () => {
+    const code = `
+root = Col([box, quote, link, codeBlock, img])
+$note = "Catatan awal"
+$city = "Jakarta"
+$gender = "Pria"
+box = Box([ta, sel, rg], "col", 2, 2)
+ta = TextArea($note, "Tulis catatan...", "Catatan", 4)
+sel = Select($city, ["Jakarta", "Surabaya", "Bandung"], "Pilih Kota")
+rg = RadioGroup($gender, ["Pria", "Wanita"], "Gender")
+quote = Quote("Inovasi membedakan pemimpin dari pengikut.", "Steve Jobs")
+link = Link("Dokumentasi Resmi", "https://example.com")
+codeBlock = Code("console.log('Lumis OpenUI');", "typescript")
+img = Image("https://example.com/logo.png", "Logo")
+`;
+
+    const parser = new OpenUiParser();
+    const program = parser.parseProgram(code);
+
+    const state: Record<string, any> = { note: "Catatan awal", city: "Jakarta", gender: "Pria" };
+    const ctx: OpenUiContext = {
+      state,
+      initialState: { note: "Catatan awal", city: "Jakarta", gender: "Pria" },
+      definitions: new Map(),
+      parser,
+      setState: (k, v) => { state[k] = v; },
+    };
+
+    const evaluator = new OpenUiEvaluator();
+    const ui = evaluator.evaluateProgram(program, ctx);
+
+    expect(ui).not.toBeNull();
+    expect(ui?.children?.length).toBe(5);
+
+    const boxNode = ui?.children?.[0] as any;
+    expect(boxNode.type).toBe("Box");
+    expect(boxNode.children.length).toBe(3);
+    expect(boxNode.children[0].type).toBe("TextArea");
+    expect(boxNode.children[0].props.rows).toBe(4);
+    expect(boxNode.children[1].type).toBe("Select");
+    expect(boxNode.children[1].props.options.length).toBe(3);
+    expect(boxNode.children[2].type).toBe("RadioGroup");
+
+    const quoteNode = ui?.children?.[1] as any;
+    expect(quoteNode.type).toBe("Quote");
+    expect(quoteNode.props.author).toBe("Steve Jobs");
+
+    const linkNode = ui?.children?.[2] as any;
+    expect(linkNode.type).toBe("Link");
+    expect(linkNode.props.url).toBe("https://example.com");
+
+    const codeNode = ui?.children?.[3] as any;
+    expect(codeNode.type).toBe("Code");
+    expect(codeNode.props.language).toBe("typescript");
+
+    const imgNode = ui?.children?.[4] as any;
+    expect(imgNode.type).toBe("Image");
+    expect(imgNode.props.src).toBe("https://example.com/logo.png");
+  });
 });

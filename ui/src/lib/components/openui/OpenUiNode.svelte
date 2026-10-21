@@ -145,6 +145,99 @@
       class="h-8 rounded-lg border border-border bg-background/80 px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:border-primary"
     />
   </div>
+{:else if node.type === "TextArea"}
+  <div class="flex flex-col gap-1 w-full">
+    {#if node.props.label}
+      <span class="text-xs text-muted-foreground">{node.props.label}</span>
+    {/if}
+    <textarea
+      id={"openui_textarea_" + (node.props.bindingVar || "text")}
+      placeholder={node.props.placeholder}
+      rows={node.props.rows || 3}
+      value={state[node.props.bindingVar] ?? node.props.value}
+      oninput={(e) => handleInputChange(e, node.props.bindingVar)}
+      class="rounded-lg border border-border bg-background/80 p-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:border-primary resize-y"
+    ></textarea>
+  </div>
+{:else if node.type === "Select"}
+  <div class="flex flex-col gap-1 w-full">
+    {#if node.props.label}
+      <span class="text-xs text-muted-foreground">{node.props.label}</span>
+    {/if}
+    <select
+      id={"openui_select_" + (node.props.bindingVar || "sel")}
+      value={state[node.props.bindingVar] ?? node.props.value}
+      onchange={(e) => handleInputChange(e, node.props.bindingVar)}
+      class="h-8 rounded-lg border border-border bg-background/80 px-2.5 text-xs text-foreground focus:outline-hidden focus:border-primary"
+    >
+      {#each node.props.options as opt}
+        {@const val = typeof opt === "object" ? opt.value : opt}
+        {@const label = typeof opt === "object" ? opt.label : opt}
+        <option value={val}>{label}</option>
+      {/each}
+    </select>
+  </div>
+{:else if node.type === "RadioGroup"}
+  <div class="flex flex-col gap-1.5 w-full">
+    {#if node.props.label}
+      <span class="text-xs text-muted-foreground font-medium">{node.props.label}</span>
+    {/if}
+    <div class="flex flex-col gap-1 sm:flex-row sm:gap-3">
+      {#each node.props.options as opt}
+        {@const val = typeof opt === "object" ? opt.value : opt}
+        {@const label = typeof opt === "object" ? opt.label : opt}
+        <label class="inline-flex items-center gap-2 cursor-pointer text-xs text-foreground">
+          <input
+            type="radio"
+            name={"openui_radio_" + (node.props.bindingVar || "group")}
+            value={val}
+            checked={(state[node.props.bindingVar] ?? node.props.value) == val}
+            onchange={() => handleSegmentSelect(node.props.bindingVar, val)}
+            class="h-3.5 w-3.5 text-primary border-border bg-background focus:ring-0"
+          />
+          {label}
+        </label>
+      {/each}
+    </div>
+  </div>
+{:else if node.type === "Link"}
+  <a
+    href={node.props.url}
+    target="_blank"
+    rel="noopener noreferrer"
+    class="text-xs text-primary underline underline-offset-2 hover:text-primary/80 transition-colors"
+  >
+    {node.props.text}
+  </a>
+{:else if node.type === "Code"}
+  <pre class="rounded-lg border border-border bg-muted/40 p-2.5 text-xs font-mono overflow-x-auto text-foreground/90"><code>{node.props.text}</code></pre>
+{:else if node.type === "Quote"}
+  <blockquote class="border-l-2 border-primary/60 pl-3 py-1 my-1 text-xs italic text-muted-foreground">
+    "{node.props.text}"
+    {#if node.props.author}
+      <span class="block not-italic font-medium text-foreground mt-0.5">— {node.props.author}</span>
+    {/if}
+  </blockquote>
+{:else if node.type === "Image"}
+  <img
+    src={node.props.src}
+    alt={node.props.alt || ""}
+    width={node.props.width}
+    height={node.props.height}
+    class="rounded-lg max-w-full h-auto object-cover border border-border/50"
+    loading="lazy"
+  />
+{:else if node.type === "Box"}
+  <div
+    class="flex {node.props.direction === 'row' ? 'flex-row items-center flex-wrap' : 'flex-col'} {node.props.border ? 'rounded-lg border border-border/60 bg-muted/20' : ''}"
+    style="gap: {(node.props.gap ?? 2) * 4}px; padding: {(node.props.padding ?? 0) * 4}px;"
+  >
+    {#if node.children}
+      {#each node.children as child}
+        <OpenUiNode node={child} {state} {onStateChange} />
+      {/each}
+    {/if}
+  </div>
 {:else if node.type === "SegmentedControl"}
   <div class="inline-flex rounded-lg border border-border bg-muted/40 p-0.5">
     {#each node.props.options as opt}
