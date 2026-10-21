@@ -167,7 +167,7 @@ export class OpenUiParser {
 
   private tryParsePhrase(): AstExpr | null {
     const curr = this.peek();
-    if (!curr || (curr.type !== "ident" && curr.type !== "number" && curr.type !== "string")) {
+    if (!curr || (curr.type !== "ident" && curr.type !== "number" && curr.type !== "string" && curr.type !== "state_var")) {
       return null;
     }
 
@@ -178,7 +178,7 @@ export class OpenUiParser {
       const tok = this.tokens[endIdx];
       if (tok.type === "punct" && [",", ")", "]", "}", "{", ";", "?", ":"].includes(tok.value)) break;
       if (tok.type === "op" && ["|", "==", "!=", "<=", ">=", "&&", "||"].includes(tok.value)) break;
-      if (tok.type === "state_var" || tok.type === "builtin") {
+      if (tok.type === "builtin") {
         hasForbidden = true;
         break;
       }
@@ -195,8 +195,8 @@ export class OpenUiParser {
     for (let i = this.idx; i < endIdx - 1; i++) {
       const t1 = this.tokens[i];
       const t2 = this.tokens[i + 1];
-      const isWord1 = t1.type === "ident" || t1.type === "number" || t1.type === "string";
-      const isWord2 = t2.type === "ident" || t2.type === "number" || t2.type === "string";
+      const isWord1 = t1.type === "ident" || t1.type === "number" || t1.type === "string" || t1.type === "state_var";
+      const isWord2 = t2.type === "ident" || t2.type === "number" || t2.type === "string" || t2.type === "state_var";
       if (isWord1 && isWord2) {
         hasAdjacent = true;
         break;
