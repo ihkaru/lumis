@@ -3,6 +3,8 @@
   import OpenUiNode from "./OpenUiNode.svelte";
   import OpenUiControls from "./OpenUiControls.svelte";
   import OpenUiDisplay from "./OpenUiDisplay.svelte";
+  import OpenUiCharts from "./OpenUiCharts.svelte";
+  import OpenUiMedia from "./OpenUiMedia.svelte";
 
   interface Props {
     node: UiNode | string | number | boolean | null;
@@ -44,6 +46,21 @@
     "ListItem",
     "Table",
   ]);
+
+  const CHART_TYPES = new Set([
+    "LineChart",
+    "BarChart",
+    "PieChart",
+    "DonutChart",
+    "AreaChart",
+  ]);
+
+  const MEDIA_TYPES = new Set([
+    "Carousel",
+    "Popover",
+    "Video",
+    "Map",
+  ]);
 </script>
 
 {#if node === null || node === undefined}
@@ -54,6 +71,10 @@
   <OpenUiControls {node} {state} {onStateChange} />
 {:else if DISPLAY_TYPES.has(node.type)}
   <OpenUiDisplay {node} {state} {onStateChange} />
+{:else if CHART_TYPES.has(node.type)}
+  <OpenUiCharts {node} {state} {onStateChange} />
+{:else if MEDIA_TYPES.has(node.type)}
+  <OpenUiMedia {node} {state} {onStateChange} />
 {:else if node.type === "Card"}
   <div class="rounded-xl border border-border/60 bg-card/75 p-4 backdrop-blur-xs shadow-xs space-y-3">
     {#if node.children}
