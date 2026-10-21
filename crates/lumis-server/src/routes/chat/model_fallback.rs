@@ -56,6 +56,10 @@ pub fn get_model_display_name(model_id: &str) -> &'static str {
         "cbai/glm-5.2" => "GLM 5.2 (Flagship Reasoning)",
         "cbai/glm-5v-turbo" => "GLM 5V Turbo (Vision)",
         "cbai/minimax-m3" => "MiniMax M3 (1M Long-Context)",
+        "muse/muse-spark-1.3-contributor" => "Muse Spark 1.3 Contributor (Deep Reasoning)",
+        "muse/muse-spark-1.3" => "Muse Spark 1.3 (Balanced)",
+        "muse/muse-wonder-1.0" => "Muse Wonder 1.0 (Flagship)",
+        "muse/sam-3.1" => "SAM 3.1 (Meta Vision)",
         _ => "AI Model",
     }
 }
@@ -63,16 +67,25 @@ pub fn get_model_display_name(model_id: &str) -> &'static str {
 pub fn resolve_model_cascade(primary_model: &str) -> Vec<String> {
     let mut cascade = vec![primary_model.to_string()];
     let fallbacks: &[&str] = match primary_model {
-        "my9model-free" => &["openrouter-free", "cbai/kimi-k2.5", "cbai/minimax-m3"],
-        "openrouter-free" => &["my9model-free", "cbai/kimi-k2.5", "cbai/minimax-m3"],
-        "my9model-smart" => &["cbai/kimi-k2.6", "cbai/glm-5.2", "my9model-fast"],
-        "my9model-fast" => &["cbai/kimi-k2.5", "my9model-free", "cbai/glm-5.2"],
-        "cbai/kimi-k2.6" => &["cbai/glm-5.2", "my9model-smart", "cbai/minimax-m3"],
-        "cbai/kimi-k2.5" => &["my9model-fast", "cbai/glm-5.2", "my9model-free"],
-        "cbai/glm-5.2" => &["cbai/kimi-k2.6", "my9model-smart", "cbai/minimax-m3"],
-        "cbai/minimax-m3" => &["cbai/glm-5.2", "cbai/kimi-k2.6", "my9model-smart"],
-        "cbai/glm-5v-turbo" => &["cbai/minimax-m3", "cbai/kimi-k2.6", "cbai/glm-5.2"],
-        _ => &["my9model-free", "openrouter-free", "cbai/kimi-k2.5"],
+        "muse/muse-spark-1.3-contributor" => &["muse/muse-spark-1.3", "muse/muse-wonder-1.0", "openrouter-free", "my9model-free"],
+        "muse/muse-spark-1.3" => &["muse/muse-spark-1.3-contributor", "openrouter-free", "my9model-free"],
+        "muse/muse-wonder-1.0" => &["muse/muse-spark-1.3-contributor", "openrouter-free", "my9model-free"],
+        "my9model-free" => &["openrouter-free", "muse/muse-spark-1.3", "cbai/kimi-k2.5"],
+        "openrouter-free" => &["my9model-free", "muse/muse-spark-1.3", "cbai/kimi-k2.5"],
+        "my9model-smart" => &["cbai/kimi-k2.6", "cbai/glm-5.2", "muse/muse-spark-1.3-contributor"],
+        "my9model-fast" => &["cbai/kimi-k2.5", "my9model-free", "muse/muse-spark-1.3"],
+        "cbai/kimi-k2.6" => &["cbai/glm-5.2", "muse/muse-spark-1.3-contributor", "openrouter-free"],
+        "cbai/kimi-k2.5" => &["openrouter-free", "muse/muse-spark-1.3", "my9model-free"],
+        "cbai/glm-5.2" => &["cbai/kimi-k2.6", "muse/muse-spark-1.3-contributor", "openrouter-free"],
+        "cbai/minimax-m3" => &["muse/muse-spark-1.3-contributor", "openrouter-free", "cbai/glm-5.2"],
+        "cbai/glm-5v-turbo" => &["muse/sam-3.1", "muse/muse-spark-1.3-contributor", "openrouter-free"],
+        _ => {
+            if primary_model.starts_with("muse/") {
+                &["openrouter-free", "my9model-free"]
+            } else {
+                &["my9model-free", "openrouter-free"]
+            }
+        }
     };
 
     for fb in fallbacks {
@@ -85,6 +98,11 @@ pub fn resolve_model_cascade(primary_model: &str) -> Vec<String> {
 
 pub fn get_ttft_duration(model: &str) -> Duration {
     match model {
+        "muse/muse-spark-1.3-contributor"
+        | "muse/muse-spark-1.3"
+        | "muse/muse-wonder-1.0" => {
+            Duration::from_millis(15_000)
+        }
         "cbai/glm-5.2" | "cbai/minimax-m3" | "cbai/kimi-k2.6" | "my9model-smart" => {
             Duration::from_millis(10_000)
         }

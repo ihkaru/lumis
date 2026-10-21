@@ -206,6 +206,7 @@ impl LlmProviderDriver for OpenAiCompatibleDriver {
                                         }
                                         let delta = &val["choices"][0]["delta"];
                                         let text_opt = delta["content"].as_str()
+                                            .or_else(|| delta["reasoning_content"].as_str())
                                             .or_else(|| delta["reasoning"].as_str())
                                             .or_else(|| val["choices"][0]["message"]["content"].as_str());
 

@@ -34,7 +34,8 @@
     try {
       const data = await api.getModels();
       if (Array.isArray(data) && data.length > 0) {
-        models = data;
+        const cur = models.find((m) => m.id === selectedModelId);
+        models = cur && !data.some((m) => m.id === selectedModelId) ? [...data, cur] : data;
       }
     } catch (e) {
       console.warn("Gagal memuat katalog model dinamis, menggunakan fallback", e);
@@ -51,7 +52,7 @@
     models.find((m) => m.id === selectedModelId) || {
       id: selectedModelId,
       name: selectedModelId,
-      provider: "AI Gateway",
+      provider: selectedModelId.startsWith("muse/") ? "Meta Muse AI" : "AI Gateway",
       tier: "Standard",
       is_default: false,
       can_access: true,
@@ -75,7 +76,9 @@
           m.capabilities?.reasoning ||
           m.tier === "Reasoning" ||
           m.id.includes("5.2") ||
-          m.id.includes("r1")
+          m.id.includes("r1") ||
+          m.id.includes("spark") ||
+          m.id.includes("contributor")
         );
       }
       if (selectedCategory === "vision") {
@@ -84,7 +87,8 @@
           m.tier === "Advanced" ||
           m.id.includes("5v") ||
           m.id.includes("m3") ||
-          m.id.includes("k2")
+          m.id.includes("k2") ||
+          m.id.includes("sam")
         );
       }
       if (selectedCategory === "combo") {
@@ -102,6 +106,19 @@
   function applyCustomModel() {
     const trimmed = customModelInput.trim();
     if (trimmed) {
+      if (!models.some((m) => m.id === trimmed)) {
+        models = [...models, {
+          id: trimmed, name: trimmed,
+          provider: trimmed.startsWith("muse/") ? "Meta Muse AI" : "Custom Model",
+          tier: trimmed.includes("spark") || trimmed.includes("contributor") ? "Reasoning" : "Standard",
+          is_default: false, can_access: true,
+          capabilities: {
+            vision: trimmed.includes("vision") || trimmed.includes("sam") || trimmed.includes("spark"),
+            tools: true,
+            reasoning: trimmed.includes("contributor") || trimmed.includes("spark") || trimmed.includes("r1"),
+          },
+        }];
+      }
       onSelectModel(trimmed);
       customModelInput = "";
       showCustomInput = false;
@@ -116,12 +133,9 @@
     if (!triggerBtnEl || typeof window === "undefined") return;
     const rect = triggerBtnEl.getBoundingClientRect();
     const isMobile = window.innerWidth < 640;
-    if (isMobile) {
-      popupStyle = `bottom: calc(100vh - ${rect.top}px + 8px); left: 1rem; width: calc(100vw - 2rem);`;
-    } else {
-      const left = Math.max(16, Math.min(rect.left, window.innerWidth - 400));
-      popupStyle = `bottom: calc(100vh - ${rect.top}px + 8px); left: ${left}px; width: 24rem;`;
-    }
+    popupStyle = isMobile
+      ? `bottom: calc(100vh - ${rect.top}px + 8px); left: 1rem; width: calc(100vw - 2rem);`
+      : `bottom: calc(100vh - ${rect.top}px + 8px); left: ${Math.max(16, Math.min(rect.left, window.innerWidth - 400))}px; width: 24rem;`;
   }
 
   $effect(() => {
@@ -207,34 +221,18 @@
 
       <!-- Category Filter Tabs -->
       <div class="flex items-center gap-1 overflow-x-auto no-scrollbar pb-0.5">
-        <button
-          type="button"
-          onclick={() => (selectedCategory = "all")}
-          class="px-2 py-1 text-[11px] rounded-md transition-colors whitespace-nowrap {selectedCategory === 'all' ? 'bg-primary text-primary-foreground font-medium' : 'bg-muted/60 text-muted-foreground hover:text-foreground'}"
-        >
-          Semua ({models.length})
-        </button>
-        <button
-          type="button"
-          onclick={() => (selectedCategory = "combo")}
-          class="px-2 py-1 text-[11px] rounded-md transition-colors whitespace-nowrap {selectedCategory === 'combo' ? 'bg-primary text-primary-foreground font-medium' : 'bg-muted/60 text-muted-foreground hover:text-foreground'}"
-        >
-          Free / Combo
-        </button>
-        <button
-          type="button"
-          onclick={() => (selectedCategory = "reasoning")}
-          class="px-2 py-1 text-[11px] rounded-md transition-colors whitespace-nowrap {selectedCategory === 'reasoning' ? 'bg-primary text-primary-foreground font-medium' : 'bg-muted/60 text-muted-foreground hover:text-foreground'}"
-        >
-          Reasoning
-        </button>
-        <button
-          type="button"
-          onclick={() => (selectedCategory = "vision")}
-          class="px-2 py-1 text-[11px] rounded-md transition-colors whitespace-nowrap {selectedCategory === 'vision' ? 'bg-primary text-primary-foreground font-medium' : 'bg-muted/60 text-muted-foreground hover:text-foreground'}"
-        >
-          Vision
-        </button>
+        {#each [
+          { id: "all", label: `Semua (${models.length})` },
+          { id: "combo", label: "Free / Combo" },
+          { id: "reasoning", label: "Reasoning" },
+          { id: "vision", label: "Vision" }
+        ] as cat (cat.id)}
+          <button
+            type="button"
+            onclick={() => (selectedCategory = cat.id as any)}
+            class="px-2 py-1 text-[11px] rounded-md transition-colors whitespace-nowrap {selectedCategory === cat.id ? 'bg-primary text-primary-foreground font-medium' : 'bg-muted/60 text-muted-foreground hover:text-foreground'}"
+          >{cat.label}</button>
+        {/each}
       </div>
 
       <!-- Models List -->

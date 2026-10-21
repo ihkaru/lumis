@@ -27,6 +27,13 @@ async fn test_model_cascade_resolution_and_deduplication() {
     let cascade_unknown = resolve_model_cascade("unknown-model-xyz");
     assert_eq!(cascade_unknown[0], "unknown-model-xyz");
     assert!(cascade_unknown.contains(&"my9model-free".to_string()));
+
+    // Verify Muse reasoning model cascade
+    let cascade_muse = resolve_model_cascade("muse/muse-spark-1.3-contributor");
+    assert_eq!(cascade_muse[0], "muse/muse-spark-1.3-contributor");
+    assert!(cascade_muse.contains(&"muse/muse-spark-1.3".to_string()));
+    assert!(cascade_muse.contains(&"openrouter-free".to_string()));
+    assert!(cascade_muse.contains(&"my9model-free".to_string()));
 }
 
 #[tokio::test]
@@ -59,7 +66,15 @@ fn test_model_display_names_and_ttft_durations() {
         get_model_display_name("cbai/glm-5.2"),
         "GLM 5.2 (Flagship Reasoning)"
     );
+    assert_eq!(
+        get_model_display_name("muse/muse-spark-1.3-contributor"),
+        "Muse Spark 1.3 Contributor (Deep Reasoning)"
+    );
     assert_eq!(get_model_display_name("unknown-model"), "AI Model");
+
+    // Muse deep reasoning models should have 15s TTFT budget
+    assert_eq!(get_ttft_duration("muse/muse-spark-1.3-contributor"), Duration::from_millis(15_000));
+    assert_eq!(get_ttft_duration("muse/muse-spark-1.3"), Duration::from_millis(15_000));
 
     // Reasoning models should have 10s TTFT budget
     assert_eq!(get_ttft_duration("cbai/glm-5.2"), Duration::from_millis(10_000));
