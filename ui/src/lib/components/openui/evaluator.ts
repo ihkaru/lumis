@@ -6,15 +6,14 @@ export class OpenUiEvaluator {
   private visitedDefs = new Set<string>();
 
   public evaluateProgram(program: AstProgram, ctx: OpenUiContext): UiNode | null {
-    // 1. Initialize state variables if not already initialized
+    ctx.definitions.clear();
+    // 1. Initialize definitions and record initial states
     for (const stmt of program.statements) {
       if (stmt.isState) {
         if (!(stmt.target in ctx.state) && !(stmt.target in ctx.initialState)) {
           const val = this.evalExpr(stmt.expr, ctx, new Map());
           ctx.initialState[stmt.target] = JSON.parse(JSON.stringify(val ?? null));
-          if (ctx.setState) {
-            ctx.setState(stmt.target, val);
-          } else {
+          if (!ctx.setState) {
             ctx.state[stmt.target] = val;
           }
         }
@@ -55,7 +54,7 @@ export class OpenUiEvaluator {
         return expr.value;
 
       case "state_var":
-        return ctx.state[expr.name];
+        return expr.name in ctx.state ? ctx.state[expr.name] : ctx.initialState[expr.name];
 
       case "identifier": {
         const name = expr.name;

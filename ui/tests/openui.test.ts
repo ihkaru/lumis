@@ -122,4 +122,60 @@ rst = Button("Reset", @Reset($count))`;
     expect(updatedVal).toBe(10);
     expect(ctx.state["count"]).toBe(10);
   });
+
+  it("should evaluate full reactive calculator with inputs, sliders, and actions", () => {
+    const code = `
+root = Col([controlCard, resultCard, actionRow])
+$bill = 500000
+$people = 4
+$service = "Baik"
+$ppn = true
+controlCard = Card([billSlider, peopleSlider, serviceSeg, ppnCheck])
+billSlider = Slider($bill, 50000, 2000000, 10000, "Total Tagihan")
+peopleSlider = Slider($people, 1, 20, 1, "Jumlah Orang")
+serviceSeg = SegmentedControl($service, ["Biasa", "Baik", "Luar Biasa"])
+ppnCheck = Checkbox($ppn, "PPN")
+safeBill = @Clamp(@Default($bill, 50000), 50000, 2000000)
+safePeople = @Clamp(@Default($people, 1), 1, 20)
+serviceRate = $service == "Luar Biasa" ? 0.15 : $service == "Baik" ? 0.1 : 0.05
+serviceFee = @Round(safeBill * serviceRate)
+ppnAmt = $ppn ? @Round((safeBill + serviceFee) * 0.11) : 0
+grandTotal = safeBill + serviceFee + ppnAmt
+perPerson = @Round(grandTotal / safePeople)
+resultCard = Card([valTotal, valPer])
+valTotal = Title(@Format(grandTotal, "number"), "xl")
+valPer = Title(@Format(perPerson, "number"), "lg")
+actionRow = Row([resetBtn, askBtn])
+resetBtn = Button("Reset", @Set($bill, 500000))
+askBtn = Button("Tanya Asisten", @ToAssistant("Jelaskan hasil"))
+`;
+
+    const parser = new OpenUiParser();
+    const program = parser.parseProgram(code);
+
+    let dispatchedPrompt = "";
+    const state: Record<string, any> = { bill: 500000, people: 4, service: "Baik", ppn: true };
+    const ctx: OpenUiContext = {
+      state,
+      initialState: { bill: 500000, people: 4, service: "Baik", ppn: true },
+      definitions: new Map(),
+      setState: (k, v) => { state[k] = v; },
+      onToAssistant: (prompt) => { dispatchedPrompt = prompt; },
+    };
+
+    const evaluator = new OpenUiEvaluator();
+    const ui = evaluator.evaluateProgram(program, ctx);
+    expect(ui).not.toBeNull();
+    expect(ui?.type).toBe("Col");
+
+    const resultCard = ui?.children?.[1] as any;
+    expect(resultCard.children[0].props.text).toBe("610,500");
+    expect(resultCard.children[1].props.text).toBe("152,625");
+
+    // Test ToAssistant button
+    const actionRow = ui?.children?.[2] as any;
+    const askBtn = actionRow.children[1];
+    askBtn.props.action();
+    expect(dispatchedPrompt).toBe("Jelaskan hasil");
+  });
 });
