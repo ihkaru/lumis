@@ -1,5 +1,6 @@
 import type { AstExpr, OpenUiContext, UiNode } from "./types";
 import { constructChartNode } from "./constructors_charts";
+import { constructCanvasNode } from "./constructors_canvas";
 
 export function constructUiNode(
   name: string,
@@ -42,6 +43,9 @@ export function constructUiNode(
 
   const chartNode = constructChartNode(name, args);
   if (chartNode) return chartNode;
+
+  const canvasNode = constructCanvasNode(name, args);
+  if (canvasNode) return canvasNode;
 
   switch (name) {
     case "Col": {

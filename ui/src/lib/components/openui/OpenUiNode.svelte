@@ -5,6 +5,8 @@
   import OpenUiDisplay from "./OpenUiDisplay.svelte";
   import OpenUiCharts from "./OpenUiCharts.svelte";
   import OpenUiMedia from "./OpenUiMedia.svelte";
+  import OpenUiCanvas from "./OpenUiCanvas.svelte";
+  import OpenUiPlay from "./OpenUiPlay.svelte";
 
   interface Props {
     node: UiNode | string | number | boolean | null;
@@ -61,6 +63,22 @@
     "Video",
     "Map",
   ]);
+
+  const CANVAS_TYPES = new Set([
+    "Canvas",
+    "Rect",
+    "Circle",
+    "Line",
+    "Path",
+    "SvgText",
+    "Group",
+  ]);
+
+  const PLAY_TYPES = new Set([
+    "FlashCard",
+    "Confetti",
+    "Audio",
+  ]);
 </script>
 
 {#if node === null || node === undefined}
@@ -75,6 +93,10 @@
   <OpenUiCharts {node} {state} {onStateChange} />
 {:else if MEDIA_TYPES.has(node.type)}
   <OpenUiMedia {node} {state} {onStateChange} />
+{:else if CANVAS_TYPES.has(node.type)}
+  <OpenUiCanvas {node} {state} {onStateChange} />
+{:else if PLAY_TYPES.has(node.type)}
+  <OpenUiPlay {node} {state} {onStateChange} />
 {:else if node.type === "Card"}
   <div class="rounded-xl border border-border/60 bg-card/75 p-4 backdrop-blur-xs shadow-xs space-y-3">
     {#if node.children}
