@@ -236,4 +236,84 @@ export const openUiBuiltins: Record<string, (...args: any[]) => any> = {
     }
     return result;
   },
+
+  "@Payment": (rate: any, nper: any, pv: any, fv: any = 0, type: any = 0) => {
+    const r = Number(rate) || 0;
+    const n = Number(nper) || 0;
+    const p = Number(pv) || 0;
+    const f = Number(fv) || 0;
+    const t = Number(type) || 0;
+    if (n === 0) return 0;
+    if (r === 0) return -(p + f) / n;
+    const pvif = Math.pow(1 + r, n);
+    let pmt = (r / (pvif - 1)) * -(p * pvif + f);
+    if (t === 1) pmt /= 1 + r;
+    return pmt;
+  },
+
+  "@Today": () => new Date().toISOString().split("T")[0],
+  "@Now": () => new Date().toISOString(),
+
+  "@AddDays": (date: any, days: any) => {
+    const d = new Date(date || Date.now());
+    d.setDate(d.getDate() + (Number(days) || 0));
+    return d.toISOString().split("T")[0];
+  },
+
+  "@AddMonths": (date: any, months: any) => {
+    const d = new Date(date || Date.now());
+    d.setMonth(d.getMonth() + (Number(months) || 0));
+    return d.toISOString().split("T")[0];
+  },
+
+  "@DaysBetween": (d1: any, d2: any) => {
+    const t1 = new Date(d1).getTime();
+    const t2 = new Date(d2).getTime();
+    return Math.round((t2 - t1) / (1000 * 60 * 60 * 24));
+  },
+
+  "@MonthsBetween": (d1: any, d2: any) => {
+    const date1 = new Date(d1);
+    const date2 = new Date(d2);
+    return (date2.getFullYear() - date1.getFullYear()) * 12 + (date2.getMonth() - date1.getMonth());
+  },
+
+  "@Between": (val: any, min: any, max: any) => {
+    const v = Number(val);
+    return v >= Number(min) && v <= Number(max);
+  },
+
+  "@Duration": (seconds: any, format?: any) => {
+    const s = Math.max(0, Math.floor(Number(seconds) || 0));
+    const hrs = Math.floor(s / 3600);
+    const mins = Math.floor((s % 3600) / 60);
+    const secs = s % 60;
+    if (format === "long") {
+      const parts: string[] = [];
+      if (hrs > 0) parts.push(`${hrs} hr${hrs > 1 ? "s" : ""}`);
+      if (mins > 0) parts.push(`${mins} min${mins > 1 ? "s" : ""}`);
+      if (secs > 0 || parts.length === 0) parts.push(`${secs} sec${secs > 1 ? "s" : ""}`);
+      return parts.join(" ");
+    }
+    if (hrs > 0) {
+      return `${hrs}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+    }
+    return `${mins}:${String(secs).padStart(2, "0")}`;
+  },
+
+  "@StartOf": (date: any, unit: any = "month") => {
+    const d = new Date(date || Date.now());
+    if (unit === "year") return `${d.getFullYear()}-01-01`;
+    if (unit === "month") {
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      return `${d.getFullYear()}-${m}-01`;
+    }
+    if (unit === "week") {
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      const mon = new Date(d.setDate(diff));
+      return mon.toISOString().split("T")[0];
+    }
+    return d.toISOString().split("T")[0];
+  },
 };

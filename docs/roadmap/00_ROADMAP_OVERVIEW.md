@@ -60,7 +60,10 @@ flowchart TD
 | **12** | [Phase 12: shadcn-svelte & High Refresh Rate](12_PHASE_12_SHADCN_SVELTE_AND_HIGH_REFRESH_RATE_ENGINE.md) | Custom ad-hoc UI, CPU-bound 60Hz reflows | shadcn-svelte (bits-ui), Lucide icons, 120Hz/144Hz GPU Compositor |
 | **13** | [Phase 13: Interactive Artifacts & Canvas](13_PHASE_13_INTERACTIVE_ARTIFACTS_AND_CANVAS_ENGINE.md) | Static code snippet previews, destructive edits | Sandboxed Iframe Canvas, Zero CSS Bleed, DAG Message Forking |
 | **14** | [Phase 14: Zero-Fork Seamless Upgrades](14_PHASE_14_ZERO_FORK_ENTERPRISE_UPGRADE_AND_DISTRIBUTION.md) | Forked source modifications, destructive DDL | Zero-Fork Overlay, Runtime Branding Injection, Expand-Contract DDL |
-| **15** | [Phase 15: Generative UI & OpenUI](15_PHASE_15_INTELLIGENT_GENERATIVE_UI_AND_OPENUI_ENGINE.md) | Server script tools, heavy iframe widgets | Native OpenUI DSL (`openui-lang`), Client AST Parser, Svelte 5 Runes |
+| **15** | [Phase 15: Generative UI & OpenUI Core](15_PHASE_15_INTELLIGENT_GENERATIVE_UI_AND_OPENUI_ENGINE.md) | Server script tools, heavy iframe widgets | Native OpenUI DSL (`openui-lang`), Client AST Parser, Svelte 5 Runes |
+| **16** | [Phase 16: OpenUI Form & Financial Primitives](16_PHASE_16_OPENUI_FORM_CONTENT_AND_FINANCIAL_PRIMITIVES.md) | Rigid single-line calculators, limited math | DatePicker, Math (LaTeX), Timer, Lists, @Payment, @DaysBetween |
+| **17** | [Phase 17: Declarative Charts & Media](17_PHASE_17_OPENUI_DECLARATIVE_DATA_VISUALIZATION_AND_MEDIA.md) | External heavy chart scripts, opaque iframes | Zero-Dependency SVG Charts, Carousel, Popover, Geo Map & Video |
+| **18** | [Phase 18: Vector Canvas & Interactive Play](18_PHASE_18_OPENUI_VECTOR_CANVAS_AND_INTERACTIVE_PLAY.md) | Static images, flat non-gamified cards | SVG Primitives (Rect, Circle, Path), Celebration Confetti, Flashcards |
 
 ---
 

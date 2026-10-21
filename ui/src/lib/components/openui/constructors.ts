@@ -10,7 +10,7 @@ export function constructUiNode(
   const args = rawArgs.map((a) => evalExpr(a, ctx, scope));
 
   let bindingVar: string | undefined;
-  if (["Slider", "Input", "SegmentedControl", "Checkbox", "RadioGroup"].includes(name)) {
+  if (["Slider", "Input", "SegmentedControl", "Checkbox", "RadioGroup", "DatePicker", "Timer"].includes(name)) {
     if (rawArgs[0]?.type === "state_var") {
       bindingVar = rawArgs[0].name;
     }
@@ -228,6 +228,48 @@ export function constructUiNode(
       props.background = args[4];
       props.radius = args[5] ?? "md";
       break;
+
+    case "DatePicker":
+      props.value = args[0] ?? "";
+      props.label = args[1] ?? "";
+      props.min = args[2];
+      props.max = args[3];
+      break;
+
+    case "Timer":
+      props.seconds = typeof args[0] === "number" ? args[0] : 0;
+      props.label = args[1] ?? "";
+      break;
+
+    case "List":
+      props.items = Array.isArray(args[0]) ? args[0] : [];
+      props.ordered = args[1] ?? false;
+      break;
+
+    case "ListItem":
+      props.content = args[0] ?? "";
+      break;
+
+    case "Label":
+      props.text = args[0] ?? "";
+      props.required = args[1] ?? false;
+      props.forId = args[2];
+      break;
+
+    case "Markdown":
+      props.content = args[0] ?? "";
+      break;
+
+    case "Math":
+      props.formula = args[0] ?? "";
+      break;
+
+    case "Form": {
+      const { children: c, rest } = extractChildren(args);
+      children = c;
+      props.onSubmit = rest[0];
+      break;
+    }
 
     case "Spacer":
     case "Divider":
