@@ -6,6 +6,7 @@
 [![Runtime: Bun](https://img.shields.io/badge/Runtime-Bun%201.4-black.svg?logo=bun)](https://bun.sh)
 [![Generative UI: OpenUI](https://img.shields.io/badge/Generative%20UI-OpenUI%20DSL-8a2be2.svg)](ui/src/lib/components/openui/)
 [![Architecture: SOLID & EIP](https://img.shields.io/badge/Architecture-Interface--First%20DIP-emerald.svg)](docs/ALGORITHMS_AND_OPTIMIZATIONS.md)
+[![Embed SDK: Multi-SPA](https://img.shields.io/badge/Embed%20SDK-React%20%7C%20Vue%20%7C%20Vanilla-blue.svg)](docs/EMBED_INTEGRATION_GUIDE.md)
 [![Database: Pluggable](https://img.shields.io/badge/Database-SQLite%20%7C%20Postgres-purple.svg)](crates/lumis-db)
 [![Zero Mocks](https://img.shields.io/badge/Zero--Mock-Enforced-success.svg)](scripts/governance-check.sh)
 
@@ -67,6 +68,10 @@ flowchart TD
    - **Keyset / Cursor-Based Pagination**: $\mathcal{O}(\log N)$ composite index seek.
    - **SIMD Aho-Corasick Guardrail**: Throughput pemindaian PII 2.4 GB/s per core.
    - **Svelte 5 Runes Signals**: UI responsif 120Hz/144Hz dengan konsumsi RAM browser <20MB.
+7. **Universal Embeddable Chat SDK & In-App Agentic Tools**:
+   - Kemudahan menyematkan antarmuka dan mekanisme percakapan ke dalam SPA host yang ada (React, Vue, Svelte, Angular, Vanilla JS).
+   - Mendukung 3 pendekatan modular: 1-line script (`lumis-embed.js`), scoped iframe aman (RFC 6454), dan headless core engine Svelte 5 runes (`@lumis/sdk-core`).
+   - Dilengkapi EIP Content Enricher dan In-App Agentic Tool Dispatcher (AI memicu aksi navigasi, filter, atau highlight langsung di aplikasi host).
 
 ---
 
@@ -137,24 +142,37 @@ Card(
 
 ## 🧩 Meng-embed Lumis Chat ke Existing SPA (React, Vue, Svelte, Angular)
 
-Lumis dirancang secara modular menggunakan prinsip **SOLID** dan **Enterprise Integration Patterns (EIP)** sehingga antarmuka dan mekanisme obrolannya dapat langsung disematkan ke dalam aplikasi SPA host:
+Lumis dirancang secara modular menggunakan prinsip **SOLID** dan **Enterprise Integration Patterns (EIP)** sehingga antarmuka dan mekanisme obrolan cerdasnya dapat langsung disematkan ke dalam aplikasi SPA host dengan 3 pilihan arsitektur:
 
-### Opsi A: 1-Line Drop-In Script (`lumis-embed.js`)
+### 1. Opsi A: 1-Line Drop-In Script (`lumis-embed.js`)
+*Paling cepat dan tanpa modifikasi bundler host:*
 ```html
 <script
   src="https://lumis.company.com/lumis-embed.js"
   data-server-url="https://lumis.company.com"
   data-token="EMBED_TOKEN_DARI_BACKEND"
   data-position="bottom-right"
+  data-title="Enterprise AI Assistant"
+  data-theme="auto"
   async>
 </script>
 ```
 
-### Opsi B: Headless SDK & Komponen Reaktif (@lumis/sdk-core)
+### 2. Opsi B: Scoped Iframe + PostMessage RPC
+*Isolasi CSS mutlak & kepatuhan CSP (RFC 6454):*
+```html
+<iframe
+  src="https://lumis.company.com/embed/widget?token=lumis_embed_v1..."
+  style="position: fixed; bottom: 20px; right: 20px; width: 420px; height: 620px; border: none; z-index: 9999;"
+></iframe>
+```
+
+### 3. Opsi C: Headless SDK & Komponen Reaktif (@lumis/sdk-core)
+*Integrasi reaktif penuh dengan state React, Vue 3, atau Svelte:*
 ```typescript
 import { HttpSseTransport, createLumisChat } from "@lumis/sdk-core";
 
-const transport = new HttpSseTransport({ baseUrl: "https://lumis.company.com", embedToken: "..." });
+const transport = new HttpSseTransport({ baseUrl: "https://lumis.company.com", embedToken: "lumis_embed_v1..." });
 const engine = createLumisChat(transport, {
   contextData: { activeInvoiceId: "INV-9901" } // EIP Content Enricher
 });
@@ -162,7 +180,10 @@ const engine = createLumisChat(transport, {
 await engine.sendMessage("Ringkaskan status invoice ini");
 ```
 
-📖 **Panduan Langkah-demi-Langkah Lengkap**: Baca panduan arsitektur dan contoh kode integrasi multi-framework di [**docs/EMBED_INTEGRATION_GUIDE.md**](docs/EMBED_INTEGRATION_GUIDE.md).
+### 📚 Dokumentasi & Sumber Daya Integrasi
+- 📖 **Panduan Integrasi Lengkap**: Langkah backend broker, React, Vue 3, CORS, CSP, dan troubleshooting di [**docs/EMBED_INTEGRATION_GUIDE.md**](docs/EMBED_INTEGRATION_GUIDE.md).
+- 🕹️ **Interactive Demo Fixture**: Uji coba interaktif langsung di browser via [`examples/vanilla-embed-demo.html`](examples/vanilla-embed-demo.html).
+- 🗺️ **Spesifikasi Arsitektur & EIP Phase 19**: Desain teknis detail di [**docs/roadmap/19_PHASE_19_EMBEDDABLE_CHAT_SDK_AND_SPA_INTEGRATION.md**](docs/roadmap/19_PHASE_19_EMBEDDABLE_CHAT_SDK_AND_SPA_INTEGRATION.md).
 
 ---
 

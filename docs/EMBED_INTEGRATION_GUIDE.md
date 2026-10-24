@@ -97,23 +97,14 @@ window.addEventListener("message", (event) => {
 ## ⚛️ Metode 3: Integrasi Native di React SPA
 *Menggunakan Headless SDK `@lumis/sdk-core` untuk integrasi reaktif penuh dengan state React.*
 
-```bash
-bun add @lumis/sdk-core
-```
-
 ```tsx
 import React, { useEffect, useState } from "react";
 import { HttpSseTransport, createLumisChat } from "@lumis/sdk-core";
 
 export function EmbeddedAssistant({ userToken, documentId }: { userToken: string; documentId: string }) {
   const [engine] = useState(() => {
-    const transport = new HttpSseTransport({
-      baseUrl: "https://lumis.company.com",
-      embedToken: userToken
-    });
-    return createLumisChat(transport, {
-      contextData: { document_id: documentId }
-    });
+    const transport = new HttpSseTransport({ baseUrl: "https://lumis.company.com", embedToken: userToken });
+    return createLumisChat(transport, { contextData: { document_id: documentId } });
   });
 
   useEffect(() => {
@@ -143,6 +134,84 @@ export function EmbeddedAssistant({ userToken, documentId }: { userToken: string
   );
 }
 ```
+
+---
+
+## 🟢 Metode 4: Integrasi di Vue 3 SPA (Composition API)
+*Integrasi reaktif dengan Vue 3 `ref` & `@lumis/sdk-core`.*
+
+```vue
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted } from "vue";
+import { HttpSseTransport, createLumisChat } from "@lumis/sdk-core";
+
+const props = defineProps<{ token: string; contextId: string }>();
+const inputPrompt = ref("");
+
+const transport = new HttpSseTransport({ baseUrl: "https://lumis.company.com", embedToken: props.token });
+const engine = createLumisChat(transport, { contextData: { row_id: props.contextId } });
+
+onMounted(() => engine.initStream());
+onUnmounted(() => engine.disconnectStream());
+
+function handleSend() {
+  if (!inputPrompt.value.trim()) return;
+  engine.sendMessage(inputPrompt.value);
+  inputPrompt.value = "";
+}
+</script>
+
+<template>
+  <div class="chat-wrapper border rounded-lg p-4 flex flex-col h-[500px]">
+    <div class="messages flex-1 overflow-y-auto space-y-2">
+      <div v-for="m in engine.messages" :key="m.id" :class="m.role === 'user' ? 'text-right' : 'text-left'">
+        <span class="inline-block bg-muted p-2 rounded text-sm">{{ m.content }}</span>
+      </div>
+    </div>
+    <div class="input-bar flex gap-2 pt-2 border-t">
+      <input v-model="inputPrompt" @keyup.enter="handleSend" class="border flex-1 px-3 py-1 text-sm rounded" placeholder="Ketik pesan..." />
+      <button :disabled="engine.isGenerating" @click="handleSend" class="bg-primary text-primary-foreground px-4 py-1 rounded text-sm">Kirim</button>
+    </div>
+  </div>
+</template>
+```
+
+---
+
+## 🕹️ Live Interactive Demo Fixture
+Untuk menguji coba seluruh kapabilitas embed secara langsung di browser lokal Anda tanpa setup server kompleks:
+
+1. Jalankan backend Lumis: `cargo run -p lumis-server` (port 8080).
+2. Jalankan demo HTML bawaan:
+   ```bash
+   bunx serve examples
+   # Buka http://localhost:3000/vanilla-embed-demo.html
+   ```
+Demo interaktif di [`examples/vanilla-embed-demo.html`](../examples/vanilla-embed-demo.html) mendemonstrasikan secara visual:
+- Buka / Tutup floating widget secara programatik (`open()`, `close()`).
+- Auto-inject konteks aplikasi host (`userContext`).
+- Eksekusi in-app tool calling (`highlight_row`, `copy_sku`).
+
+---
+
+## 📋 Checklist Produksi (Pre-Flight to Production)
+
+- [ ] **1. Konfigurasi CORS Server**: Pastikan `CORS_ALLOWED_ORIGINS` diatur di environment Lumis Server dengan origin domain SPA host Anda (misal `https://app.corp.com`).
+- [ ] **2. Tentukan Kebijakan Frame Ancestors**: Untuk integrasi Iframe, atur `CSP_FRAME_ANCESTORS="https://app.corp.com"` agar browser mengizinkan pemuatan frame.
+- [ ] **3. Backend Token Broker**: Pastikan aplikasi backend Anda memiliki endpoint proxy yang memanggil `POST /api/auth/embed-token` di Lumis menggunakan Master API Key, kemudian mengembalikan ephemeral token ke frontend.
+- [ ] **4. Error & Auto-Refresh Handling**: Tangani event token expired (HTTP 401) dengan meminta token baru secara transparan tanpa mengganggu percakapan aktif.
+- [ ] **5. In-App Tool Safety**: Selalu validasi argumen yang dikirim model sebelum mengeksekusi aksi mutatif di sisi host aplikasi.
+
+---
+
+## ❓ Panduan Pemecahan Masalah (Troubleshooting)
+
+| Gejala Masalah | Kemungkinan Penyebab | Solusi Cepat |
+| :--- | :--- | :--- |
+| `Blocked by CORS policy` | Origin SPA belum terdaftar di backend Lumis | Tambahkan origin di `CORS_ALLOWED_ORIGINS="https://domain-anda.com"` lalu restart server. |
+| `Refused to display in a frame (CSP)` | Header `frame-ancestors` menolak domain host | Konfigurasikan CSP di reverse proxy atau set origin terpercaya di parameter query `/embed/chat?origin=...`. |
+| `401 Unauthorized / Token Expired` | Ephemeral embed token telah melewati batas TTL (15-30m) | Minta token baru via endpoint backend Anda dan panggil `transport.updateToken(newToken)`. |
+| `PostMessage event ignored` | Nilai `event.origin` tidak sesuai dengan domain Lumis | Pastikan script host memeriksa `event.origin === LUMIS_SERVER_ORIGIN` secara presisi. |
 
 ---
 
