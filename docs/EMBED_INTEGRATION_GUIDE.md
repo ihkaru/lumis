@@ -274,3 +274,19 @@ widget.registerTool({
 2. **Validasi Origin**: Selalu periksa `event.origin` saat menangani pesan `postMessage`.
 3. **Masa Berlaku Token Pendek**: Terapkan masa berlaku token embed antara 15 hingga 60 menit.
 4. **Isolasi Konteks Data**: Manfaatkan `contextData` (EIP Content Enricher) untuk menyuntikkan ID entitas aktif tanpa membocorkan token rahasia ke prompt pengguna.
+
+---
+
+## 🧠 Arsitektur Memori, Sesi & Topologi Backend (Best Practice 2026)
+
+### 1. Dukungan Lapisan Memori & Percakapan (Out-of-the-Box)
+Lumis telah mengintegrasikan arsitektur memori 3-tier secara *native*:
+- **Tier 1: Episodic / Sesi Percakapan**: Thread history tersimpan di SQLite WAL / PostgreSQL dengan keyset pagination $\mathcal{O}(\log N)$ dan pemangkasan otomatis (*sliding window pruning*) berbasis token budget (`DEFAULT_MAX_CONTEXT_TOKENS`) agar tidak terjadi context overflow.
+- **Tier 2: Semantic / Long-Term User Memory**: Tabel `user_memories` (`/api/memories`) menyimpan fakta & preferensi pengguna lintas sesi yang otomatis diinjeksi ke system prompt saat inferensi.
+- **Tier 3: Procedural / Contextual Knowledge**: Integrasi Knowledge Vault RAG dan protokol MCP 2026 untuk tool calling cerdas.
+
+### 2. Apakah Aplikasi Host Perlu Menjalankan Full Backend Sendiri?
+- **Pola 1: Centralized AI Gateway (Rekomendasi Terbaik Industri)**:
+  Lumis Server di-host terpusat sebagai microservice kontainer ultra-ringan (<35MB image, <25MB RAM). Aplikasi SPA host **TIDAK PERLU** membuat backend AI, database vektor, atau logika streaming SSE sendiri. Backend host hanya membutuhkan 1 endpoint broker token (~5 baris kode) untuk memanggil `POST /api/auth/embed-token`.
+- **Pola 2: BYOB (Bring Your Own Backend via `ILumisTransport`)**:
+  Jika tim pengembang *sudah memiliki* backend AI internal (misal FastAPI / NestJS / LangGraph) dan hanya ingin memanfaatkan Chat UI & State Engine Lumis, pengembang cukup mengimplementasikan kontrak interface [`ILumisTransport`](../ui/src/lib/sdk/types.ts) di sisi frontend tanpa perlu meng-host `lumis-server`.
