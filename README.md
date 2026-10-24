@@ -129,8 +129,40 @@ Card(
 | **Phase 16** | OpenUI Form, Math, Content & Financial/Date Primitives | [✓] Selesai |
 | **Phase 17** | OpenUI Declarative Data Visualizations (Charts & Media) | [✓] Selesai |
 | **Phase 18** | OpenUI Vector Canvas Primitives & Interactive Play | [✓] Selesai |
+| **Phase 19** | Embeddable Chat SDK, Headless Core & SPA Integration | [✓] Selesai |
 
-*Lihat dokumentasi lengkap di [docs/roadmap/00_ROADMAP_OVERVIEW.md](docs/roadmap/00_ROADMAP_OVERVIEW.md), [docs/roadmap/15_PHASE_15_INTELLIGENT_GENERATIVE_UI_AND_OPENUI_ENGINE.md](docs/roadmap/15_PHASE_15_INTELLIGENT_GENERATIVE_UI_AND_OPENUI_ENGINE.md), [docs/roadmap/16_PHASE_16_OPENUI_FORM_CONTENT_AND_FINANCIAL_PRIMITIVES.md](docs/roadmap/16_PHASE_16_OPENUI_FORM_CONTENT_AND_FINANCIAL_PRIMITIVES.md), [docs/roadmap/17_PHASE_17_OPENUI_DECLARATIVE_DATA_VISUALIZATION_AND_MEDIA.md](docs/roadmap/17_PHASE_17_OPENUI_DECLARATIVE_DATA_VISUALIZATION_AND_MEDIA.md), dan [docs/roadmap/18_PHASE_18_OPENUI_VECTOR_CANVAS_AND_INTERACTIVE_PLAY.md](docs/roadmap/18_PHASE_18_OPENUI_VECTOR_CANVAS_AND_INTERACTIVE_PLAY.md).*
+*Lihat dokumentasi lengkap di [docs/roadmap/00_ROADMAP_OVERVIEW.md](docs/roadmap/00_ROADMAP_OVERVIEW.md) dan [docs/roadmap/19_PHASE_19_EMBEDDABLE_CHAT_SDK_AND_SPA_INTEGRATION.md](docs/roadmap/19_PHASE_19_EMBEDDABLE_CHAT_SDK_AND_SPA_INTEGRATION.md).*
+
+---
+
+## 🧩 Meng-embed Lumis Chat ke Existing SPA (React, Vue, Svelte, Angular)
+
+Lumis dirancang secara modular menggunakan prinsip **SOLID** dan **Enterprise Integration Patterns (EIP)** sehingga antarmuka dan mekanisme obrolannya dapat langsung disematkan ke dalam aplikasi SPA host:
+
+### Opsi A: 1-Line Drop-In Script (`lumis-embed.js`)
+```html
+<script
+  src="https://lumis.company.com/lumis-embed.js"
+  data-server-url="https://lumis.company.com"
+  data-token="EMBED_TOKEN_DARI_BACKEND"
+  data-position="bottom-right"
+  async>
+</script>
+```
+
+### Opsi B: Headless SDK & Komponen Reaktif (@lumis/sdk-core)
+```typescript
+import { HttpSseTransport, createLumisChat } from "@lumis/sdk-core";
+
+const transport = new HttpSseTransport({ baseUrl: "https://lumis.company.com", embedToken: "..." });
+const engine = createLumisChat(transport, {
+  contextData: { activeInvoiceId: "INV-9901" } // EIP Content Enricher
+});
+
+await engine.sendMessage("Ringkaskan status invoice ini");
+```
+
+📖 **Panduan Langkah-demi-Langkah Lengkap**: Baca panduan arsitektur dan contoh kode integrasi multi-framework di [**docs/EMBED_INTEGRATION_GUIDE.md**](docs/EMBED_INTEGRATION_GUIDE.md).
 
 ---
 

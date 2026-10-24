@@ -1,0 +1,16 @@
+{
+  "exemptions": [
+    {
+      "symbol": "default_active",
+      "file": "crates/lumis-core/src/models/scim.rs",
+      "reason": "Serde default helper returning true for SCIM user active status",
+      "citation": "RFC 7643 Section 4.1"
+    },
+    {
+      "symbol": "export_metrics_text",
+      "file": "crates/lumis-core/src/traits/telemetry.rs",
+      "reason": "Default trait method for telemetry drivers that do not expose raw text metrics",
+      "citation": "OpenTelemetry GenAI Specification 2026"
+    }
+  ]
+}

@@ -33,15 +33,45 @@ impl DefaultClaimTranslator {
 
 impl ClaimTranslator for DefaultClaimTranslator {
     fn extract_claims(&self, headers: &HashMap<String, String>) -> Result<UserClaims> {
-        // Resolve user identifier
-        let user_id = headers
-            .get("x-auth-request-user")
-            .or_else(|| headers.get("x-forwarded-user"))
-            .or_else(|| headers.get("x-remote-user"))
-            .or_else(|| headers.get("x-authentik-username"))
-            .or_else(|| headers.get("x-forwarded-preferred-username"))
-            .or_else(|| headers.get("x-lumis-user"))
+        // Resolve embed token claims if present (Authorization: Bearer lumis_embed_v1... or x-embed-token)
+        let embed_token = headers
+            .get("x-embed-token")
             .cloned()
+            .or_else(|| {
+                headers.get("authorization").and_then(|auth| {
+                    auth.strip_prefix("Bearer ").map(|s| s.trim().to_string())
+                })
+            });
+
+        let mut embed_claims = None;
+        if let Some(ref token) = embed_token {
+            if token.starts_with("lumis_embed_v1.") {
+                let parts: Vec<&str> = token.split('.').collect();
+                if parts.len() == 3 {
+                    use base64::Engine;
+                    if let Ok(decoded) = base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(parts[1]) {
+                        if let Ok(val) = serde_json::from_slice::<serde_json::Value>(&decoded) {
+                            let exp = val.get("exp").and_then(|e| e.as_i64()).unwrap_or(0);
+                            if exp > chrono::Utc::now().timestamp() {
+                                embed_claims = Some(val);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Resolve user identifier
+        let user_id = embed_claims
+            .as_ref()
+            .and_then(|v| v.get("sub").and_then(|s| s.as_str()).map(|s| s.to_string()))
+            .or_else(|| headers.get("x-embed-user").cloned())
+            .or_else(|| headers.get("x-auth-request-user").cloned())
+            .or_else(|| headers.get("x-forwarded-user").cloned())
+            .or_else(|| headers.get("x-remote-user").cloned())
+            .or_else(|| headers.get("x-authentik-username").cloned())
+            .or_else(|| headers.get("x-forwarded-preferred-username").cloned())
+            .or_else(|| headers.get("x-lumis-user").cloned())
             .or_else(|| {
                 headers.get("cookie").and_then(|c_str| {
                     c_str.split(';').find_map(|pair| {
@@ -63,38 +93,57 @@ impl ClaimTranslator for DefaultClaimTranslator {
             ));
         }
 
-        let username = user_id.clone();
+        let username = embed_claims
+            .as_ref()
+            .and_then(|v| v.get("username").and_then(|s| s.as_str()).map(|s| s.to_string()))
+            .unwrap_or_else(|| user_id.clone());
 
         // Resolve email
-        let email = headers
-            .get("x-auth-request-email")
-            .or_else(|| headers.get("x-forwarded-email"))
-            .or_else(|| headers.get("x-authentik-email"))
-            .cloned();
+        let email = embed_claims
+            .as_ref()
+            .and_then(|v| v.get("email").and_then(|s| s.as_str()).map(|s| s.to_string()))
+            .or_else(|| headers.get("x-auth-request-email").cloned())
+            .or_else(|| headers.get("x-forwarded-email").cloned())
+            .or_else(|| headers.get("x-authentik-email").cloned());
 
-        // Resolve roles/groups (supports comma and semicolon delimiters)
-        let roles_raw = headers
-            .get("x-auth-request-groups")
-            .or_else(|| headers.get("x-forwarded-groups"))
-            .or_else(|| headers.get("x-authentik-groups"))
-            .or_else(|| headers.get("x-forwarded-roles"))
-            .or_else(|| headers.get("x-user-roles"));
+        // Resolve roles/groups
+        let embed_roles: Vec<String> = embed_claims
+            .as_ref()
+            .and_then(|v| v.get("roles").and_then(|r| r.as_array()))
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|x| x.as_str().map(|s| s.to_string()))
+                    .collect()
+            })
+            .unwrap_or_default();
 
-        let roles: Vec<String> = match roles_raw {
-            Some(raw) => raw
-                .split([',', ';'])
-                .map(|s| s.trim().to_string())
-                .filter(|s| !s.is_empty())
-                .collect(),
-            None => Vec::new(),
+        let roles: Vec<String> = if !embed_roles.is_empty() {
+            embed_roles
+        } else {
+            let roles_raw = headers
+                .get("x-auth-request-groups")
+                .or_else(|| headers.get("x-forwarded-groups"))
+                .or_else(|| headers.get("x-authentik-groups"))
+                .or_else(|| headers.get("x-forwarded-roles"))
+                .or_else(|| headers.get("x-user-roles"));
+
+            match roles_raw {
+                Some(raw) => raw
+                    .split([',', ';'])
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect(),
+                None => Vec::new(),
+            }
         };
 
         // Resolve tenant
-        let tenant_id = headers
-            .get("x-auth-request-tenant")
-            .or_else(|| headers.get("x-forwarded-tenant"))
-            .or_else(|| headers.get("x-tenant-id"))
-            .cloned();
+        let tenant_id = embed_claims
+            .as_ref()
+            .and_then(|v| v.get("tenant_id").and_then(|s| s.as_str()).map(|s| s.to_string()))
+            .or_else(|| headers.get("x-auth-request-tenant").cloned())
+            .or_else(|| headers.get("x-forwarded-tenant").cloned())
+            .or_else(|| headers.get("x-tenant-id").cloned());
 
         // Resolve department
         let department = headers

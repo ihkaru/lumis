@@ -42,6 +42,10 @@ flowchart TD
     P12 --> P13["Phase 13: Interactive Artifacts & Split-Pane Canvas"]
     P13 --> P14["Phase 14: Zero-Fork Architecture & Seamless Upgrades"]
     P14 --> P15["Phase 15: Intelligent Generative UI & OpenUI Engine"]
+    P15 --> P16["Phase 16: OpenUI Form & Financial Primitives"]
+    P16 --> P17["Phase 17: Declarative Charts & Media Visualizations"]
+    P17 --> P18["Phase 18: Vector Canvas & Interactive Play Engine"]
+    P18 --> P19["Phase 19: Embeddable Chat SDK & SPA Integration"]
 ```
 
 | Fase | Dokumen Roadmap | Standar Legacy Didukung | Standar Modern 2026 Didukung |
@@ -64,6 +68,7 @@ flowchart TD
 | **16** | [Phase 16: OpenUI Form & Financial Primitives](16_PHASE_16_OPENUI_FORM_CONTENT_AND_FINANCIAL_PRIMITIVES.md) | Rigid single-line calculators, limited math | DatePicker, Math (LaTeX), Timer, Lists, @Payment, @DaysBetween |
 | **17** | [Phase 17: Declarative Charts & Media](17_PHASE_17_OPENUI_DECLARATIVE_DATA_VISUALIZATION_AND_MEDIA.md) | External heavy chart scripts, opaque iframes | Zero-Dependency SVG Charts, Carousel, Popover, Geo Map & Video |
 | **18** | [Phase 18: Vector Canvas & Interactive Play](18_PHASE_18_OPENUI_VECTOR_CANVAS_AND_INTERACTIVE_PLAY.md) | Static images, flat non-gamified cards | SVG Primitives (Rect, Circle, Path), Celebration Confetti, Flashcards |
+| **19** | [Phase 19: Embeddable Chat SDK & SPA Integration](19_PHASE_19_EMBEDDABLE_CHAT_SDK_AND_SPA_INTEGRATION.md) | Monolithic full-page portal, iframe workarounds | SOLID Runes Engine, EIP PostMessage RPC, Tri-Modal (SDK/Iframe/CustomElement) |
 
 ---
 

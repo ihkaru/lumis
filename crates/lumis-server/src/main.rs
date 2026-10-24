@@ -13,6 +13,8 @@ use lumis_server::llm::{OpenAiCompatibleDriver, ResilientLlmRouter};
 use lumis_server::routes;
 use lumis_server::state::AppState;
 use lumis_server::telemetry::CompositeTelemetryDispatcher;
+use tower_http::cors::{Any, CorsLayer};
+use axum::http::{HeaderValue, Method};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -127,8 +129,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tracing::info!("Resilient Multi-Provider LLM Router initialized");
     }
 
-    // 7. Build Axum Router
-    let app = routes::create_router(state);
+    // 7. Build Axum Router with Configurable CORS Layer (Phase 19.3)
+    let cors_layer = if let Ok(origins_str) = std::env::var("CORS_ALLOWED_ORIGINS") {
+        if origins_str.trim() == "*" {
+            CorsLayer::new()
+                .allow_origin(Any)
+                .allow_methods(Any)
+                .allow_headers(Any)
+        } else {
+            let origins: Vec<HeaderValue> = origins_str
+                .split(',')
+                .filter_map(|s| s.trim().parse().ok())
+                .collect();
+            CorsLayer::new()
+                .allow_origin(origins)
+                .allow_methods([
+                    Method::GET,
+                    Method::POST,
+                    Method::PUT,
+                    Method::DELETE,
+                    Method::OPTIONS,
+                    Method::PATCH,
+                ])
+                .allow_headers(Any)
+                .allow_credentials(true)
+        }
+    } else {
+        CorsLayer::permissive()
+    };
+
+    let app = routes::create_router(state).layer(cors_layer);
 
     // 8. Bind and Serve
     let addr = SocketAddr::from(([0, 0, 0, 0], port));

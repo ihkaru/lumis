@@ -78,12 +78,23 @@ where
                 return Ok(res);
             }
 
-            // 4. SPA Deep-Linking: serve index.html for client routes (/chat/:id, /login, etc.)
+            // 4. SPA Deep-Linking: serve index.html for client routes (/chat/:id, /login, /embed/*, etc.)
             if let Ok(content) = tokio::fs::read(&index_path).await {
-                let res = Response::builder()
+                let mut builder = Response::builder()
                     .status(StatusCode::OK)
                     .header(header::CONTENT_TYPE, "text/html; charset=utf-8")
-                    .header(header::CACHE_CONTROL, "no-cache")
+                    .header(header::CACHE_CONTROL, "no-cache");
+
+                if path.starts_with("/embed") {
+                    let ancestors = std::env::var("EMBED_ALLOWED_ANCESTORS")
+                        .unwrap_or_else(|_| "'self' *".to_string());
+                    builder = builder.header(
+                        "Content-Security-Policy",
+                        format!("frame-ancestors {};", ancestors),
+                    );
+                }
+
+                let res = builder
                     .body(Body::from(content))
                     .unwrap_or_default();
                 Ok(res)

@@ -5,6 +5,7 @@ pub mod audit;
 pub mod auth;
 pub mod chat;
 pub mod config;
+pub mod embed_auth;
 pub mod health;
 pub mod knowledge;
 pub mod mcp;
@@ -45,6 +46,9 @@ pub fn create_router(state: AppState) -> Router {
         .route("/api/auth/login", axum::routing::post(auth::login))
         .route("/api/auth/logout", axum::routing::post(auth::logout))
         .route("/api/auth/password", axum::routing::post(auth::change_password))
+        // Ephemeral Embed Token & Cross-Origin Auth (Phase 19.3)
+        .route("/api/auth/embed-token", axum::routing::post(embed_auth::issue_embed_token))
+        .route("/api/auth/embed-token/verify", get(embed_auth::verify_embed_token))
         .route("/api/admin/roles", get(auth::list_roles))
         .route("/api/admin/users", get(admin_users::list_admin_users))
         .route("/api/admin/users/role", axum::routing::post(admin_users::update_user_role))

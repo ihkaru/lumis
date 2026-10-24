@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lumis Embed Showcase — Existing Host SPA Demo</title>
+  <style>
+    :root {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+    }
+    body {
+      margin: 0;
+      padding: 32px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    h1 { margin-top: 0; font-size: 24px; color: #1e293b; }
+    h2 { font-size: 18px; margin-top: 0; }
+    p { color: #64748b; line-height: 1.5; }
+    .btn {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .btn:hover { background: #1d4ed8; }
+    .log-box {
+      background: #0f172a;
+      color: #38bdf8;
+      font-family: monospace;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      height: 120px;
+      overflow-y: auto;
+    }
+    .highlight-row {
+      background: #fef08a !important;
+      transition: background 0.5s ease;
+    }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { text-align: left; padding: 10px; border-bottom: 1px solid #e2e8f0; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Contoh Aplikasi Host (Enterprise Dashboard SPA)</h1>
+    <p>Halaman ini mensimulasikan sistem ERP internal institusi Anda. Lumis disematkan di pojok kanan bawah sebagai floating AI Copilot.</p>
+    <div style="display: flex; gap: 12px;">
+      <button class="btn" onclick="askLumisToAnalyze()">Minta AI Analisis Baris Ini</button>
+      <button class="btn" style="background: #475569;" onclick="toggleLumis()">Toggle Widget</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Data Tabel Host yang Terhubung dengan AI Context</h2>
+    <table>
+      <thead>
+        <tr><th>ID Pesanan</th><th>Pelanggan</th><th>Jumlah</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        <tr id="row-101"><td>#INV-101</td><td>PT Maju Berkah</td><td>Rp 15.000.000</td><td>Lunas</td></tr>
+        <tr id="row-102"><td>#INV-102</td><td>CV Prima Mandiri</td><td>Rp 42.500.000</td><td>Tertunda</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Log Event PostMessage (Bi-directional Host &harr; Lumis RPC)</h2>
+    <div id="log" class="log-box">Menunggu inisialisasi widget...</div>
+  </div>
+
+  <!-- Inisialisasi Script Loader Lumis -->
+  <script src="/src/lib/sdk/embedLoader.ts" type="module"></script>
+  <script type="module">
+    import { initLumisWidget } from "/src/lib/sdk/embedLoader.ts";
+
+    function log(msg) {
+      const box = document.getElementById("log");
+      box.innerHTML += `\n[${new Date().toLocaleTimeString()}] ${msg}`;
+      box.scrollTop = box.scrollHeight;
+    }
+
+    // Inisialisasi Widget
+    window.widget = initLumisWidget({
+      serverUrl: window.location.origin,
+      position: "bottom-right",
+      title: "Lumis ERP Copilot",
+      contextData: {
+        current_module: "Finance/Invoicing",
+        active_tenant: "bps-demo"
+      }
+    });
+
+    // Daftarkan Tool Frontend (Model AI memanggil aksi pada aplikasi host!)
+    window.widget.registerTool({
+      name: "highlight_order_row",
+      description: "Menyoroti baris pesanan pada tabel dashboard host",
+      parameters: { rowId: "string (contoh: row-102)" },
+      execute: ({ rowId }) => {
+        log(`AI mengeksekusi tool: highlight_order_row -> ${rowId}`);
+        const el = document.getElementById(rowId);
+        if (el) {
+          el.classList.add("highlight-row");
+          setTimeout(() => el.classList.remove("highlight-row"), 3000);
+          return { success: true, message: `Baris ${rowId} berhasil disorot` };
+        }
+        return { success: false, error: "Baris tidak ditemukan" };
+      }
+    });
+
+    window.askLumisToAnalyze = () => {
+      window.widget.open();
+      window.widget.setContext({ selected_row: "row-102", amount: 42500000 });
+      window.widget.sendPrompt("Tolong periksa mengapa pesanan #INV-102 berstatus tertunda?");
+      log("Prompt dan konteks baris 102 dikirim ke Lumis");
+    };
+
+    window.toggleLumis = () => {
+      window.widget.toggle();
+    };
+
+    log("Widget Lumis berhasil diinisialisasi.");
+  </script>
+</body>
+</html>

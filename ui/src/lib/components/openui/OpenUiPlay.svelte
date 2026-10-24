@@ -1,7 +1,9 @@
 <script lang="ts">
   import type { UiNode } from "./types";
   import OpenUiNode from "./OpenUiNode.svelte";
-  import { Sparkles, RotateCcw, Check } from "lucide-svelte";
+  import Sparkles from "lucide-svelte/icons/sparkles";
+  import RotateCcw from "lucide-svelte/icons/rotate-ccw";
+  import Check from "lucide-svelte/icons/check";
 
   interface Props {
     node: any;

@@ -1070,7 +1070,7 @@ checksum = "4050469837a6ff301cd14c1f8f24f88549e6d548f24f64e2148eb0f72cebc51f"
 
 [[package]]
 name = "lumis-core"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "aes-gcm",
  "async-trait",
@@ -1088,7 +1088,7 @@ dependencies = [
 
 [[package]]
 name = "lumis-db"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1104,7 +1104,7 @@ dependencies = [
 
 [[package]]
 name = "lumis-server"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "aho-corasick",
  "async-trait",
@@ -1119,6 +1119,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "sha2",
  "thiserror",
  "tokio",
  "tokio-stream",

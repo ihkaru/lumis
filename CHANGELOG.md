@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.0] - 2026-10-24
+
+### Added
+- **Phase 19: Embeddable Chat SDK, Headless Core & EIP Integration for Existing SPAs**:
+  - Headless state machine `createLumisChat()` in Svelte 5 Runes (`$state`, `$derived`) decoupled from window, document, or router.
+  - Multi-modal embedding adapters:
+    - 1-Line Drop-In Loader Script `lumis-embed.js` with auto-mounting launcher FAB and responsive popover modal.
+    - Scoped Iframe Embed routes (`/embed/chat` and `/embed/widget`) with RFC 6454 safe `postMessage` RPC handshake.
+    - Headless `@lumis/sdk-core` with `HttpSseTransport` supporting configurable `baseUrl`, bearer headers, and custom auth token resolvers.
+  - Standalone embeddable components `<ChatContainer />` and `<ChatWidget />` with GPU-composited 120fps animations and $\ge 44\text{px}$ touch targets.
+  - Backend ephemeral embed token issuance (`POST /api/auth/embed-token`) with HMAC-SHA256 signatures and expiration claims.
+  - Configurable CORS middleware (`tower-http`) with `CORS_ALLOWED_ORIGINS` environment variable.
+  - Content Security Policy (CSP) `frame-ancestors` support for iframe embedding.
+  - In-App Agentic Frontend Tools (`registerFrontendTool` / Correlation Identifier RPC) allowing models to invoke host application JS actions.
+  - Interactive standalone showcase demo in `examples/vanilla-embed-demo.html`.
+  - Comprehensive documentation in `docs/EMBED_INTEGRATION_GUIDE.md` and updated `docs/roadmap/19_PHASE_19_EMBEDDABLE_CHAT_SDK_AND_SPA_INTEGRATION.md`.
+
+### Changed
+- Refactored `App.svelte` using SOLID / Single Responsibility Principle, reducing lines from 337 to 201 lines.
+
 ## [1.1.0] - 2026-10-18
 
 ### Added
